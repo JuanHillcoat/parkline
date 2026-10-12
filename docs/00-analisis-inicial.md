@@ -1,6 +1,6 @@
 # Análisis inicial: control de proveedores de alquiler de equipos
 
-**Estado:** borrador v2 para validación
+**Estado:** borrador v3 para validación
 **Fecha:** 2026-10-12
 **Alcance:** Sector Flota y Equipos de la empresa
 **Naturaleza:** proyecto de portafolio personal; si una empresa se interesa, se migra a proveedores de pago.
@@ -29,6 +29,7 @@ Hoy el control se reparte entre un tablero diario en planilla, un reporte mensua
 - **Herramientas de diseño:** se evaluaron solo por documentación pública. No se instalaron ni probaron. El servidor MCP de OpenPencil no conectó durante la sesión (ECONNREFUSED), así que no se usó.
 - **Documentos:** los hallazgos de la sección 3 provienen de la revisión de catorce archivos: los nueve de la versión anterior y cinco adicionales (comprobantes de Proveedores A, B y C, y declaraciones de horas de A y B). Las cifras son las de los documentos. La única verificación aritmética hecha para este documento es la suma del neto del proveedor B (sección 3.2), que coincide con el neto informado.
 - **Limitación de los PDF:** los PDF se leyeron solo a través de su capa de texto. No se vieron sellos, firmas ni logos; no se puede afirmar que existan o no existan.
+- **Proveedores C y D (sección 3.3):** se revisaron cinco comprobantes y sus soportes de C y un comprobante con su soporte de D. Los PDF se leyeron por su capa de texto; el soporte de D es una captura de imagen de baja resolución. Las asociaciones columna-valor de los soportes de C se infirieron del diseño de la planilla y se verificaron con aritmética donde se indica. No se vieron sellos ni anotaciones manuscritas.
 - **Costos de infraestructura:** se tomaron de las páginas oficiales consultadas el 2026-10-12. Los precios y límites de los planes pueden cambiar. Varias cifras no están verificadas (lista en sección 10.7).
 - **Reglas de negocio:** las marcadas [S] no están confirmadas por ningún documento ni por el usuario; son supuestos por defecto a validar (sección 16). Las reglas de muletos y de umbral (sección 6) provienen de la confirmación del usuario del 2026-10-12; no están respaldadas por documentos.
 
@@ -51,7 +52,7 @@ Los nombres de negocios, operaciones, sitios y proveedores se reemplazan por ide
 | 9 | Informe mensual a dirección (PPTX, 19 diapositivas) | Indicadores de utilización y de indisponibilidad por operación, tipo de equipo y negocio; costos extra. Glosario: horas contratadas por turno (1 turno = 170, 2 turnos = 250, 3 turnos = 350); indisponibilidad = horas sin máquina por fallas del proveedor, con 24 h de gracia desde el aviso hasta la reparación (la gracia real depende del sitio; sección 6); costos extra = seguros, reparaciones, repuestos y muletos; recupero = nota de crédito por penalidades o negociación; calidad de servicio = cumplimiento de visita o llamado, que no se calcula en el tablero. Los gráficos son imágenes pegadas. |
 | 10 A | Comprobante mensual de Proveedor A (ARS, IVA 21%, percepción IIBB 1,6%) | Una sola línea global «alquileres planta» por 5.780.206,51; sin detalle por equipo. Vencimiento 03/10, que contradice el pago a 30 días. Interés por mora de 4% mensual. No muestra descuentos como línea aparte (llegan aplicados en el neto [H, confirmado por el usuario]), ni reparaciones con cargo, baterías ni horas extra (se facturan aparte). |
 | 10 B | Comprobante mensual de Proveedor B | 47 líneas, una por equipo, con precio fijo por clase: AE25 3.209.085,59 (×12); AE40 3.427.886,88 (×12); AP 3.719.621,93 (×13); TT 1.411.414,19 (×8); TIJ 1.677.476,56 (×1); ZHA 2.111.306,27 (×1). Neto 143.078.851,08. IVA con diferencia de 0,04 frente al 21% exacto (redondeo por línea). Cuatro páginas con totales repetidos. Número de orden de compra presente. Interés por mora de 5% mensual. |
-| 10 C | Comprobante mensual de Proveedor C | Un bloque: 2 internos a 3.173.321,15 cada uno. Período explícito 01 al 30/09. La percepción aparece impresa dos veces y se suma una sola vez. No muestra interés por mora. |
+| 10 C | Comprobante mensual de un emisor distinto de C y D (rotulado por error como «Proveedor C»; error de archivo confirmado por el usuario) | Un bloque: 2 internos a 3.173.321,15 cada uno. Período explícito 01 al 30/09. La percepción aparece impresa dos veces y se suma una sola vez. No muestra interés por mora. |
 | 11 A | Declaración de horas de Proveedor A (xlsx) | Matriz mensual de 120 equipos en dos hojas, con pares HORAS/DIF por mes. Texto en celdas numéricas («En reparacion», «PARADA», «ALTA dd/mm») y un #VALUE!. Una lectura negativa (2220 pasa a 2200). Medidores sin variación. Período de marzo 2026, fuera de sincronía con el comprobante de septiembre 2026. Sin remitente, número de ticket ni firma. |
 | 11 B | Declaración de horas de Proveedor B (PDF) | Ticket numerado, 54 equipos y dos lecturas (27/08 y 29/09; 33 días, no mes calendario). Columna de categoría: Alquiler 47, Back up 5, Préstamo 2. Una lectura negativa (−6) y dos ceros. |
 
@@ -63,7 +64,7 @@ Los nombres de negocios, operaciones, sitios y proveedores se reemplazan por ide
 
 ### 3.2 Comparación de comprobantes y declaraciones nuevos
 
-| Aspecto | Proveedor A | Proveedor B | Proveedor C |
+| Aspecto | Proveedor A | Proveedor B | Otro emisor (documento 10 C) |
 |---|---|---|---|
 | Granularidad del comprobante | Global (una línea de planta) | Por equipo (47 líneas) | Por bloque (2 internos) |
 | Monto de referencia | 5.780.206,51 | 143.078.851,08 (neto) | 3.173.321,15 por interno |
@@ -84,6 +85,36 @@ Los nombres de negocios, operaciones, sitios y proveedores se reemplazan por ide
 - Utilización observada: promedios de 60 a 84 h/mes, aproximadamente 25 a 35% de las 250 h contratadas. Es un dato observado sobre una ventana no calendario, no un indicador oficial.
 
 **Implicaciones:** el monto esperado sale de la tabla de contratos por clase, nunca de la línea del comprobante; el estado facturable (alquiler, back up, préstamo) es un dato propio por período; el comprobante se modela con tres granularidades (sección 7.2); los internos del proveedor se mapean a los de la empresa mediante una tabla de alias.
+
+### 3.3 Proveedores C y D (operaciones de otra región)
+
+Documentos adicionales de la empresa: cinco comprobantes de C con sus soportes y un comprobante de D con su soporte. Corresponden a operaciones de otra región. Todos los importes están en ARS y los internos se citan solo como identificadores genéricos.
+
+| Aspecto | Proveedor C | Proveedor D |
+|---|---|---|
+| Estructura del comprobante [H] | Cinco comprobantes, separados por concepto: abono fijo, horas adicionales y operarios, cada uno con su propio código de servicio. Una línea de importe por equipo, sin cantidad ni precio unitario | Una sola línea global de alquiler por 30.874.728,79; el detalle por equipo está solo en el soporte |
+| Impuestos [H] | IVA 21% y percepción IIBB 1,6% | IVA 21%; sin percepción IIBB |
+| Pago y mora [H] | 30 días; interés por mora diario sobre una tasa bancaria, pasados 30 días | 40 días informados en el soporte (41 en el comprobante); interés por mora de 1% diario hasta la cancelación |
+| Aritmética [H] | Los cinco comprobantes cuadran al centavo (subtotal, IVA y percepción exactos) | Subtotal + IVA = total; la suma de las 16 filas del soporte, menos la bonificación, coincide con el subtotal |
+| Soporte [H] | Planilla de resumen de servicios: rangos de horas contratadas por clase, valor de la hora adicional, horas por horómetro y detalle diario por máquina | Captura de una planilla de cálculo: valor mensual por clase de equipo y 300 horas libres mensuales por equipo; sin lecturas de horómetro |
+| Reglas observadas [H] | Cuota fija por clase con rango contratado (400, 300 y 600 h según la clase) y tarifa de hora adicional por clase; horas de operario al 50%, al 100% y nocturnas | Prorrateo por días en el ingreso y egreso de reparación; sin descuento cuando la indisponibilidad figura como «no atribuible»; bonificación permanente de 18% sobre un tipo de equipo |
+
+**Hallazgos sobre C [H]:**
+- Los precios unitarios y las horas no figuran en el comprobante; solo están en el soporte. El comprobante muestra el importe final.
+- Un mismo soporte respalda dos comprobantes en dos casos (abono más operarios, y abono más horas adicionales): la relación soporte–comprobante es N:M.
+- Un soporte contiene importes (horas adicionales y operarios) que no figuran en ningún comprobante entregado: quedan «soportados y no facturados» hasta que se reciban los comprobantes faltantes.
+- La numeración tiene huecos: faltan números de comprobante entre los entregados [S: no entregados, no necesariamente no emitidos].
+- Hay una inconsistencia de período entre el título del soporte y el período de la línea, y una fecha de emisión anterior al inicio del período facturado.
+- Las horas diarias de la planilla no coinciden con las horas por horómetro del mismo mes. La cuota fija se cobra igual porque ambas quedan bajo el rango contratado, de modo que la diferencia no cambia el importe pero sí el control.
+- Las diferencias de centavos entre soporte y comprobante provienen de redondear la tarifa horaria antes o después de multiplicar.
+- El documento 10 C (sección 3.2) pertenece a un emisor distinto de C y D: se rotuló por error [H, confirmado por el usuario]. No debe usarse como fixture de C; el valor de 3.173.321,15 por interno no es una tarifa de C.
+
+**Hallazgos sobre D [H]:**
+- El prorrateo por días se verificó con aritmética para dos equipos (22/30 y 20/30 de la cuota).
+- La indisponibilidad marcada «no atribuible» no genera descuento; el equipo se cobra completo.
+- La bonificación de 18% es permanente y no depende del período.
+
+**Limitaciones [H]:** solo se leyó la capa de texto de los PDF; no se vieron sellos ni anotaciones manuscritas. No se observaron muletos (Back up o Préstamo) ni descuentos por indisponibilidad como línea aparte en C ni en D.
 
 ---
 
@@ -151,7 +182,12 @@ Los nombres de negocios, operaciones, sitios y proveedores se reemplazan por ide
 | Muleto de otra clase: cuenta como cobertura salvo que la operación rechace el reemplazo por no serle útil; el rechazo se registra con motivo, actor, fecha y hora, y queda auditado; un reemplazo rechazado no cubre; `class_match` queda como atributo informativo | Confirmada por el usuario [H, confirmado por el usuario] | Confirmación del usuario; sección 7.2 |
 | Estado facturable (Alquiler, Back up, Préstamo) por equipo y período: lo define el sector Flota y Equipos al registrar un muleto o cobertura, y se guarda con su fuente | Confirmada por el usuario [H, confirmado por el usuario] | Confirmación del usuario; sección 7.2 |
 | Registro de cobertura: el `supervisor` registra llegada y retiro; el `fleet_analyst` confirma con evidencia; sin confirmación la cobertura queda `pending_evidence` y no cuenta al cerrar el período | [S] | Sección 7.2 |
-| Interno: texto; el interno del proveedor puede diferir del de la empresa; unicidad por proveedor [S] | No bloqueante (sección 16) | Documentos 7 y 11 |
+| Interno: texto; el interno del proveedor puede diferir del de la empresa | Confirmada en documentos | Documentos 7 y 11 |
+| Unicidad del interno: es único dentro de un proveedor (un proveedor no lo repite en dos equipos) y puede coincidir con el de otro proveedor; la identidad del equipo es (proveedor, interno). Resuelve la antigua pregunta abierta sobre unicidad | Confirmada por el usuario [H, confirmado por el usuario] | Confirmación del usuario; sección 7.2 |
+| Horas contratadas insuficientes: en algunas operaciones las horas contratadas no cubren el uso y el proveedor factura las horas adicionales en un comprobante aparte, con su propia tarifa | [S] lectura del usuario, a confirmar por proveedor | Confirmación del usuario; sección 3.3 (C) |
+| Prorrateo por días en el ingreso y egreso de reparación, e indisponibilidad «no atribuible» sin descuento | [H] observado en D; el alcance de la regla por proveedor queda abierto (sección 16) | Sección 3.3 (D) |
+| Bonificación permanente por equipo o tipo de equipo (por ejemplo 18%), distinta de la bonificación manual excepcional | [H] observado en D | Sección 3.3 (D) |
+| Muleto: no existe una regla escrita que lo defina, así que la define el proyecto: no se factura; detiene la indisponibilidad desde que cubre; la operación puede rechazarlo (cobertura rechazada); las excepciones se revisan manualmente con auditoría | [D] | Secciones 7.2 y 7.5 |
 | Reemplazo de horómetro: quién lo informa y con qué evidencia | No bloqueante (sección 16) | Sección 16 |
 | Significado de CHE y MHE | No bloqueante (sección 16) | Sección 16 |
 
@@ -177,7 +213,7 @@ Los nombres de negocios, operaciones, sitios y proveedores se reemplazan por ide
 ### 7.2 Decisiones de modelado
 
 - **Tipo de activo genérico [D]:** `asset_type` (autoelevador, zorra, order picker, containera, trastainer; futuro semirremolque) con `meter_kind` (`hours` | `km` | `none`) y `preventive_interval` (250 o 500 h, documento 7). Los semirremolques entran sin migración de esquema.
-- **Interno [H]:** texto, no numérico (documento 7: `9001`, `C-043`, `ZX-037`). Unicidad `(tenant, supplier, internal_code)` **[S]** hasta confirmar si el interno es único por proveedor o global (no bloqueante, sección 16).
+- **Interno [H]:** texto, no numérico (documento 7: `9001`, `C-043`, `ZX-037`). Unicidad `(tenant, supplier, internal_code)` [H, confirmado por el usuario]: el interno es único dentro de un proveedor y puede repetirse entre proveedores (sección 6).
 - **Alias de identificadores del proveedor [H/D]:** los internos del proveedor difieren de los de la empresa (documento 11). `supplier_equipment_alias(supplier, supplier_internal_code, serial, equipment_id, valid_from, valid_to)`. Se normalizan mayúsculas y espacios; los sufijos (por ejemplo «Li») **no** se eliminan automáticamente: generan discrepancia.
 - **Asignación con vigencia [D]:** `equipment_assignment(equipment, operation, site, valid_from, valid_to)`. Invariante: sin solapamientos por equipo (restricción de exclusión en Postgres). El costo de un período se imputa a la asignación vigente; si hay cambio a mitad de mes, se prorratea por días **[S]**.
 - **Operación–sitio N:M [H]** (enunciado): tabla `operation_site`; la asignación valida que el par exista.
@@ -209,6 +245,11 @@ Los nombres de negocios, operaciones, sitios y proveedores se reemplazan por ide
 - **Indisponibilidad [D]:** entidades `site_grace_policy(site, grace_hours, valid_from, valid_to)`, versionada y sin solapamiento, donde `grace_hours` es el umbral W (24 h en el sitio principal, 48 h en satélites) [H, confirmado por el usuario]; `unavailability_policy(tenant, rounding_mode, valid_from)`, versionada (`rounding_mode` [D], default `floor`); `unavailability_incident(equipment, repair_order_id, site_id_snapshot, grace_hours_snapshot, policy_version, started_at, ot_ref, ot_received_at (o la fecha del cierre manual justificado, con `close_reason = manual`), status, close_reason)`, donde W (`grace_hours_snapshot`) y el sitio se **congelan al abrir** el incidente; y `unavailability_slice(incident, period, whole_days, monthly_fee, days_in_month, auto_amount, override_amount, override_reason, overridden_by, overridden_at, effective_amount, is_provisional)`, con `effective_amount = override_amount ?? auto_amount` y ambos valores conservados. No existe un modo de resta: el umbral es la única forma de tratar la ventana. Cálculo, redondeo y casos borde en la sección 7.5.
 - **Conceptos de cargo esperado [D]:** `rental` (+), `unavailability_deduction` (−, ya aplicado en el alquiler neto facturado [H, confirmado por el usuario]) y `chargeable_repair` (+, en columna propia; los sobrecostos se facturan aparte del alquiler mensual [H, confirmado por el usuario] y concilian contra su propia cadena OR/OT/presupuesto); `manual_bonification` (−, excepcional y auditada, nunca automática; independiente de la indisponibilidad).
 - **Cargo diferido [H]:** el comprobante del documento 1 se emitió el 24/09 por agosto. Un cargo esperado pertenece al período en que se originó y puede conciliarse con comprobantes de períodos posteriores; queda `pending_invoice` hasta su asignación.
+- **Comprobante con líneas conceptuales [D]:** además de la línea por equipo, el comprobante admite líneas por concepto (abono, horas adicionales, operarios, reparaciones con cargo), cada una con su código de servicio, como en C (sección 3.3). Un comprobante puede mezclar ambas formas.
+- **Documento de soporte [D]:** el soporte (resumen de servicios, planilla) es una entidad propia, con su fecha y su período, y puede respaldar varios comprobantes (N:M). Un importe del soporte se cuenta una sola vez aunque el soporte se reutilice.
+- **Conciliación por concepto [D]:** se compara lo esperado (contrato + tarifas + lecturas) con lo facturado, concepto por concepto. Se marca como «soportado y no facturado» el importe del soporte sin comprobante, y se detectan huecos en la numeración de comprobantes por emisor.
+- **Clave única del equipo [D]:** `(tenant, supplier, internal_code)`; el número de serie es un atributo informativo mientras no se resuelva su unicidad (sección 16).
+- **Adaptadores por proveedor [D]:** un adaptador de importación por proveedor detrás de un único puerto. Primero se usan reglas deterministas; la IA actúa solo como asistente que propone mapeos y explica diferencias, y una persona confirma. Nunca escribe importes por sí misma (sección 8.7).
 
 ### 7.3 Diagrama entidad-relación
 
@@ -640,6 +681,10 @@ Se verifican con los tests de la sección 14 (cobertura y conciliación de cober
 | 16 | La semántica de Back up frente a Préstamo no está distinguida: hoy ambos se tratan como no facturables y aptos para cubrir | Tratamiento igual hasta confirmar [S] |
 | 17 | Bonificación manual usada sin control o confundida con la indisponibilidad | Concepto aparte, manual y excepcional; motivo, operación solicitante, aprobador y período obligatorios; auditoría completa |
 | 18 | Muleto de otra clase contado como cobertura aunque no sea útil para la operación | Cuenta salvo rechazo de la operación [H, confirmado por el usuario]; el rechazo queda registrado y auditado; `class_match` solo informativo; sin tabla de equivalencias en v1 |
+| 19 | Importes soportados y no facturados: el soporte contiene montos sin comprobante entregado y quedan sin cobrar o sin controlar | Estado «soportado y no facturado» en la conciliación; revisión humana antes del cierre del período |
+| 20 | Numeración de comprobantes no consecutiva: un comprobante faltante pasa inadvertido | Detección de huecos por emisor; el hueco queda como discrepancia a explicar, no como error |
+| 21 | Un soporte reutilizado en varios comprobantes se cuenta dos veces | Soporte como entidad propia con relación N:M; el importe se asigna una sola vez (invariante de `reconciliation_allocation`) |
+| 22 | Reglas que difieren por proveedor (interés por mora, plazos de pago, indisponibilidad «no atribuible») | Parámetros por proveedor y contrato, no reglas globales; preguntas abiertas en la sección 16 |
 
 ---
 
@@ -709,9 +754,13 @@ Convenciones propias de este proyecto:
 **No bloqueantes** (puntos abiertos, sin cambios de regla):
 - Reemplazo de horómetro: ¿quién lo informa y con qué evidencia?
 - Significado exacto de CHE y MHE.
-- Interno: ¿es único por proveedor o en toda la flota? (se asume por proveedor [S]).
 - Horas contratadas de la operación de 24 h: cómo se mapean a horas contratadas. Solo afecta el indicador de utilización.
 - Qué rol aprueba una bonificación manual.
+- ¿El número de serie debe ser único en toda la flota?
+- ¿«No atribuible» es una cláusula propia de cada proveedor o una política de la empresa?
+- ¿Cómo se autorizan las horas adicionales antes de facturarse?
+- ¿Alguna vez se reclaman las cláusulas de interés por mora?
+- Resuelta: la unicidad del interno es por proveedor (sección 6); ya no es una pregunta abierta.
 - Comportamiento tras el retiro de un muleto: documentado como supuesto S1 (sección 7.5).
 
 ---
@@ -720,7 +769,7 @@ Convenciones propias de este proyecto:
 
 Este documento queda **a la espera de validación**. Próximo paso:
 
-1. Validar el documento: decisiones [D], supuestos [S] (S1 y S2 de la sección 16) y los puntos no bloqueantes; ninguno bloquea. En particular, validar la regla de primer evento entre OT operativa y cierre manual (sección 7.5, [D]) y el principio de arranque vacío (secciones 1 y 10.5).
+1. Validar el documento: decisiones [D], supuestos [S] (S1 y S2 de la sección 16) y los puntos no bloqueantes; ninguno bloquea. En particular, validar la regla de primer evento entre OT operativa y cierre manual (sección 7.5, [D]), la regla de muletos definida por el proyecto (sección 6), el modelo de comprobantes con líneas conceptuales y soportes (sección 7.2) y el principio de arranque vacío (secciones 1 y 10.5).
 2. Una vez validado, iniciar la fase 0, con el deploy de humo sobre Vercel y Neon (sección 10.2).
 
 No se inicia ninguna implementación antes de la validación.
