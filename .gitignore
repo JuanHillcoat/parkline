@@ -11,3 +11,6 @@ next-env.d.ts
 
 # Real documents may live here locally; never committed
 private-docs/
+
+# Local tooling state
+.atl/
