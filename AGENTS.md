@@ -44,6 +44,7 @@ These conventions apply to every change, human or agent.
 - Commits follow Conventional Commits, scoped by feature identifier: `feat(p0-01): ...`, `docs(p0-01): ...`, `ci(p0-01): ...`.
 - Use work-unit commits. Each commit is one reviewable unit, with its tests and documentation alongside the behavior it describes.
 - Do not add AI attribution or `Co-Authored-By` trailers to commits or pull requests.
+- Pull request titles follow Conventional Commits. Descriptions are written in Latin American Spanish with these sections: Contexto, Problemática, Qué cambia, Por qué, Observaciones, Alcances and Pruebas.
 - CI must pass before a change is merged. CI runs the `verify` job (lint, typecheck, test, build) and the `database` job (migrations and `test:db`) from `.github/workflows/ci.yml`.
 - Pushing, opening pull requests and merging are decisions for the maintainer.
 
