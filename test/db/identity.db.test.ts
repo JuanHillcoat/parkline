@@ -122,6 +122,18 @@ describe("user_role_assignments", () => {
     expect(rows[0]?.n).toBe(2);
   });
 
+  it("requires a tenant-scoped assignment to point at its own tenant", async () => {
+    const a = await addTenant("Tenant M");
+    const b = await addTenant("Tenant N");
+    const u = await addUser(a, "mia@example.test");
+    await expect(addAssignment(a, u, "viewer", "tenant", b)).rejects.toThrow(/check/);
+    await expect(addAssignment(a, u, "admin", "tenant", b)).rejects.toThrow(/check/);
+    await addAssignment(a, u, "viewer", "tenant", a);
+    await addAssignment(a, u, "viewer", "site", "arbitrary-site-id");
+    const rows = await sql`select count(*)::int as n from user_role_assignments where user_id = ${u}`;
+    expect(rows[0]?.n).toBe(2);
+  });
+
   it("rejects admin with a non-tenant scope", async () => {
     const t = await addTenant("Tenant G");
     const u = await addUser(t, "gus@example.test");
@@ -168,6 +180,37 @@ describe("sessions", () => {
     const cols = await sql<{ column_name: string }[]>`
       select column_name from information_schema.columns where table_name = 'sessions'`;
     expect(cols.map((c) => c.column_name)).not.toContain("token");
+  });
+});
+
+describe("foreign key delete behavior", () => {
+  it("rejects deleting a user that has role assignments", async () => {
+    const t = await addTenant("Tenant O");
+    const u = await addUser(t, "olo@example.test");
+    await addAssignment(t, u, "viewer", "tenant", t);
+    await expect(sql`delete from users where id = ${u}`).rejects.toThrow(/foreign key/);
+  });
+
+  it("rejects deleting a user that has sessions", async () => {
+    const t = await addTenant("Tenant P");
+    const u = await addUser(t, "pia@example.test");
+    await addSession(t, u, "hash-delete-user");
+    await expect(sql`delete from users where id = ${u}`).rejects.toThrow(/foreign key/);
+  });
+
+  it("rejects deleting a tenant that has users", async () => {
+    const t = await addTenant("Tenant Q");
+    await addUser(t, "quin@example.test");
+    await expect(sql`delete from tenants where id = ${t}`).rejects.toThrow(/foreign key/);
+  });
+
+  it("defines no cascading or nulling deletes on identity foreign keys", async () => {
+    const rows = await sql<{ conname: string; confdeltype: string }[]>`
+      select conname, confdeltype from pg_constraint
+      where contype = 'f'
+        and conrelid in ('users'::regclass, 'user_role_assignments'::regclass, 'sessions'::regclass)`;
+    expect(rows.length).toBe(3);
+    for (const row of rows) expect(row.confdeltype, row.conname).toBe("a");
   });
 });
 

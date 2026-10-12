@@ -34,6 +34,19 @@ describe("ScryptPasswordHasher", () => {
     expect(await new ScryptPasswordHasher(fast).verify("anything", stored)).toBe(false);
   });
 
+  it.each([
+    ["N above 2^20", 2 ** 21, 8, 1],
+    ["r above 32", 16, 33, 1],
+    ["p above 16", 16, 8, 17],
+  ])("returns false quickly for a stored value with %s", async (_label, N, r, p) => {
+    const hasher = new ScryptPasswordHasher(fast);
+    const parts = (await hasher.hash("secret")).split("$");
+    const tampered = ["scrypt", N, r, p, parts[4], parts[5]].join("$");
+    const started = Date.now();
+    expect(await hasher.verify("secret", tampered)).toBe(false);
+    expect(Date.now() - started).toBeLessThan(500);
+  });
+
   it("verifies hashes made with other parameters", async () => {
     const stored = await new ScryptPasswordHasher({ N: 32, r: 8, p: 1 }).hash("secret");
     expect(await new ScryptPasswordHasher(fast).verify("secret", stored)).toBe(true);

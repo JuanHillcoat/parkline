@@ -39,7 +39,9 @@ create table user_role_assignments (
   active     boolean     not null default true,
   created_at timestamptz not null default now(),
   foreign key (tenant_id, user_id) references users (tenant_id, id),
-  check (role <> 'admin' or scope_type = 'tenant')
+  check (role <> 'admin' or scope_type = 'tenant'),
+  -- A tenant-scoped assignment always targets the row's own tenant.
+  check (scope_type <> 'tenant' or scope_id = tenant_id::text)
 );
 
 -- A deactivated assignment may repeat; an active one may not.
