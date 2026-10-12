@@ -33,6 +33,16 @@ describe("createRoleAssignment", () => {
     if (!result.ok) expect(result.error.code).toBe("admin_requires_tenant_scope");
   });
 
+  it("trims padded ids so they match stored identifiers", () => {
+    const result = createRoleAssignment({
+      userId: "  user-1 ",
+      role: "viewer",
+      scope: { type: "tenant", id: " tenant-a\n" },
+    });
+    expect(result.ok && result.value.userId).toBe("user-1");
+    expect(result.ok && result.value.scope.id).toBe("tenant-a");
+  });
+
   it("rejects empty ids", () => {
     const noUser = createRoleAssignment({
       userId: " ",

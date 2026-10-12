@@ -38,5 +38,6 @@ export const createRoleAssignment = (
 ): Result<RoleAssignment, DomainError> => {
   const problem = validate(input);
   if (problem) return err(problem);
-  return ok({ userId: input.userId, role: input.role, scope: input.scope, active: true });
+  const scope = { type: input.scope.type, id: input.scope.id.trim() };
+  return ok({ userId: input.userId.trim(), role: input.role, scope, active: true });
 };
