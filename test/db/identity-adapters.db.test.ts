@@ -11,6 +11,8 @@ import { createContainer } from "../../src/shared/infrastructure/container";
 import type { IdentityTx } from "../../src/identity/application/ports/identity-tx";
 import type { TenantRepository } from "../../src/identity/application/ports/tenant-repository";
 import type { IdentityDeps } from "../../src/identity/application/deps";
+import type { UserRepository } from "../../src/identity/application/ports/user-repository";
+import { CreateUser } from "../../src/identity/application/use-cases/create-user";
 import { InstallTenantAdmin } from "../../src/identity/application/use-cases/install-tenant-admin";
 import { DEFAULT_SESSION_POLICY } from "../../src/identity/domain/session";
 import { CryptoSessionTokenService } from "../../src/identity/infrastructure/crypto-session-token-service";
@@ -105,6 +107,17 @@ const gatedTenants = (inner: TenantRepository, gate: () => Promise<void>): Tenan
   add: (tenant) => inner.add(tenant),
   findSingle: async () => {
     const found = await inner.findSingle();
+    await gate();
+    return found;
+  },
+});
+
+const gatedUsers = (inner: UserRepository, gate: () => Promise<void>): UserRepository => ({
+  findById: (tenantId, id) => inner.findById(tenantId, id),
+  add: (user, passwordHash) => inner.add(user, passwordHash),
+  setActive: (tenantId, id, active) => inner.setActive(tenantId, id, active),
+  findByEmail: async (tenantId, email) => {
+    const found = await inner.findByEmail(tenantId, email);
     await gate();
     return found;
   },
@@ -324,6 +337,36 @@ describe("identity use cases on Postgres", () => {
       await expect(attempt).rejects.toThrow("audit down");
       expect((await sql`select count(*)::int as n from users`)[0]?.n).toBe(1);
       expect((await sql`select count(*)::int as n from user_role_assignments`)[0]?.n).toBe(1);
+    });
+  });
+
+  it("maps a concurrent duplicate email to EmailTakenError with one audit row", async () => {
+    await withDb(async (sql) => {
+      const c = createContainer(sql, { hasher });
+      must(await c.identity.install.execute(installInput));
+      const signed = must(await c.identity.signIn.execute({ email: "admin@example.test", password: PASSWORD }));
+      const actor = must(await c.identity.authenticate.execute({ token: signed.token }));
+      // The gate makes both calls pass the email pre-check before either inserts.
+      const gate = makeGate(2, 400);
+      const deps: IdentityDeps = {
+        unitOfWork: new PostgresUnitOfWork(sql, (handle) => {
+          const tx = createPostgresIdentityTx(handle);
+          return { ...tx, users: gatedUsers(tx.users, gate) };
+        }),
+        clock: new SystemClock(),
+        ids: new UuidIdGenerator(),
+        hasher,
+        tokens: new CryptoSessionTokenService(),
+        policy: DEFAULT_SESSION_POLICY,
+      };
+      const create = new CreateUser(deps);
+      const input = { actor, email: "ana@example.test", displayName: "Ana", password: PASSWORD };
+      const results = await Promise.all([create.execute(input), create.execute(input)]);
+      const codes = results.map((r) => (r.ok ? "ok" : r.error.code)).sort();
+      expect(codes).toEqual(["email_taken", "ok"]);
+      const audit = await sql`select 1 from audit_log where action = 'user.create'`;
+      expect(audit).toHaveLength(1);
+      expect((await sql`select count(*)::int as n from users`)[0]?.n).toBe(2);
     });
   });
 

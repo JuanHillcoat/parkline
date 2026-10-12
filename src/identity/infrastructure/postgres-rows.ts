@@ -19,7 +19,13 @@ export type UserRow = {
   active: boolean;
 };
 
-export type AssignmentRow = { user_id: string; role: string; scope_type: string; scope_id: string };
+export type AssignmentRow = {
+  user_id: string;
+  role: string;
+  scope_type: string;
+  scope_id: string;
+  active: boolean;
+};
 
 export type SessionRow = {
   id: string;
@@ -46,7 +52,7 @@ export const toAssignment = (row: AssignmentRow): RoleAssignment => {
   if (!role.ok) throw role.error;
   if (!SCOPE_TYPES.includes(row.scope_type)) throw new Error(`Unknown scope type ${row.scope_type}`);
   const scope = { type: row.scope_type as ScopeType, id: row.scope_id };
-  return { userId: row.user_id, role: role.value, scope, active: true };
+  return { userId: row.user_id, role: role.value, scope, active: row.active };
 };
 
 export const toSession = (row: SessionRow): Session => ({

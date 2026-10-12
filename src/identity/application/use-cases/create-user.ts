@@ -59,7 +59,7 @@ export class CreateUser {
   private async persist(tx: IdentityTx, plan: Plan): Promise<Result<User, DomainError>> {
     const { user, assignment, passwordHash } = plan;
     if ((await tx.users.findByEmail(user.tenantId, user.email)) !== null) return err(new EmailTakenError());
-    await tx.users.add(user, passwordHash);
+    if (!(await tx.users.add(user, passwordHash))) return err(new EmailTakenError());
     if (assignment !== null) await tx.assignments.add(user.tenantId, assignment);
     await recordAudit(tx, this.deps, {
       actorId: plan.actor.user.id,

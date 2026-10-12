@@ -7,6 +7,7 @@ export interface UserRepository {
   findById(tenantId: string, id: string): Promise<User | null>;
   /** `email` must already be normalized. */
   findByEmail(tenantId: string, email: string): Promise<StoredUser | null>;
-  add(user: User, passwordHash: string): Promise<void>;
+  /** Returns false, without writing, when the email is already taken in the tenant. */
+  add(user: User, passwordHash: string): Promise<boolean>;
   setActive(tenantId: string, id: string, active: boolean): Promise<void>;
 }

@@ -55,13 +55,13 @@ export class InMemoryUserRepository implements UserRepository {
     return Promise.resolve(found ?? null);
   }
 
-  add(user: User, passwordHash: string): Promise<void> {
-    const duplicate = this.state.users.some(
-      (s) => s.user.id === user.id || (s.user.tenantId === user.tenantId && s.user.email === user.email),
-    );
-    if (duplicate) return Promise.reject(new Error("unique violation on users"));
+  add(user: User, passwordHash: string): Promise<boolean> {
+    const sameId = this.state.users.some((s) => s.user.id === user.id);
+    if (sameId) return Promise.reject(new Error("unique violation on users"));
+    const taken = this.state.users.some((s) => s.user.tenantId === user.tenantId && s.user.email === user.email);
+    if (taken) return Promise.resolve(false);
     this.state.users.push({ user, passwordHash });
-    return Promise.resolve();
+    return Promise.resolve(true);
   }
 
   setActive(tenantId: string, id: string, active: boolean): Promise<void> {

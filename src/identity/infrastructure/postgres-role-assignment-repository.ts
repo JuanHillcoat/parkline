@@ -9,7 +9,7 @@ export class PostgresRoleAssignmentRepository implements RoleAssignmentRepositor
   async listActiveByUser(tenantId: string, userId: string): Promise<readonly RoleAssignment[]> {
     if (!isUuid(tenantId) || !isUuid(userId)) return [];
     const rows = await this.sql<AssignmentRow[]>`
-      select user_id, role, scope_type, scope_id
+      select user_id, role, scope_type, scope_id, active
       from user_role_assignments
       where tenant_id = ${tenantId} and user_id = ${userId} and active
       order by created_at, id`;

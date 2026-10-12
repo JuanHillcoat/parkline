@@ -23,11 +23,14 @@ export class PostgresUserRepository implements UserRepository {
     return row ? { user: toUser(row), passwordHash: row.password_hash } : null;
   }
 
-  async add(user: User, passwordHash: string): Promise<void> {
-    await this.sql`
+  async add(user: User, passwordHash: string): Promise<boolean> {
+    const rows = await this.sql`
       insert into users (id, tenant_id, email, display_name, password_hash, active)
       values (${user.id}, ${user.tenantId}, ${user.email}, ${user.displayName},
-              ${passwordHash}, ${user.active})`;
+              ${passwordHash}, ${user.active})
+      on conflict (tenant_id, email) do nothing
+      returning id`;
+    return rows.length === 1;
   }
 
   async setActive(tenantId: string, id: string, active: boolean): Promise<void> {
