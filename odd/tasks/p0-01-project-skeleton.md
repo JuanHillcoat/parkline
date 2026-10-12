@@ -33,8 +33,8 @@ Strict TDD for domain code (RED, then GREEN, then REFACTOR). Runner: `pnpm test`
 
 Per-task heuristic: about 400 authored changed lines, advisory only.
 
-- [ ] T1 Tooling: pnpm workspace, Next.js, strict TypeScript, ESLint, Vitest, scripts. Route: delegated (writer, sonnet).
-- [ ] T2 Hexagonal structure and shared kernel (`Result`, `Money`, domain errors) with enforced import boundaries and a test proving a violation fails lint. Route: delegated (writer, sonnet).
+- [x] T1 Tooling: pnpm workspace, Next.js, strict TypeScript, ESLint, Vitest, scripts. Route: delegated (writer, sonnet).
+- [x] T2 Hexagonal structure and shared kernel (`Result`, `Money`, domain errors) with enforced import boundaries and a test proving a violation fails lint. Route: delegated (writer, sonnet).
 - [ ] T3 Local database: Docker Compose Postgres 16, migration runner, append-only `audit_log` migration, DB test (needs Docker). Route: delegated (writer, sonnet).
 - [ ] T4 CI workflow: lint, typecheck, test, build. Route: delegated (haiku).
 - [ ] T5 Conventions and docs: AGENTS.md and CLAUDE.md as the project's own conventions, README, ADR-0001, `.env.example`, `.gitignore`, CHANGELOG. Route: delegated (haiku).
@@ -55,7 +55,9 @@ Commands: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, and `pnpm te
 ## Progress
 
 - 2026-10-12: feature document created. Docker engine was not running at planning time, so T3 DB test is pending that.
+- 2026-10-12 T1 done (commit 644764e, route: delegated writer). Stack: Next.js 16.4.0, React 19.3.0, TypeScript 6.0.3 (typescript-eslint 8.71.2 supports TypeScript below 6.1, so TypeScript 7 was not used), ESLint 10.12.0, Vitest 5.0.4. Observed: `pnpm lint` clean, `pnpm typecheck` clean, `pnpm test` no tests (passWithNoTests), `pnpm build` compiled and prerendered `/`.
+- 2026-10-12 T2 done (route: delegated writer, strict TDD). RED: result, domain-error and money tests failed with "Cannot find module" before implementation; the boundary test failed 3 of 6 cases (violations not reported) before the import resolver was configured. GREEN: 4 test files, 24 tests passed. Observed: `pnpm lint`, `pnpm typecheck` clean, `pnpm build` compiled. Money stores bigint minor units (no decimal library). Real-resolver sanity check: a domain file importing infrastructure on disk was reported by `eslint`.
 
 ## Next step
 
-T1.
+T3.
