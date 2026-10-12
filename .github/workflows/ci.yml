@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# Pull requests cancel superseded runs; pushes to main always run to completion.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  verify:
+    name: Lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      # Matches the local pnpm version. package.json has no packageManager field,
+      # and pnpm/action-setup v4 needs an explicit version when it is absent.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.23.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm lint
+
+      - run: pnpm typecheck
+
+      - run: pnpm test
+
+      - run: pnpm build
+
+  database:
+    name: Migrations and database tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      # Ephemeral development database. Credentials are local dev values, not secrets.
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: parkline
+          POSTGRES_PASSWORD: parkline_dev
+          POSTGRES_DB: parkline
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U parkline -d parkline"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgres://parkline:parkline_dev@localhost:5432/parkline
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.23.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm db:migrate
+
+      - run: pnpm test:db
