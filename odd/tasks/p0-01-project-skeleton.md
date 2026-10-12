@@ -63,6 +63,8 @@ Commands: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, and `pnpm te
 - 2026-10-12 Parent verification on a clean local clone: `pnpm install --frozen-lockfile` initially FAILED with `ERR_PNPM_IGNORED_BUILDS` (esbuild, pulled in through tsx and vite); it passed in the working tree only because dependencies were already installed. Fixed with `allowBuilds: esbuild: false` in `pnpm-workspace.yaml` (commit `fix(p0-01): declare esbuild build script policy for clean installs`). Re-run on a fresh clone: install, `pnpm lint`, `pnpm typecheck`, `pnpm test` (24 passed) and `pnpm build` all passed. Acceptance criterion 1 observed; `pnpm test:db` was run on the working tree (9 passed), not on the clone.
 - 2026-10-12 Environment: the pre-existing local `supabase_*_parkline` containers, volumes and network were removed at the user's request. `parkline-postgres-1` and its volume were kept.
 
+- 2026-10-12 Delivery: public repository created by the maintainer's authorization, `main` and the feature branch pushed, PR #1 opened. First CI run observed: job `verify` (lint, typecheck, test, build) passed in 32 s and job `database` (migrations and `test:db`) passed in 35 s.
+
 ## Next step
 
-Open PR and validate the analysis (`docs/00-analisis-inicial.md`). Push and PR creation are human decisions; the CI workflow has not run on GitHub yet.
+Maintainer reviews and merges PR #1. Then validate the analysis (`docs/00-analisis-inicial.md`) against the documents of the remaining suppliers and start phase 0 slices.
