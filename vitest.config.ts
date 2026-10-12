@@ -10,6 +10,16 @@ export default defineConfig({
           include: ["src/**/__tests__/**/*.test.ts", "app/**/__tests__/**/*.test.ts"],
         },
       },
+      {
+        test: {
+          name: "db",
+          environment: "node",
+          include: ["test/db/**/*.db.test.ts"],
+          fileParallelism: false,
+          testTimeout: 30_000,
+          hookTimeout: 60_000,
+        },
+      },
     ],
   },
 });

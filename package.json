@@ -13,10 +13,14 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --project unit --passWithNoTests",
-    "test:watch": "vitest --project unit"
+    "test:watch": "vitest --project unit",
+    "test:db": "vitest run --project db",
+    "db:up": "docker compose up -d --wait postgres",
+    "db:migrate": "node --env-file-if-exists=.env scripts/migrate.ts"
   },
   "dependencies": {
     "next": "16.4.0",
+    "postgres": "3.4.9",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
