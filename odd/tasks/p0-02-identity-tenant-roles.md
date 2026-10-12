@@ -38,7 +38,7 @@ Strict TDD for domain code (RED observed first, then GREEN, then REFACTOR). Runn
 
 Per-task heuristic: about 400 authored changed lines, advisory only. Route is recorded when each task starts.
 
-- [ ] T1 Domain: `Role`, `Scope`, `Permission`, `Authorizer` policy and the identity entities, as pure code with tests. Route: delegated writer (sonnet), strict TDD.
+- [x] T1 Domain: `Role`, `Scope`, `Permission`, `Authorizer` policy and the identity entities, as pure code with tests. Route: delegated writer (sonnet), strict TDD.
 - [ ] T2 Ports and security primitives: `PasswordHasher` (scrypt), `SessionTokenGenerator`, `Clock`, `AuditLog`, `UnitOfWork`, with in-memory fakes. Route: delegated writer (sonnet), strict TDD.
 - [ ] T3 Migration `0002_identity.sql`: `tenants`, `users`, `user_role_assignments`, `sessions`, with `tenant_id`, composite keys and DB tests (constraints, uniqueness, cascade rules). Route: delegated writer (sonnet).
 - [ ] T4 Use cases: install tenant and administrator, sign in, sign out, create user, assign role and scope (reason required, audited), deactivate user. Route: delegated writer (sonnet), strict TDD.
@@ -73,7 +73,8 @@ Pull request descriptions are in Latin American Spanish (see `AGENTS.md`).
 ## Progress
 
 - 2026-10-12: feature document created from `main` (`83caa1a`). Nothing implemented yet.
+- 2026-10-12 T1 done (commit 9cdcfc4, route: delegated writer, sonnet, strict TDD). RED: `pnpm test` reported 6 test files failed with "Cannot find module" before implementation. GREEN: `pnpm test` 10 files, 60 tests passed (24 existing + 36 new), re-run by the parent. `pnpm lint` and `pnpm typecheck` clean (parent). Decisions taken by the writer: `authorize` checks inactive user, then tenant mismatch, then missing grant (distinct error codes `inactive_user`, `tenant_mismatch`, `forbidden`); assignments of other users and inactive assignments are ignored; `scopeCovers` is false when the resource lacks the scoped level; email check is structural (one @, no whitespace) on the trimmed lower-cased value. Review assessment pending until the slice is committed.
 
 ## Next step
 
-Start T1.
+Start T2.
