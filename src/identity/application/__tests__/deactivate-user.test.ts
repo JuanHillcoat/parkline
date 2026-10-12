@@ -33,6 +33,21 @@ describe("DeactivateUser", () => {
     });
   });
 
+  it("is a no-op on an already inactive user: ok, no audit entry, nothing revoked", async () => {
+    const h = createHarness();
+    const { tenant, admin } = await h.installTenantA();
+    const ana = await h.addUser(admin, "ana@example.test", "viewer");
+    const token = await signIn(h, "ana@example.test");
+    await h.forceInactive(ana);
+    const result = await h.deactivateUser.execute({ actor: admin, userId: ana.id, reason: "again" });
+    expect(result.ok).toBe(true);
+    expect(h.auditOf("user.deactivate")).toHaveLength(0);
+    const hash = h.deps.tokens.hash(token);
+    const session = await h.store.read((tx) => tx.sessions.findByTokenHash(hash));
+    expect(session?.revokedAt).toBeNull();
+    expect((await h.store.read((tx) => tx.users.findById(tenant.id, ana.id)))?.active).toBe(false);
+  });
+
   it("requires a reason and the user.deactivate permission", async () => {
     const h = createHarness();
     const { admin } = await h.installTenantA();

@@ -36,6 +36,18 @@ describe("RevokeRole", () => {
     expect(!missing.ok && missing.error.code).toBe("not_found");
   });
 
+  it("only revokes tenant scope and never a scope of another tenant", async () => {
+    const h = createHarness();
+    const { admin } = await h.installTenantA();
+    const ana = await h.addUser(admin, "ana@example.test", "viewer");
+    const base = { actor: admin, userId: ana.id, role: "viewer", reason: "cleanup" } as const;
+    const site = await h.revokeRole.execute({ ...base, scope: { type: "site", id: "site-1" } });
+    expect(!site.ok && site.error.code).toBe("scope_not_assignable_yet");
+    const foreign = await h.revokeRole.execute({ ...base, scope: { type: "tenant", id: "tenant-b" } });
+    expect(!foreign.ok && foreign.error.code).toBe("tenant_mismatch");
+    expect(h.auditOf("role.revoke")).toHaveLength(0);
+  });
+
   it("protects the last active admin and allows revoking a non-last one", async () => {
     const h = createHarness();
     const { tenant, admin } = await h.installTenantA();

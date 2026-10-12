@@ -3,10 +3,11 @@ import { err, ok, type Result } from "../../../shared/domain/result";
 import type { Role } from "../../domain/role";
 import { createRoleAssignment, type RoleAssignment } from "../../domain/role-assignment";
 import type { Scope } from "../../domain/scope";
+import { TenantMismatchError } from "../../domain/authorizer";
 import { requirePermission, type ActorContext } from "../actor-context";
 import { recordAudit } from "../audit";
 import type { IdentityDeps } from "../deps";
-import { LastAdminError } from "../errors";
+import { LastAdminError, ScopeNotAssignableYetError } from "../errors";
 import { isLastActiveAdmin, requireReason, rolesSnapshot, sameGrant } from "../guards";
 import type { IdentityTx } from "../ports/identity-tx";
 
@@ -40,8 +41,12 @@ export class RevokeRole {
     const reason = requireReason(input.reason);
     if (!reason.ok) return reason;
     const { userId, role, scope } = input;
+    if (scope.type !== "tenant") return err(new ScopeNotAssignableYetError(scope.type));
     const target = createRoleAssignment({ userId, role, scope });
     if (!target.ok) return target;
+    if (target.value.scope.id !== input.actor.user.tenantId) {
+      return err(new TenantMismatchError("The scope belongs to another tenant"));
+    }
     return ok({ actor: input.actor, actorRole: actorRole.value, reason: reason.value, target: target.value });
   }
 
