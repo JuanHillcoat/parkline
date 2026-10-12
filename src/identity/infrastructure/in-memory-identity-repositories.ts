@@ -31,6 +31,11 @@ export class InMemoryTenantRepository implements TenantRepository {
     return Promise.resolve(this.state.tenants[0] ?? null);
   }
 
+  /** Nothing to serialize in memory: use cases run one at a time per store. */
+  lockForInstall(): Promise<void> {
+    return Promise.resolve();
+  }
+
   add(tenant: Tenant): Promise<void> {
     this.state.tenants.push(tenant);
     return Promise.resolve();

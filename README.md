@@ -36,6 +36,7 @@ pnpm dev                 # http://localhost:3000
 | `test:db`     | Runs database tests (Vitest `db` project; needs Docker)          |
 | `db:up`       | Starts the local Postgres 16 container and waits until it is ready |
 | `db:migrate`  | Applies pending migrations from `db/migrations/` (needs `DATABASE_URL`) |
+| `install:admin` | Creates the first tenant and administrator (once). Flags `--tenant-name`, `--email`, `--display-name` or prompts; password from a hidden prompt or `INSTALL_ADMIN_PASSWORD`, never a flag |
 
 ## Project layout
 

@@ -45,6 +45,7 @@ export class InstallTenantAdmin {
     { tenant, user }: InstalledAdmin,
     passwordHash: string,
   ): Promise<Result<InstalledAdmin, DomainError>> {
+    await tx.tenants.lockForInstall();
     if ((await tx.tenants.findSingle()) !== null) return err(new TenantAlreadyInstalledError());
     const scope = { type: "tenant", id: tenant.id } as const;
     const assignment = createRoleAssignment({ userId: user.id, role: "admin", scope });
