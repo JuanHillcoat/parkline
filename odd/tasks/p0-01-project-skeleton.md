@@ -56,7 +56,7 @@ Commands: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, and `pnpm te
 
 - 2026-10-12: feature document created. Docker engine was not running at planning time, so T3 DB test is pending that.
 - 2026-10-12 T1 done (commit 644764e, route: delegated writer). Stack: Next.js 16.4.0, React 19.3.0, TypeScript 6.0.3 (typescript-eslint 8.71.2 supports TypeScript below 6.1, so TypeScript 7 was not used), ESLint 10.12.0, Vitest 5.0.4. Observed: `pnpm lint` clean, `pnpm typecheck` clean, `pnpm test` no tests (passWithNoTests), `pnpm build` compiled and prerendered `/`.
-- 2026-10-12 T2 done (route: delegated writer, strict TDD). RED: result, domain-error and money tests failed with "Cannot find module" before implementation; the boundary test failed 3 of 6 cases (violations not reported) before the import resolver was configured. GREEN: 4 test files, 24 tests passed. Observed: `pnpm lint`, `pnpm typecheck` clean, `pnpm build` compiled. Money stores bigint minor units (no decimal library). Real-resolver sanity check: a domain file importing infrastructure on disk was reported by `eslint`.
+- 2026-10-12 T2 done (commit 655095a, route: delegated writer, strict TDD). RED: result, domain-error and money tests failed with "Cannot find module" before implementation; the boundary test failed 3 of 6 cases (violations not reported) before the import resolver was configured. GREEN: 4 test files, 24 tests passed. Observed: `pnpm lint`, `pnpm typecheck` clean, `pnpm build` compiled. Money stores bigint minor units (no decimal library). Real-resolver sanity check: a domain file importing infrastructure on disk was reported by `eslint`.
 
 ## Next step
 
