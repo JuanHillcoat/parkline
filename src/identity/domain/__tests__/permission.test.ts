@@ -29,4 +29,12 @@ describe("role permissions", () => {
       expect(roleGrants(role, "role.assign")).toBe(false);
     }
   });
+
+  it("denies supervisor and viewer user management and audit access", () => {
+    for (const role of ["supervisor", "viewer"] as const) {
+      for (const permission of ["user.create", "user.deactivate", "audit.read"] as const) {
+        expect(roleGrants(role, permission)).toBe(false);
+      }
+    }
+  });
 });

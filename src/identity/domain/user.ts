@@ -33,6 +33,11 @@ export const createUser = (input: UserInput): Result<User, ValidationError> => {
   const email = normalizeEmail(input.email);
   const problem = firstProblem(input, email);
   if (problem) return err(problem);
-  const { id, tenantId, displayName } = input;
-  return ok({ id, tenantId, email, displayName, active: true });
+  return ok({
+    id: input.id.trim(),
+    tenantId: input.tenantId.trim(),
+    email,
+    displayName: input.displayName.trim(),
+    active: true,
+  });
 };

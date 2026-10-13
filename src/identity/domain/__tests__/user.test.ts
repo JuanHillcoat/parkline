@@ -13,6 +13,11 @@ describe("createUser", () => {
     expect(result.ok && result.value.email).toBe("ana@example.test");
   });
 
+  it("trims padded identifiers and display name", () => {
+    const result = createUser({ ...valid, id: " user-1 ", tenantId: "\ttenant-a", displayName: " Ana Test " });
+    expect(result).toEqual({ ok: true, value: { ...valid, active: true } });
+  });
+
   it.each(["", "ana", "@example.test", "ana@", "a@b@c", "an a@example.test"])(
     "rejects the malformed email %j",
     (email) => {
