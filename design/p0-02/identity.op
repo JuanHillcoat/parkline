@@ -11752,6 +11752,4803 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "n696",
+      "name": "Home v4",
+      "x": 0.0,
+      "y": 7000.0,
+      "width": 1280.0,
+      "height": 860.0,
+      "layout": "horizontal",
+      "fill": [
+        {
+          "type": "solid",
+          "color": "#FAF8F4"
+        }
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "n697",
+          "name": "Sidebar",
+          "width": 232.0,
+          "height": "fill_container",
+          "layout": "vertical",
+          "padding": [
+            24.0,
+            16.0
+          ],
+          "justifyContent": "space_between",
+          "fill": [
+            {
+              "type": "solid",
+              "color": "#143323"
+            }
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "n698",
+              "name": "Nav group",
+              "width": "fill_container",
+              "height": "fit_content",
+              "layout": "vertical",
+              "gap": 6.0,
+              "fill": [],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "n699",
+                  "name": "Brand",
+                  "height": "fit_content",
+                  "layout": "horizontal",
+                  "gap": 10.0,
+                  "padding": [
+                    0.0,
+                    6.0
+                  ],
+                  "alignItems": "center",
+                  "fill": [],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "n700",
+                      "name": "Mark",
+                      "width": 30.0,
+                      "height": 30.0,
+                      "layout": "horizontal",
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "cornerRadius": 9.0,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#FFFFFF"
+                        }
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "n701",
+                          "width": "fit_content",
+                          "height": "fit_content",
+                          "content": "P",
+                          "fontFamily": "Inter",
+                          "fontSize": 15.0,
+                          "fontWeight": 800,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#14532D"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "n702",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Parkline",
+                      "fontFamily": "Inter",
+                      "fontSize": 19.0,
+                      "fontWeight": 800,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#FFFFFF"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n703",
+                  "name": "Spacer",
+                  "width": "fill_container",
+                  "height": 16.0,
+                  "fill": [],
+                  "children": []
+                },
+                {
+                  "type": "frame",
+                  "id": "n704",
+                  "name": "Nav Home",
+                  "width": "fill_container",
+                  "height": 40.0,
+                  "layout": "horizontal",
+                  "padding": [
+                    0.0,
+                    14.0
+                  ],
+                  "alignItems": "center",
+                  "cornerRadius": 10.0,
+                  "fill": [
+                    {
+                      "type": "solid",
+                      "color": "#1F4A33"
+                    }
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n705",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Home",
+                      "fontFamily": "Inter",
+                      "fontSize": 14.0,
+                      "fontWeight": 600,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#FFFFFF"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n706",
+                  "name": "Nav Equipment",
+                  "width": "fill_container",
+                  "height": 40.0,
+                  "layout": "horizontal",
+                  "padding": [
+                    0.0,
+                    14.0
+                  ],
+                  "alignItems": "center",
+                  "cornerRadius": 10.0,
+                  "fill": [],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n707",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Equipment",
+                      "fontFamily": "Inter",
+                      "fontSize": 14.0,
+                      "fontWeight": 500,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#D3E4D9"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n708",
+                  "name": "Nav Repair orders",
+                  "width": "fill_container",
+                  "height": 40.0,
+                  "layout": "horizontal",
+                  "padding": [
+                    0.0,
+                    14.0
+                  ],
+                  "alignItems": "center",
+                  "cornerRadius": 10.0,
+                  "fill": [],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n709",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Repair orders",
+                      "fontFamily": "Inter",
+                      "fontSize": 14.0,
+                      "fontWeight": 500,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#D3E4D9"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n710",
+                  "name": "Nav Hour readings",
+                  "width": "fill_container",
+                  "height": 40.0,
+                  "layout": "horizontal",
+                  "padding": [
+                    0.0,
+                    14.0
+                  ],
+                  "alignItems": "center",
+                  "cornerRadius": 10.0,
+                  "fill": [],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n711",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Hour readings",
+                      "fontFamily": "Inter",
+                      "fontSize": 14.0,
+                      "fontWeight": 500,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#D3E4D9"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n712",
+                  "name": "Nav Invoices",
+                  "width": "fill_container",
+                  "height": 40.0,
+                  "layout": "horizontal",
+                  "padding": [
+                    0.0,
+                    14.0
+                  ],
+                  "alignItems": "center",
+                  "cornerRadius": 10.0,
+                  "fill": [],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n713",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Invoices",
+                      "fontFamily": "Inter",
+                      "fontSize": 14.0,
+                      "fontWeight": 500,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#D3E4D9"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n714",
+                  "name": "Nav Reports",
+                  "width": "fill_container",
+                  "height": 40.0,
+                  "layout": "horizontal",
+                  "padding": [
+                    0.0,
+                    14.0
+                  ],
+                  "alignItems": "center",
+                  "cornerRadius": 10.0,
+                  "fill": [],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n715",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Reports",
+                      "fontFamily": "Inter",
+                      "fontSize": 14.0,
+                      "fontWeight": 500,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#D3E4D9"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "n716",
+              "name": "Account",
+              "width": "fill_container",
+              "height": "fit_content",
+              "layout": "horizontal",
+              "gap": 10.0,
+              "padding": [
+                10.0,
+                12.0
+              ],
+              "alignItems": "center",
+              "cornerRadius": 12.0,
+              "fill": [
+                {
+                  "type": "solid",
+                  "color": "#1F4A33"
+                }
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "n717",
+                  "name": "Avatar LG",
+                  "width": 34.0,
+                  "height": 34.0,
+                  "layout": "horizontal",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "cornerRadius": 17.0,
+                  "fill": [
+                    {
+                      "type": "solid",
+                      "color": "#E3F1E7"
+                    }
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n718",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "LG",
+                      "fontFamily": "Inter",
+                      "fontSize": 13.0,
+                      "fontWeight": 700,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#14532D"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n719",
+                  "name": "Who",
+                  "height": "fit_content",
+                  "layout": "vertical",
+                  "gap": 1.0,
+                  "fill": [],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n720",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Luis Gomez",
+                      "fontFamily": "Inter",
+                      "fontSize": 14.0,
+                      "fontWeight": 600,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#FFFFFF"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "n721",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Fleet analyst",
+                      "fontFamily": "Inter",
+                      "fontSize": 12.0,
+                      "fontWeight": 400,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#86A593"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "n722",
+          "name": "Main",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 24.0,
+          "padding": [
+            32.0,
+            40.0
+          ],
+          "fill": [],
+          "children": [
+            {
+              "type": "frame",
+              "id": "n723",
+              "name": "Page header",
+              "width": "fill_container",
+              "height": "fit_content",
+              "layout": "vertical",
+              "gap": 4.0,
+              "fill": [],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "n724",
+                  "width": "fit_content",
+                  "height": "fit_content",
+                  "content": "Good morning, Luis",
+                  "fontFamily": "Inter",
+                  "fontSize": 28.0,
+                  "fontWeight": 800,
+                  "fill": [
+                    {
+                      "type": "solid",
+                      "color": "#1C1917"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "n725",
+                  "width": "fit_content",
+                  "height": "fit_content",
+                  "content": "4 items need a decision today.",
+                  "fontFamily": "Inter",
+                  "fontSize": 14.0,
+                  "fontWeight": 400,
+                  "fill": [
+                    {
+                      "type": "solid",
+                      "color": "#78716C"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "n726",
+              "name": "KPIs",
+              "width": "fill_container",
+              "height": "fit_content",
+              "layout": "horizontal",
+              "gap": 16.0,
+              "fill": [],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "n727",
+                  "name": "KPI Fleet availability",
+                  "width": "fill_container",
+                  "height": "fit_content",
+                  "layout": "vertical",
+                  "gap": 8.0,
+                  "padding": 20.0,
+                  "cornerRadius": 14.0,
+                  "fill": [
+                    {
+                      "type": "solid",
+                      "color": "#FFFFFF"
+                    }
+                  ],
+                  "stroke": {
+                    "thickness": 1.0,
+                    "fill": [
+                      {
+                        "type": "solid",
+                        "color": "#E7E1D6"
+                      }
+                    ]
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n728",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Fleet availability",
+                      "fontFamily": "Inter",
+                      "fontSize": 13.0,
+                      "fontWeight": 500,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#78716C"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "n729",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "94.2%",
+                      "fontFamily": "Inter",
+                      "fontSize": 30.0,
+                      "fontWeight": 800,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#1C1917"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n730",
+                      "name": "Badge +1.1 pt vs last month",
+                      "height": 24.0,
+                      "layout": "horizontal",
+                      "padding": [
+                        0.0,
+                        10.0
+                      ],
+                      "alignItems": "center",
+                      "cornerRadius": 12.0,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#DFF1E4"
+                        }
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "n731",
+                          "width": "fit_content",
+                          "height": "fit_content",
+                          "content": "+1.1 pt vs last month",
+                          "fontFamily": "Inter",
+                          "fontSize": 12.0,
+                          "fontWeight": 600,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#166534"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n732",
+                  "name": "KPI Open repair orders",
+                  "width": "fill_container",
+                  "height": "fit_content",
+                  "layout": "vertical",
+                  "gap": 8.0,
+                  "padding": 20.0,
+                  "cornerRadius": 14.0,
+                  "fill": [
+                    {
+                      "type": "solid",
+                      "color": "#FFFFFF"
+                    }
+                  ],
+                  "stroke": {
+                    "thickness": 1.0,
+                    "fill": [
+                      {
+                        "type": "solid",
+                        "color": "#E7E1D6"
+                      }
+                    ]
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n733",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Open repair orders",
+                      "fontFamily": "Inter",
+                      "fontSize": 13.0,
+                      "fontWeight": 500,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#78716C"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "n734",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "7",
+                      "fontFamily": "Inter",
+                      "fontSize": 30.0,
+                      "fontWeight": 800,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#1C1917"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n735",
+                      "name": "Badge 2 past the window",
+                      "height": 24.0,
+                      "layout": "horizontal",
+                      "padding": [
+                        0.0,
+                        10.0
+                      ],
+                      "alignItems": "center",
+                      "cornerRadius": 12.0,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#FBE3E0"
+                        }
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "n736",
+                          "width": "fit_content",
+                          "height": "fit_content",
+                          "content": "2 past the window",
+                          "fontFamily": "Inter",
+                          "fontSize": 12.0,
+                          "fontWeight": 600,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#B91C1C"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n737",
+                  "name": "KPI Preventives overdue",
+                  "width": "fill_container",
+                  "height": "fit_content",
+                  "layout": "vertical",
+                  "gap": 8.0,
+                  "padding": 20.0,
+                  "cornerRadius": 14.0,
+                  "fill": [
+                    {
+                      "type": "solid",
+                      "color": "#FFFFFF"
+                    }
+                  ],
+                  "stroke": {
+                    "thickness": 1.0,
+                    "fill": [
+                      {
+                        "type": "solid",
+                        "color": "#E7E1D6"
+                      }
+                    ]
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n738",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Preventives overdue",
+                      "fontFamily": "Inter",
+                      "fontSize": 13.0,
+                      "fontWeight": 500,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#78716C"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "n739",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "6",
+                      "fontFamily": "Inter",
+                      "fontSize": 30.0,
+                      "fontWeight": 800,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#1C1917"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n740",
+                      "name": "Badge of 14 due",
+                      "height": 24.0,
+                      "layout": "horizontal",
+                      "padding": [
+                        0.0,
+                        10.0
+                      ],
+                      "alignItems": "center",
+                      "cornerRadius": 12.0,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#FCEBD0"
+                        }
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "n741",
+                          "width": "fit_content",
+                          "height": "fit_content",
+                          "content": "of 14 due",
+                          "fontFamily": "Inter",
+                          "fontSize": 12.0,
+                          "fontWeight": 600,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#B45309"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n742",
+                  "name": "KPI Month cost (ARS)",
+                  "width": "fill_container",
+                  "height": "fit_content",
+                  "layout": "vertical",
+                  "gap": 8.0,
+                  "padding": 20.0,
+                  "cornerRadius": 14.0,
+                  "fill": [
+                    {
+                      "type": "solid",
+                      "color": "#FFFFFF"
+                    }
+                  ],
+                  "stroke": {
+                    "thickness": 1.0,
+                    "fill": [
+                      {
+                        "type": "solid",
+                        "color": "#E7E1D6"
+                      }
+                    ]
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n743",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Month cost (ARS)",
+                      "fontFamily": "Inter",
+                      "fontSize": 13.0,
+                      "fontWeight": 500,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#78716C"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "n744",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "412.3 M",
+                      "fontFamily": "Inter",
+                      "fontSize": 30.0,
+                      "fontWeight": 800,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#1C1917"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n745",
+                      "name": "Badge -3.4% vs last month",
+                      "height": 24.0,
+                      "layout": "horizontal",
+                      "padding": [
+                        0.0,
+                        10.0
+                      ],
+                      "alignItems": "center",
+                      "cornerRadius": 12.0,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#DFF1E4"
+                        }
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "n746",
+                          "width": "fit_content",
+                          "height": "fit_content",
+                          "content": "-3.4% vs last month",
+                          "fontFamily": "Inter",
+                          "fontSize": 12.0,
+                          "fontWeight": 600,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#166534"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "n747",
+              "name": "Panels",
+              "width": "fill_container",
+              "height": "fit_content",
+              "layout": "horizontal",
+              "gap": 16.0,
+              "fill": [],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "n748",
+                  "name": "Card Needs attention",
+                  "width": "fill_container",
+                  "height": "fit_content",
+                  "layout": "vertical",
+                  "gap": 12.0,
+                  "padding": 20.0,
+                  "cornerRadius": 14.0,
+                  "fill": [
+                    {
+                      "type": "solid",
+                      "color": "#FFFFFF"
+                    }
+                  ],
+                  "stroke": {
+                    "thickness": 1.0,
+                    "fill": [
+                      {
+                        "type": "solid",
+                        "color": "#E7E1D6"
+                      }
+                    ]
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n749",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Needs attention",
+                      "fontFamily": "Inter",
+                      "fontSize": 16.0,
+                      "fontWeight": 700,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#1C1917"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n750",
+                      "name": "Attention OR-0409 - EQ-0021",
+                      "width": "fill_container",
+                      "height": 64.0,
+                      "layout": "horizontal",
+                      "gap": 14.0,
+                      "padding": [
+                        0.0,
+                        4.0
+                      ],
+                      "alignItems": "center",
+                      "stroke": {
+                        "thickness": 1.0,
+                        "fill": [
+                          {
+                            "type": "solid",
+                            "color": "#E7E1D6"
+                          }
+                        ]
+                      },
+                      "children": [
+                        {
+                          "type": "ellipse",
+                          "id": "n751",
+                          "name": "Dot",
+                          "width": 10.0,
+                          "height": 10.0,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#B91C1C"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "n752",
+                          "name": "Text",
+                          "width": "fill_container",
+                          "height": "fit_content",
+                          "layout": "vertical",
+                          "gap": 2.0,
+                          "fill": [],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "n753",
+                              "width": "fit_content",
+                              "height": "fit_content",
+                              "content": "OR-0409 - EQ-0021",
+                              "fontFamily": "Inter",
+                              "fontSize": 14.0,
+                              "fontWeight": 700,
+                              "fill": [
+                                {
+                                  "type": "solid",
+                                  "color": "#1C1917"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "id": "n754",
+                              "width": "fit_content",
+                              "height": "fit_content",
+                              "content": "Reported 52 h ago, window 48 h, no work order",
+                              "fontFamily": "Inter",
+                              "fontSize": 12.0,
+                              "fontWeight": 400,
+                              "fill": [
+                                {
+                                  "type": "solid",
+                                  "color": "#78716C"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "n755",
+                          "name": "Badge Past window",
+                          "height": 24.0,
+                          "layout": "horizontal",
+                          "padding": [
+                            0.0,
+                            10.0
+                          ],
+                          "alignItems": "center",
+                          "cornerRadius": 12.0,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#FBE3E0"
+                            }
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "n756",
+                              "width": "fit_content",
+                              "height": "fit_content",
+                              "content": "Past window",
+                              "fontFamily": "Inter",
+                              "fontSize": 12.0,
+                              "fontWeight": 600,
+                              "fill": [
+                                {
+                                  "type": "solid",
+                                  "color": "#B91C1C"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n757",
+                      "name": "Attention OR-0398 - EQ-0004",
+                      "width": "fill_container",
+                      "height": 64.0,
+                      "layout": "horizontal",
+                      "gap": 14.0,
+                      "padding": [
+                        0.0,
+                        4.0
+                      ],
+                      "alignItems": "center",
+                      "stroke": {
+                        "thickness": 1.0,
+                        "fill": [
+                          {
+                            "type": "solid",
+                            "color": "#E7E1D6"
+                          }
+                        ]
+                      },
+                      "children": [
+                        {
+                          "type": "ellipse",
+                          "id": "n758",
+                          "name": "Dot",
+                          "width": 10.0,
+                          "height": 10.0,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#B91C1C"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "n759",
+                          "name": "Text",
+                          "width": "fill_container",
+                          "height": "fit_content",
+                          "layout": "vertical",
+                          "gap": 2.0,
+                          "fill": [],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "n760",
+                              "width": "fit_content",
+                              "height": "fit_content",
+                              "content": "OR-0398 - EQ-0004",
+                              "fontFamily": "Inter",
+                              "fontSize": 14.0,
+                              "fontWeight": 700,
+                              "fill": [
+                                {
+                                  "type": "solid",
+                                  "color": "#1C1917"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "id": "n761",
+                              "width": "fit_content",
+                              "height": "fit_content",
+                              "content": "Reported 3 days ago, no work order",
+                              "fontFamily": "Inter",
+                              "fontSize": 12.0,
+                              "fontWeight": 400,
+                              "fill": [
+                                {
+                                  "type": "solid",
+                                  "color": "#78716C"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "n762",
+                          "name": "Badge Past window",
+                          "height": 24.0,
+                          "layout": "horizontal",
+                          "padding": [
+                            0.0,
+                            10.0
+                          ],
+                          "alignItems": "center",
+                          "cornerRadius": 12.0,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#FBE3E0"
+                            }
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "n763",
+                              "width": "fit_content",
+                              "height": "fit_content",
+                              "content": "Past window",
+                              "fontFamily": "Inter",
+                              "fontSize": 12.0,
+                              "fontWeight": 600,
+                              "fill": [
+                                {
+                                  "type": "solid",
+                                  "color": "#B91C1C"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n764",
+                      "name": "Attention OR-0412 - EQ-0007",
+                      "width": "fill_container",
+                      "height": 64.0,
+                      "layout": "horizontal",
+                      "gap": 14.0,
+                      "padding": [
+                        0.0,
+                        4.0
+                      ],
+                      "alignItems": "center",
+                      "stroke": {
+                        "thickness": 1.0,
+                        "fill": [
+                          {
+                            "type": "solid",
+                            "color": "#E7E1D6"
+                          }
+                        ]
+                      },
+                      "children": [
+                        {
+                          "type": "ellipse",
+                          "id": "n765",
+                          "name": "Dot",
+                          "width": 10.0,
+                          "height": 10.0,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#B45309"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "n766",
+                          "name": "Text",
+                          "width": "fill_container",
+                          "height": "fit_content",
+                          "layout": "vertical",
+                          "gap": 2.0,
+                          "fill": [],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "n767",
+                              "width": "fit_content",
+                              "height": "fit_content",
+                              "content": "OR-0412 - EQ-0007",
+                              "fontFamily": "Inter",
+                              "fontSize": 14.0,
+                              "fontWeight": 700,
+                              "fill": [
+                                {
+                                  "type": "solid",
+                                  "color": "#1C1917"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "id": "n768",
+                              "width": "fit_content",
+                              "height": "fit_content",
+                              "content": "Reported 31 h ago, 7 h left in the window",
+                              "fontFamily": "Inter",
+                              "fontSize": 12.0,
+                              "fontWeight": 400,
+                              "fill": [
+                                {
+                                  "type": "solid",
+                                  "color": "#78716C"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "n769",
+                          "name": "Badge 7 h left",
+                          "height": 24.0,
+                          "layout": "horizontal",
+                          "padding": [
+                            0.0,
+                            10.0
+                          ],
+                          "alignItems": "center",
+                          "cornerRadius": 12.0,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#FCEBD0"
+                            }
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "n770",
+                              "width": "fit_content",
+                              "height": "fit_content",
+                              "content": "7 h left",
+                              "fontFamily": "Inter",
+                              "fontSize": 12.0,
+                              "fontWeight": 600,
+                              "fill": [
+                                {
+                                  "type": "solid",
+                                  "color": "#B45309"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n771",
+                      "name": "Attention Preventive - EQ-0015",
+                      "width": "fill_container",
+                      "height": 64.0,
+                      "layout": "horizontal",
+                      "gap": 14.0,
+                      "padding": [
+                        0.0,
+                        4.0
+                      ],
+                      "alignItems": "center",
+                      "stroke": {
+                        "thickness": 1.0,
+                        "fill": [
+                          {
+                            "type": "solid",
+                            "color": "#E7E1D6"
+                          }
+                        ]
+                      },
+                      "children": [
+                        {
+                          "type": "ellipse",
+                          "id": "n772",
+                          "name": "Dot",
+                          "width": 10.0,
+                          "height": 10.0,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#B45309"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "n773",
+                          "name": "Text",
+                          "width": "fill_container",
+                          "height": "fit_content",
+                          "layout": "vertical",
+                          "gap": 2.0,
+                          "fill": [],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "n774",
+                              "width": "fit_content",
+                              "height": "fit_content",
+                              "content": "Preventive - EQ-0015",
+                              "fontFamily": "Inter",
+                              "fontSize": 14.0,
+                              "fontWeight": 700,
+                              "fill": [
+                                {
+                                  "type": "solid",
+                                  "color": "#1C1917"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "id": "n775",
+                              "width": "fit_content",
+                              "height": "fit_content",
+                              "content": "201 h since last service, interval 250 h",
+                              "fontFamily": "Inter",
+                              "fontSize": 12.0,
+                              "fontWeight": 400,
+                              "fill": [
+                                {
+                                  "type": "solid",
+                                  "color": "#78716C"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "n776",
+                          "name": "Badge 49 h left",
+                          "height": 24.0,
+                          "layout": "horizontal",
+                          "padding": [
+                            0.0,
+                            10.0
+                          ],
+                          "alignItems": "center",
+                          "cornerRadius": 12.0,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#FCEBD0"
+                            }
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "n777",
+                              "width": "fit_content",
+                              "height": "fit_content",
+                              "content": "49 h left",
+                              "fontFamily": "Inter",
+                              "fontSize": 12.0,
+                              "fontWeight": 600,
+                              "fill": [
+                                {
+                                  "type": "solid",
+                                  "color": "#B45309"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n778",
+                  "name": "Card Utilization by operation",
+                  "width": 380.0,
+                  "height": "fit_content",
+                  "layout": "vertical",
+                  "gap": 12.0,
+                  "padding": 20.0,
+                  "cornerRadius": 14.0,
+                  "fill": [
+                    {
+                      "type": "solid",
+                      "color": "#FFFFFF"
+                    }
+                  ],
+                  "stroke": {
+                    "thickness": 1.0,
+                    "fill": [
+                      {
+                        "type": "solid",
+                        "color": "#E7E1D6"
+                      }
+                    ]
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n779",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Utilization by operation",
+                      "fontFamily": "Inter",
+                      "fontSize": 16.0,
+                      "fontWeight": 700,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#1C1917"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n780",
+                      "name": "Bar Operation A",
+                      "width": "fill_container",
+                      "height": "fit_content",
+                      "layout": "vertical",
+                      "gap": 6.0,
+                      "fill": [],
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "n781",
+                          "name": "Bar head",
+                          "width": "fill_container",
+                          "height": "fit_content",
+                          "layout": "horizontal",
+                          "justifyContent": "space_between",
+                          "fill": [],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "n782",
+                              "width": "fit_content",
+                              "height": "fit_content",
+                              "content": "Operation A",
+                              "fontFamily": "Inter",
+                              "fontSize": 13.0,
+                              "fontWeight": 500,
+                              "fill": [
+                                {
+                                  "type": "solid",
+                                  "color": "#1C1917"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "id": "n783",
+                              "width": "fit_content",
+                              "height": "fit_content",
+                              "content": "78%",
+                              "fontFamily": "Inter",
+                              "fontSize": 13.0,
+                              "fontWeight": 700,
+                              "fill": [
+                                {
+                                  "type": "solid",
+                                  "color": "#78716C"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "n784",
+                          "name": "Track",
+                          "width": "fill_container",
+                          "height": 8.0,
+                          "layout": "horizontal",
+                          "clipContent": true,
+                          "cornerRadius": 4.0,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#F3EFE8"
+                            }
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "n785",
+                              "name": "Fill",
+                              "width": 265.0,
+                              "height": 8.0,
+                              "fill": [
+                                {
+                                  "type": "solid",
+                                  "color": "#14532D"
+                                }
+                              ],
+                              "children": []
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n786",
+                      "name": "Bar Operation B",
+                      "width": "fill_container",
+                      "height": "fit_content",
+                      "layout": "vertical",
+                      "gap": 6.0,
+                      "fill": [],
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "n787",
+                          "name": "Bar head",
+                          "width": "fill_container",
+                          "height": "fit_content",
+                          "layout": "horizontal",
+                          "justifyContent": "space_between",
+                          "fill": [],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "n788",
+                              "width": "fit_content",
+                              "height": "fit_content",
+                              "content": "Operation B",
+                              "fontFamily": "Inter",
+                              "fontSize": 13.0,
+                              "fontWeight": 500,
+                              "fill": [
+                                {
+                                  "type": "solid",
+                                  "color": "#1C1917"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "id": "n789",
+                              "width": "fit_content",
+                              "height": "fit_content",
+                              "content": "64%",
+                              "fontFamily": "Inter",
+                              "fontSize": 13.0,
+                              "fontWeight": 700,
+                              "fill": [
+                                {
+                                  "type": "solid",
+                                  "color": "#78716C"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "n790",
+                          "name": "Track",
+                          "width": "fill_container",
+                          "height": 8.0,
+                          "layout": "horizontal",
+                          "clipContent": true,
+                          "cornerRadius": 4.0,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#F3EFE8"
+                            }
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "n791",
+                              "name": "Fill",
+                              "width": 218.0,
+                              "height": 8.0,
+                              "fill": [
+                                {
+                                  "type": "solid",
+                                  "color": "#14532D"
+                                }
+                              ],
+                              "children": []
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n792",
+                      "name": "Bar Operation C",
+                      "width": "fill_container",
+                      "height": "fit_content",
+                      "layout": "vertical",
+                      "gap": 6.0,
+                      "fill": [],
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "n793",
+                          "name": "Bar head",
+                          "width": "fill_container",
+                          "height": "fit_content",
+                          "layout": "horizontal",
+                          "justifyContent": "space_between",
+                          "fill": [],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "n794",
+                              "width": "fit_content",
+                              "height": "fit_content",
+                              "content": "Operation C",
+                              "fontFamily": "Inter",
+                              "fontSize": 13.0,
+                              "fontWeight": 500,
+                              "fill": [
+                                {
+                                  "type": "solid",
+                                  "color": "#1C1917"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "id": "n795",
+                              "width": "fit_content",
+                              "height": "fit_content",
+                              "content": "41%",
+                              "fontFamily": "Inter",
+                              "fontSize": 13.0,
+                              "fontWeight": 700,
+                              "fill": [
+                                {
+                                  "type": "solid",
+                                  "color": "#78716C"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "n796",
+                          "name": "Track",
+                          "width": "fill_container",
+                          "height": 8.0,
+                          "layout": "horizontal",
+                          "clipContent": true,
+                          "cornerRadius": 4.0,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#F3EFE8"
+                            }
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "n797",
+                              "name": "Fill",
+                              "width": 139.0,
+                              "height": 8.0,
+                              "fill": [
+                                {
+                                  "type": "solid",
+                                  "color": "#14532D"
+                                }
+                              ],
+                              "children": []
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n798",
+                      "name": "Bar Operation D",
+                      "width": "fill_container",
+                      "height": "fit_content",
+                      "layout": "vertical",
+                      "gap": 6.0,
+                      "fill": [],
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "n799",
+                          "name": "Bar head",
+                          "width": "fill_container",
+                          "height": "fit_content",
+                          "layout": "horizontal",
+                          "justifyContent": "space_between",
+                          "fill": [],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "n800",
+                              "width": "fit_content",
+                              "height": "fit_content",
+                              "content": "Operation D",
+                              "fontFamily": "Inter",
+                              "fontSize": 13.0,
+                              "fontWeight": 500,
+                              "fill": [
+                                {
+                                  "type": "solid",
+                                  "color": "#1C1917"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "id": "n801",
+                              "width": "fit_content",
+                              "height": "fit_content",
+                              "content": "29%",
+                              "fontFamily": "Inter",
+                              "fontSize": 13.0,
+                              "fontWeight": 700,
+                              "fill": [
+                                {
+                                  "type": "solid",
+                                  "color": "#78716C"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "n802",
+                          "name": "Track",
+                          "width": "fill_container",
+                          "height": 8.0,
+                          "layout": "horizontal",
+                          "clipContent": true,
+                          "cornerRadius": 4.0,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#F3EFE8"
+                            }
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "n803",
+                              "name": "Fill",
+                              "width": 99.0,
+                              "height": 8.0,
+                              "fill": [
+                                {
+                                  "type": "solid",
+                                  "color": "#14532D"
+                                }
+                              ],
+                              "children": []
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "n804",
+      "name": "Home first run v4",
+      "x": 1400.0,
+      "y": 7000.0,
+      "width": 1280.0,
+      "height": 860.0,
+      "layout": "horizontal",
+      "fill": [
+        {
+          "type": "solid",
+          "color": "#FAF8F4"
+        }
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "n805",
+          "name": "Sidebar",
+          "width": 232.0,
+          "height": "fill_container",
+          "layout": "vertical",
+          "padding": [
+            24.0,
+            16.0
+          ],
+          "justifyContent": "space_between",
+          "fill": [
+            {
+              "type": "solid",
+              "color": "#143323"
+            }
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "n806",
+              "name": "Nav group",
+              "width": "fill_container",
+              "height": "fit_content",
+              "layout": "vertical",
+              "gap": 6.0,
+              "fill": [],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "n807",
+                  "name": "Brand",
+                  "height": "fit_content",
+                  "layout": "horizontal",
+                  "gap": 10.0,
+                  "padding": [
+                    0.0,
+                    6.0
+                  ],
+                  "alignItems": "center",
+                  "fill": [],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "n808",
+                      "name": "Mark",
+                      "width": 30.0,
+                      "height": 30.0,
+                      "layout": "horizontal",
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "cornerRadius": 9.0,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#FFFFFF"
+                        }
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "n809",
+                          "width": "fit_content",
+                          "height": "fit_content",
+                          "content": "P",
+                          "fontFamily": "Inter",
+                          "fontSize": 15.0,
+                          "fontWeight": 800,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#14532D"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "n810",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Parkline",
+                      "fontFamily": "Inter",
+                      "fontSize": 19.0,
+                      "fontWeight": 800,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#FFFFFF"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n811",
+                  "name": "Spacer",
+                  "width": "fill_container",
+                  "height": 16.0,
+                  "fill": [],
+                  "children": []
+                },
+                {
+                  "type": "frame",
+                  "id": "n812",
+                  "name": "Nav Home",
+                  "width": "fill_container",
+                  "height": 40.0,
+                  "layout": "horizontal",
+                  "padding": [
+                    0.0,
+                    14.0
+                  ],
+                  "alignItems": "center",
+                  "cornerRadius": 10.0,
+                  "fill": [
+                    {
+                      "type": "solid",
+                      "color": "#1F4A33"
+                    }
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n813",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Home",
+                      "fontFamily": "Inter",
+                      "fontSize": 14.0,
+                      "fontWeight": 600,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#FFFFFF"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n814",
+                  "name": "Nav Equipment",
+                  "width": "fill_container",
+                  "height": 40.0,
+                  "layout": "horizontal",
+                  "padding": [
+                    0.0,
+                    14.0
+                  ],
+                  "alignItems": "center",
+                  "cornerRadius": 10.0,
+                  "fill": [],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n815",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Equipment",
+                      "fontFamily": "Inter",
+                      "fontSize": 14.0,
+                      "fontWeight": 500,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#D3E4D9"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n816",
+                  "name": "Nav Repair orders",
+                  "width": "fill_container",
+                  "height": 40.0,
+                  "layout": "horizontal",
+                  "padding": [
+                    0.0,
+                    14.0
+                  ],
+                  "alignItems": "center",
+                  "cornerRadius": 10.0,
+                  "fill": [],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n817",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Repair orders",
+                      "fontFamily": "Inter",
+                      "fontSize": 14.0,
+                      "fontWeight": 500,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#D3E4D9"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n818",
+                  "name": "Nav Hour readings",
+                  "width": "fill_container",
+                  "height": 40.0,
+                  "layout": "horizontal",
+                  "padding": [
+                    0.0,
+                    14.0
+                  ],
+                  "alignItems": "center",
+                  "cornerRadius": 10.0,
+                  "fill": [],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n819",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Hour readings",
+                      "fontFamily": "Inter",
+                      "fontSize": 14.0,
+                      "fontWeight": 500,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#D3E4D9"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n820",
+                  "name": "Nav Invoices",
+                  "width": "fill_container",
+                  "height": 40.0,
+                  "layout": "horizontal",
+                  "padding": [
+                    0.0,
+                    14.0
+                  ],
+                  "alignItems": "center",
+                  "cornerRadius": 10.0,
+                  "fill": [],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n821",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Invoices",
+                      "fontFamily": "Inter",
+                      "fontSize": 14.0,
+                      "fontWeight": 500,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#D3E4D9"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n822",
+                  "name": "Nav Reports",
+                  "width": "fill_container",
+                  "height": 40.0,
+                  "layout": "horizontal",
+                  "padding": [
+                    0.0,
+                    14.0
+                  ],
+                  "alignItems": "center",
+                  "cornerRadius": 10.0,
+                  "fill": [],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n823",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Reports",
+                      "fontFamily": "Inter",
+                      "fontSize": 14.0,
+                      "fontWeight": 500,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#D3E4D9"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "n824",
+              "name": "Account",
+              "width": "fill_container",
+              "height": "fit_content",
+              "layout": "horizontal",
+              "gap": 10.0,
+              "padding": [
+                10.0,
+                12.0
+              ],
+              "alignItems": "center",
+              "cornerRadius": 12.0,
+              "fill": [
+                {
+                  "type": "solid",
+                  "color": "#1F4A33"
+                }
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "n825",
+                  "name": "Avatar LG",
+                  "width": 34.0,
+                  "height": 34.0,
+                  "layout": "horizontal",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "cornerRadius": 17.0,
+                  "fill": [
+                    {
+                      "type": "solid",
+                      "color": "#E3F1E7"
+                    }
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n826",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "LG",
+                      "fontFamily": "Inter",
+                      "fontSize": 13.0,
+                      "fontWeight": 700,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#14532D"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n827",
+                  "name": "Who",
+                  "height": "fit_content",
+                  "layout": "vertical",
+                  "gap": 1.0,
+                  "fill": [],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n828",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Luis Gomez",
+                      "fontFamily": "Inter",
+                      "fontSize": 14.0,
+                      "fontWeight": 600,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#FFFFFF"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "n829",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Fleet analyst",
+                      "fontFamily": "Inter",
+                      "fontSize": 12.0,
+                      "fontWeight": 400,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#86A593"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "n830",
+          "name": "Main",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 24.0,
+          "padding": [
+            32.0,
+            40.0
+          ],
+          "fill": [],
+          "children": [
+            {
+              "type": "frame",
+              "id": "n831",
+              "name": "Page header",
+              "width": "fill_container",
+              "height": "fit_content",
+              "layout": "vertical",
+              "gap": 4.0,
+              "fill": [],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "n832",
+                  "width": "fit_content",
+                  "height": "fit_content",
+                  "content": "Welcome to Parkline",
+                  "fontFamily": "Inter",
+                  "fontSize": 28.0,
+                  "fontWeight": 800,
+                  "fill": [
+                    {
+                      "type": "solid",
+                      "color": "#1C1917"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "n833",
+                  "width": "fit_content",
+                  "height": "fit_content",
+                  "content": "Nothing is loaded yet. Three steps and your fleet is on the board.",
+                  "fontFamily": "Inter",
+                  "fontSize": 14.0,
+                  "fontWeight": 400,
+                  "fill": [
+                    {
+                      "type": "solid",
+                      "color": "#78716C"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "n834",
+              "name": "Stepper",
+              "width": 760.0,
+              "height": "fit_content",
+              "layout": "vertical",
+              "gap": 12.0,
+              "fill": [],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "n835",
+                  "name": "Step 1",
+                  "width": "fill_container",
+                  "height": "fit_content",
+                  "layout": "horizontal",
+                  "gap": 18.0,
+                  "padding": 20.0,
+                  "alignItems": "center",
+                  "cornerRadius": 14.0,
+                  "fill": [
+                    {
+                      "type": "solid",
+                      "color": "#FFFFFF"
+                    }
+                  ],
+                  "stroke": {
+                    "thickness": 1.0,
+                    "fill": [
+                      {
+                        "type": "solid",
+                        "color": "#E7E1D6"
+                      }
+                    ]
+                  },
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "n836",
+                      "name": "Avatar 1",
+                      "width": 40.0,
+                      "height": 40.0,
+                      "layout": "horizontal",
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "cornerRadius": 20.0,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#14532D"
+                        }
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "n837",
+                          "width": "fit_content",
+                          "height": "fit_content",
+                          "content": "1",
+                          "fontFamily": "Inter",
+                          "fontSize": 13.0,
+                          "fontWeight": 700,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#FFFFFF"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n838",
+                      "name": "Text",
+                      "width": "fill_container",
+                      "height": "fit_content",
+                      "layout": "vertical",
+                      "gap": 2.0,
+                      "fill": [],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "n839",
+                          "width": "fit_content",
+                          "height": "fit_content",
+                          "content": "Add your suppliers",
+                          "fontFamily": "Inter",
+                          "fontSize": 16.0,
+                          "fontWeight": 700,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#1C1917"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "n840",
+                          "width": "fit_content",
+                          "height": "fit_content",
+                          "content": "Who rents you the equipment.",
+                          "fontFamily": "Inter",
+                          "fontSize": 14.0,
+                          "fontWeight": 400,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#78716C"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n841",
+                      "name": "Button Add supplier",
+                      "height": 40.0,
+                      "layout": "horizontal",
+                      "padding": [
+                        0.0,
+                        18.0
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "cornerRadius": 10.0,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#14532D"
+                        }
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "n842",
+                          "width": "fit_content",
+                          "height": "fit_content",
+                          "content": "Add supplier",
+                          "fontFamily": "Inter",
+                          "fontSize": 14.0,
+                          "fontWeight": 600,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#FFFFFF"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n843",
+                  "name": "Step 2",
+                  "width": "fill_container",
+                  "height": "fit_content",
+                  "layout": "horizontal",
+                  "gap": 18.0,
+                  "padding": 20.0,
+                  "alignItems": "center",
+                  "cornerRadius": 14.0,
+                  "fill": [
+                    {
+                      "type": "solid",
+                      "color": "#FFFFFF"
+                    }
+                  ],
+                  "stroke": {
+                    "thickness": 1.0,
+                    "fill": [
+                      {
+                        "type": "solid",
+                        "color": "#E7E1D6"
+                      }
+                    ]
+                  },
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "n844",
+                      "name": "Avatar 2",
+                      "width": 40.0,
+                      "height": 40.0,
+                      "layout": "horizontal",
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "cornerRadius": 20.0,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#F3EFE8"
+                        }
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "n845",
+                          "width": "fit_content",
+                          "height": "fit_content",
+                          "content": "2",
+                          "fontFamily": "Inter",
+                          "fontSize": 13.0,
+                          "fontWeight": 700,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#78716C"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n846",
+                      "name": "Text",
+                      "width": "fill_container",
+                      "height": "fit_content",
+                      "layout": "vertical",
+                      "gap": 2.0,
+                      "fill": [],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "n847",
+                          "width": "fit_content",
+                          "height": "fit_content",
+                          "content": "Add operations and sites",
+                          "fontFamily": "Inter",
+                          "fontSize": 16.0,
+                          "fontWeight": 700,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#1C1917"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "n848",
+                          "width": "fit_content",
+                          "height": "fit_content",
+                          "content": "Where the equipment works.",
+                          "fontFamily": "Inter",
+                          "fontSize": 14.0,
+                          "fontWeight": 400,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#78716C"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n849",
+                      "name": "Button Add operation",
+                      "height": 40.0,
+                      "layout": "horizontal",
+                      "padding": [
+                        0.0,
+                        18.0
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "cornerRadius": 10.0,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#FFFFFF"
+                        }
+                      ],
+                      "stroke": {
+                        "thickness": 1.0,
+                        "fill": [
+                          {
+                            "type": "solid",
+                            "color": "#D6CFC2"
+                          }
+                        ]
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "n850",
+                          "width": "fit_content",
+                          "height": "fit_content",
+                          "content": "Add operation",
+                          "fontFamily": "Inter",
+                          "fontSize": 14.0,
+                          "fontWeight": 600,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#1C1917"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n851",
+                  "name": "Step 3",
+                  "width": "fill_container",
+                  "height": "fit_content",
+                  "layout": "horizontal",
+                  "gap": 18.0,
+                  "padding": 20.0,
+                  "alignItems": "center",
+                  "cornerRadius": 14.0,
+                  "fill": [
+                    {
+                      "type": "solid",
+                      "color": "#FFFFFF"
+                    }
+                  ],
+                  "stroke": {
+                    "thickness": 1.0,
+                    "fill": [
+                      {
+                        "type": "solid",
+                        "color": "#E7E1D6"
+                      }
+                    ]
+                  },
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "n852",
+                      "name": "Avatar 3",
+                      "width": 40.0,
+                      "height": 40.0,
+                      "layout": "horizontal",
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "cornerRadius": 20.0,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#F3EFE8"
+                        }
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "n853",
+                          "width": "fit_content",
+                          "height": "fit_content",
+                          "content": "3",
+                          "fontFamily": "Inter",
+                          "fontSize": 13.0,
+                          "fontWeight": 700,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#78716C"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n854",
+                      "name": "Text",
+                      "width": "fill_container",
+                      "height": "fit_content",
+                      "layout": "vertical",
+                      "gap": 2.0,
+                      "fill": [],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "n855",
+                          "width": "fit_content",
+                          "height": "fit_content",
+                          "content": "Add equipment",
+                          "fontFamily": "Inter",
+                          "fontSize": 16.0,
+                          "fontWeight": 700,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#1C1917"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "n856",
+                          "width": "fit_content",
+                          "height": "fit_content",
+                          "content": "Each unit with its supplier and number.",
+                          "fontFamily": "Inter",
+                          "fontSize": 14.0,
+                          "fontWeight": 400,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#78716C"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n857",
+                      "name": "Button Add equipment",
+                      "height": 40.0,
+                      "layout": "horizontal",
+                      "padding": [
+                        0.0,
+                        18.0
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "cornerRadius": 10.0,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#FFFFFF"
+                        }
+                      ],
+                      "stroke": {
+                        "thickness": 1.0,
+                        "fill": [
+                          {
+                            "type": "solid",
+                            "color": "#D6CFC2"
+                          }
+                        ]
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "n858",
+                          "width": "fit_content",
+                          "height": "fit_content",
+                          "content": "Add equipment",
+                          "fontFamily": "Inter",
+                          "fontSize": 14.0,
+                          "fontWeight": 600,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#1C1917"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "n859",
+      "name": "Users v4",
+      "x": 2800.0,
+      "y": 7000.0,
+      "width": 1280.0,
+      "height": 860.0,
+      "layout": "horizontal",
+      "fill": [
+        {
+          "type": "solid",
+          "color": "#FAF8F4"
+        }
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "n860",
+          "name": "Sidebar",
+          "width": 232.0,
+          "height": "fill_container",
+          "layout": "vertical",
+          "padding": [
+            24.0,
+            16.0
+          ],
+          "justifyContent": "space_between",
+          "fill": [
+            {
+              "type": "solid",
+              "color": "#143323"
+            }
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "n861",
+              "name": "Nav group",
+              "width": "fill_container",
+              "height": "fit_content",
+              "layout": "vertical",
+              "gap": 6.0,
+              "fill": [],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "n862",
+                  "name": "Brand",
+                  "height": "fit_content",
+                  "layout": "horizontal",
+                  "gap": 10.0,
+                  "padding": [
+                    0.0,
+                    6.0
+                  ],
+                  "alignItems": "center",
+                  "fill": [],
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "n863",
+                      "name": "Mark",
+                      "width": 30.0,
+                      "height": 30.0,
+                      "layout": "horizontal",
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "cornerRadius": 9.0,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#FFFFFF"
+                        }
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "n864",
+                          "width": "fit_content",
+                          "height": "fit_content",
+                          "content": "P",
+                          "fontFamily": "Inter",
+                          "fontSize": 15.0,
+                          "fontWeight": 800,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#14532D"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "n865",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Parkline",
+                      "fontFamily": "Inter",
+                      "fontSize": 19.0,
+                      "fontWeight": 800,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#FFFFFF"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n866",
+                  "name": "Spacer",
+                  "width": "fill_container",
+                  "height": 16.0,
+                  "fill": [],
+                  "children": []
+                },
+                {
+                  "type": "frame",
+                  "id": "n867",
+                  "name": "Nav Home",
+                  "width": "fill_container",
+                  "height": 40.0,
+                  "layout": "horizontal",
+                  "padding": [
+                    0.0,
+                    14.0
+                  ],
+                  "alignItems": "center",
+                  "cornerRadius": 10.0,
+                  "fill": [],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n868",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Home",
+                      "fontFamily": "Inter",
+                      "fontSize": 14.0,
+                      "fontWeight": 500,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#D3E4D9"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n869",
+                  "name": "Nav Equipment",
+                  "width": "fill_container",
+                  "height": 40.0,
+                  "layout": "horizontal",
+                  "padding": [
+                    0.0,
+                    14.0
+                  ],
+                  "alignItems": "center",
+                  "cornerRadius": 10.0,
+                  "fill": [],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n870",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Equipment",
+                      "fontFamily": "Inter",
+                      "fontSize": 14.0,
+                      "fontWeight": 500,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#D3E4D9"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n871",
+                  "name": "Nav Repair orders",
+                  "width": "fill_container",
+                  "height": 40.0,
+                  "layout": "horizontal",
+                  "padding": [
+                    0.0,
+                    14.0
+                  ],
+                  "alignItems": "center",
+                  "cornerRadius": 10.0,
+                  "fill": [],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n872",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Repair orders",
+                      "fontFamily": "Inter",
+                      "fontSize": 14.0,
+                      "fontWeight": 500,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#D3E4D9"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n873",
+                  "name": "Nav Hour readings",
+                  "width": "fill_container",
+                  "height": 40.0,
+                  "layout": "horizontal",
+                  "padding": [
+                    0.0,
+                    14.0
+                  ],
+                  "alignItems": "center",
+                  "cornerRadius": 10.0,
+                  "fill": [],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n874",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Hour readings",
+                      "fontFamily": "Inter",
+                      "fontSize": 14.0,
+                      "fontWeight": 500,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#D3E4D9"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n875",
+                  "name": "Nav Invoices",
+                  "width": "fill_container",
+                  "height": 40.0,
+                  "layout": "horizontal",
+                  "padding": [
+                    0.0,
+                    14.0
+                  ],
+                  "alignItems": "center",
+                  "cornerRadius": 10.0,
+                  "fill": [],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n876",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Invoices",
+                      "fontFamily": "Inter",
+                      "fontSize": 14.0,
+                      "fontWeight": 500,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#D3E4D9"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n877",
+                  "name": "Nav Reports",
+                  "width": "fill_container",
+                  "height": 40.0,
+                  "layout": "horizontal",
+                  "padding": [
+                    0.0,
+                    14.0
+                  ],
+                  "alignItems": "center",
+                  "cornerRadius": 10.0,
+                  "fill": [],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n878",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Reports",
+                      "fontFamily": "Inter",
+                      "fontSize": 14.0,
+                      "fontWeight": 500,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#D3E4D9"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n879",
+                  "name": "Spacer",
+                  "width": "fill_container",
+                  "height": 12.0,
+                  "fill": [],
+                  "children": []
+                },
+                {
+                  "type": "text",
+                  "id": "n880",
+                  "width": "fit_content",
+                  "height": "fit_content",
+                  "content": "ADMINISTRATION",
+                  "fontFamily": "Inter",
+                  "fontSize": 11.0,
+                  "fontWeight": 700,
+                  "fill": [
+                    {
+                      "type": "solid",
+                      "color": "#86A593"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n881",
+                  "name": "Nav Users",
+                  "width": "fill_container",
+                  "height": 40.0,
+                  "layout": "horizontal",
+                  "padding": [
+                    0.0,
+                    14.0
+                  ],
+                  "alignItems": "center",
+                  "cornerRadius": 10.0,
+                  "fill": [
+                    {
+                      "type": "solid",
+                      "color": "#1F4A33"
+                    }
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n882",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Users",
+                      "fontFamily": "Inter",
+                      "fontSize": 14.0,
+                      "fontWeight": 600,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#FFFFFF"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "n883",
+              "name": "Account",
+              "width": "fill_container",
+              "height": "fit_content",
+              "layout": "horizontal",
+              "gap": 10.0,
+              "padding": [
+                10.0,
+                12.0
+              ],
+              "alignItems": "center",
+              "cornerRadius": 12.0,
+              "fill": [
+                {
+                  "type": "solid",
+                  "color": "#1F4A33"
+                }
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "n884",
+                  "name": "Avatar SR",
+                  "width": 34.0,
+                  "height": 34.0,
+                  "layout": "horizontal",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "cornerRadius": 17.0,
+                  "fill": [
+                    {
+                      "type": "solid",
+                      "color": "#E3F1E7"
+                    }
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n885",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "SR",
+                      "fontFamily": "Inter",
+                      "fontSize": 13.0,
+                      "fontWeight": 700,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#14532D"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n886",
+                  "name": "Who",
+                  "height": "fit_content",
+                  "layout": "vertical",
+                  "gap": 1.0,
+                  "fill": [],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n887",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Sofia Rios",
+                      "fontFamily": "Inter",
+                      "fontSize": 14.0,
+                      "fontWeight": 600,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#FFFFFF"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "n888",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "System administrator",
+                      "fontFamily": "Inter",
+                      "fontSize": 12.0,
+                      "fontWeight": 400,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#86A593"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "n889",
+          "name": "Main",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 24.0,
+          "padding": [
+            32.0,
+            40.0
+          ],
+          "fill": [],
+          "children": [
+            {
+              "type": "frame",
+              "id": "n890",
+              "name": "Header row",
+              "width": "fill_container",
+              "height": "fit_content",
+              "layout": "horizontal",
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "fill": [],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "n891",
+                  "name": "Page header",
+                  "width": "fill_container",
+                  "height": "fit_content",
+                  "layout": "vertical",
+                  "gap": 4.0,
+                  "fill": [],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n892",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Users",
+                      "fontFamily": "Inter",
+                      "fontSize": 28.0,
+                      "fontWeight": 800,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#1C1917"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "n893",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Who can sign in, and what they can do.",
+                      "fontFamily": "Inter",
+                      "fontSize": 14.0,
+                      "fontWeight": 400,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#78716C"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n894",
+                  "name": "Button New user",
+                  "height": 40.0,
+                  "layout": "horizontal",
+                  "padding": [
+                    0.0,
+                    18.0
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "cornerRadius": 10.0,
+                  "fill": [
+                    {
+                      "type": "solid",
+                      "color": "#14532D"
+                    }
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n895",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "New user",
+                      "fontFamily": "Inter",
+                      "fontSize": 14.0,
+                      "fontWeight": 600,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#FFFFFF"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "n896",
+              "name": "Users table",
+              "width": "fill_container",
+              "height": "fit_content",
+              "layout": "vertical",
+              "clipContent": true,
+              "cornerRadius": 14.0,
+              "fill": [
+                {
+                  "type": "solid",
+                  "color": "#FFFFFF"
+                }
+              ],
+              "stroke": {
+                "thickness": 1.0,
+                "fill": [
+                  {
+                    "type": "solid",
+                    "color": "#E7E1D6"
+                  }
+                ]
+              },
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "n897",
+                  "name": "Header",
+                  "width": "fill_container",
+                  "height": 44.0,
+                  "layout": "horizontal",
+                  "gap": 16.0,
+                  "padding": [
+                    0.0,
+                    20.0
+                  ],
+                  "alignItems": "center",
+                  "fill": [
+                    {
+                      "type": "solid",
+                      "color": "#F3EFE8"
+                    }
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n898",
+                      "width": 230.0,
+                      "height": "fit_content",
+                      "content": "PERSON",
+                      "fontFamily": "Inter",
+                      "fontSize": 12.0,
+                      "fontWeight": 700,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#78716C"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "n899",
+                      "width": 230.0,
+                      "height": "fit_content",
+                      "content": "EMAIL",
+                      "fontFamily": "Inter",
+                      "fontSize": 12.0,
+                      "fontWeight": 700,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#78716C"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "n900",
+                      "width": 150.0,
+                      "height": "fit_content",
+                      "content": "ROLE",
+                      "fontFamily": "Inter",
+                      "fontSize": 12.0,
+                      "fontWeight": 700,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#78716C"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "n901",
+                      "width": 100.0,
+                      "height": "fit_content",
+                      "content": "STATUS",
+                      "fontFamily": "Inter",
+                      "fontSize": 12.0,
+                      "fontWeight": 700,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#78716C"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "n902",
+                      "width": "fill_container",
+                      "height": 20.0,
+                      "content": "",
+                      "fontFamily": "Inter",
+                      "fontSize": 12.0,
+                      "fontWeight": 700,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#78716C"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n903",
+                  "name": "Row Sofia Rios",
+                  "width": "fill_container",
+                  "height": 60.0,
+                  "layout": "horizontal",
+                  "gap": 16.0,
+                  "padding": [
+                    0.0,
+                    20.0
+                  ],
+                  "alignItems": "center",
+                  "stroke": {
+                    "thickness": 1.0,
+                    "fill": [
+                      {
+                        "type": "solid",
+                        "color": "#E7E1D6"
+                      }
+                    ]
+                  },
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "n904",
+                      "name": "Person",
+                      "width": 230.0,
+                      "height": "fit_content",
+                      "layout": "horizontal",
+                      "gap": 12.0,
+                      "alignItems": "center",
+                      "fill": [],
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "n905",
+                          "name": "Avatar SR",
+                          "width": 34.0,
+                          "height": 34.0,
+                          "layout": "horizontal",
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "cornerRadius": 17.0,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#E3F1E7"
+                            }
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "n906",
+                              "width": "fit_content",
+                              "height": "fit_content",
+                              "content": "SR",
+                              "fontFamily": "Inter",
+                              "fontSize": 13.0,
+                              "fontWeight": 700,
+                              "fill": [
+                                {
+                                  "type": "solid",
+                                  "color": "#14532D"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "n907",
+                          "width": "fit_content",
+                          "height": "fit_content",
+                          "content": "Sofia Rios (you)",
+                          "fontFamily": "Inter",
+                          "fontSize": 14.0,
+                          "fontWeight": 700,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#1C1917"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "n908",
+                      "width": 230.0,
+                      "height": "fit_content",
+                      "content": "sofia@example.test",
+                      "fontFamily": "Inter",
+                      "fontSize": 14.0,
+                      "fontWeight": 400,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#1C1917"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n909",
+                      "name": "Role",
+                      "width": 150.0,
+                      "height": "fit_content",
+                      "layout": "horizontal",
+                      "fill": [],
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "n910",
+                          "name": "Badge System admin",
+                          "height": 24.0,
+                          "layout": "horizontal",
+                          "padding": [
+                            0.0,
+                            10.0
+                          ],
+                          "alignItems": "center",
+                          "cornerRadius": 12.0,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#E4ECFB"
+                            }
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "n911",
+                              "width": "fit_content",
+                              "height": "fit_content",
+                              "content": "System admin",
+                              "fontFamily": "Inter",
+                              "fontSize": 12.0,
+                              "fontWeight": 600,
+                              "fill": [
+                                {
+                                  "type": "solid",
+                                  "color": "#1E40AF"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n912",
+                      "name": "Status",
+                      "width": 100.0,
+                      "height": "fit_content",
+                      "layout": "horizontal",
+                      "gap": 8.0,
+                      "alignItems": "center",
+                      "fill": [],
+                      "children": [
+                        {
+                          "type": "ellipse",
+                          "id": "n913",
+                          "name": "Dot",
+                          "width": 10.0,
+                          "height": 10.0,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#166534"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "n914",
+                          "width": "fit_content",
+                          "height": "fit_content",
+                          "content": "Active",
+                          "fontFamily": "Inter",
+                          "fontSize": 14.0,
+                          "fontWeight": 500,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#1C1917"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n915",
+                      "name": "Actions",
+                      "width": "fill_container",
+                      "height": "fit_content",
+                      "layout": "horizontal",
+                      "gap": 14.0,
+                      "justifyContent": "end",
+                      "fill": [],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "n916",
+                          "width": "fit_content",
+                          "height": "fit_content",
+                          "content": "Change role",
+                          "fontFamily": "Inter",
+                          "fontSize": 13.0,
+                          "fontWeight": 700,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#14532D"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n917",
+                  "name": "Row Luis Gomez",
+                  "width": "fill_container",
+                  "height": 60.0,
+                  "layout": "horizontal",
+                  "gap": 16.0,
+                  "padding": [
+                    0.0,
+                    20.0
+                  ],
+                  "alignItems": "center",
+                  "stroke": {
+                    "thickness": 1.0,
+                    "fill": [
+                      {
+                        "type": "solid",
+                        "color": "#E7E1D6"
+                      }
+                    ]
+                  },
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "n918",
+                      "name": "Person",
+                      "width": 230.0,
+                      "height": "fit_content",
+                      "layout": "horizontal",
+                      "gap": 12.0,
+                      "alignItems": "center",
+                      "fill": [],
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "n919",
+                          "name": "Avatar LG",
+                          "width": 34.0,
+                          "height": 34.0,
+                          "layout": "horizontal",
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "cornerRadius": 17.0,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#E3F1E7"
+                            }
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "n920",
+                              "width": "fit_content",
+                              "height": "fit_content",
+                              "content": "LG",
+                              "fontFamily": "Inter",
+                              "fontSize": 13.0,
+                              "fontWeight": 700,
+                              "fill": [
+                                {
+                                  "type": "solid",
+                                  "color": "#14532D"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "n921",
+                          "width": "fit_content",
+                          "height": "fit_content",
+                          "content": "Luis Gomez",
+                          "fontFamily": "Inter",
+                          "fontSize": 14.0,
+                          "fontWeight": 700,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#1C1917"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "n922",
+                      "width": 230.0,
+                      "height": "fit_content",
+                      "content": "luis@example.test",
+                      "fontFamily": "Inter",
+                      "fontSize": 14.0,
+                      "fontWeight": 400,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#1C1917"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n923",
+                      "name": "Role",
+                      "width": 150.0,
+                      "height": "fit_content",
+                      "layout": "horizontal",
+                      "fill": [],
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "n924",
+                          "name": "Badge Fleet analyst",
+                          "height": 24.0,
+                          "layout": "horizontal",
+                          "padding": [
+                            0.0,
+                            10.0
+                          ],
+                          "alignItems": "center",
+                          "cornerRadius": 12.0,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#E3F1E7"
+                            }
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "n925",
+                              "width": "fit_content",
+                              "height": "fit_content",
+                              "content": "Fleet analyst",
+                              "fontFamily": "Inter",
+                              "fontSize": 12.0,
+                              "fontWeight": 600,
+                              "fill": [
+                                {
+                                  "type": "solid",
+                                  "color": "#14532D"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n926",
+                      "name": "Status",
+                      "width": 100.0,
+                      "height": "fit_content",
+                      "layout": "horizontal",
+                      "gap": 8.0,
+                      "alignItems": "center",
+                      "fill": [],
+                      "children": [
+                        {
+                          "type": "ellipse",
+                          "id": "n927",
+                          "name": "Dot",
+                          "width": 10.0,
+                          "height": 10.0,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#166534"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "n928",
+                          "width": "fit_content",
+                          "height": "fit_content",
+                          "content": "Active",
+                          "fontFamily": "Inter",
+                          "fontSize": 14.0,
+                          "fontWeight": 500,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#1C1917"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n929",
+                      "name": "Actions",
+                      "width": "fill_container",
+                      "height": "fit_content",
+                      "layout": "horizontal",
+                      "gap": 14.0,
+                      "justifyContent": "end",
+                      "fill": [],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "n930",
+                          "width": "fit_content",
+                          "height": "fit_content",
+                          "content": "Change role",
+                          "fontFamily": "Inter",
+                          "fontSize": 13.0,
+                          "fontWeight": 700,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#14532D"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "n931",
+                          "width": "fit_content",
+                          "height": "fit_content",
+                          "content": "Deactivate",
+                          "fontFamily": "Inter",
+                          "fontSize": 13.0,
+                          "fontWeight": 700,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#B91C1C"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n932",
+                  "name": "Row Marta Diaz",
+                  "width": "fill_container",
+                  "height": 60.0,
+                  "layout": "horizontal",
+                  "gap": 16.0,
+                  "padding": [
+                    0.0,
+                    20.0
+                  ],
+                  "alignItems": "center",
+                  "stroke": {
+                    "thickness": 1.0,
+                    "fill": [
+                      {
+                        "type": "solid",
+                        "color": "#E7E1D6"
+                      }
+                    ]
+                  },
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "n933",
+                      "name": "Person",
+                      "width": 230.0,
+                      "height": "fit_content",
+                      "layout": "horizontal",
+                      "gap": 12.0,
+                      "alignItems": "center",
+                      "fill": [],
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "n934",
+                          "name": "Avatar MD",
+                          "width": 34.0,
+                          "height": 34.0,
+                          "layout": "horizontal",
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "cornerRadius": 17.0,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#E3F1E7"
+                            }
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "n935",
+                              "width": "fit_content",
+                              "height": "fit_content",
+                              "content": "MD",
+                              "fontFamily": "Inter",
+                              "fontSize": 13.0,
+                              "fontWeight": 700,
+                              "fill": [
+                                {
+                                  "type": "solid",
+                                  "color": "#14532D"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "n936",
+                          "width": "fit_content",
+                          "height": "fit_content",
+                          "content": "Marta Diaz",
+                          "fontFamily": "Inter",
+                          "fontSize": 14.0,
+                          "fontWeight": 700,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#1C1917"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "n937",
+                      "width": 230.0,
+                      "height": "fit_content",
+                      "content": "marta@example.test",
+                      "fontFamily": "Inter",
+                      "fontSize": 14.0,
+                      "fontWeight": 400,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#1C1917"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n938",
+                      "name": "Role",
+                      "width": 150.0,
+                      "height": "fit_content",
+                      "layout": "horizontal",
+                      "fill": [],
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "n939",
+                          "name": "Badge Supervisor",
+                          "height": 24.0,
+                          "layout": "horizontal",
+                          "padding": [
+                            0.0,
+                            10.0
+                          ],
+                          "alignItems": "center",
+                          "cornerRadius": 12.0,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#FCEBD0"
+                            }
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "n940",
+                              "width": "fit_content",
+                              "height": "fit_content",
+                              "content": "Supervisor",
+                              "fontFamily": "Inter",
+                              "fontSize": 12.0,
+                              "fontWeight": 600,
+                              "fill": [
+                                {
+                                  "type": "solid",
+                                  "color": "#B45309"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n941",
+                      "name": "Status",
+                      "width": 100.0,
+                      "height": "fit_content",
+                      "layout": "horizontal",
+                      "gap": 8.0,
+                      "alignItems": "center",
+                      "fill": [],
+                      "children": [
+                        {
+                          "type": "ellipse",
+                          "id": "n942",
+                          "name": "Dot",
+                          "width": 10.0,
+                          "height": 10.0,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#166534"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "n943",
+                          "width": "fit_content",
+                          "height": "fit_content",
+                          "content": "Active",
+                          "fontFamily": "Inter",
+                          "fontSize": 14.0,
+                          "fontWeight": 500,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#1C1917"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n944",
+                      "name": "Actions",
+                      "width": "fill_container",
+                      "height": "fit_content",
+                      "layout": "horizontal",
+                      "gap": 14.0,
+                      "justifyContent": "end",
+                      "fill": [],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "n945",
+                          "width": "fit_content",
+                          "height": "fit_content",
+                          "content": "Change role",
+                          "fontFamily": "Inter",
+                          "fontSize": 13.0,
+                          "fontWeight": 700,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#14532D"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "n946",
+                          "width": "fit_content",
+                          "height": "fit_content",
+                          "content": "Deactivate",
+                          "fontFamily": "Inter",
+                          "fontSize": 13.0,
+                          "fontWeight": 700,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#B91C1C"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n947",
+                  "name": "Row Pablo Ruiz",
+                  "width": "fill_container",
+                  "height": 60.0,
+                  "layout": "horizontal",
+                  "gap": 16.0,
+                  "padding": [
+                    0.0,
+                    20.0
+                  ],
+                  "alignItems": "center",
+                  "stroke": {
+                    "thickness": 1.0,
+                    "fill": [
+                      {
+                        "type": "solid",
+                        "color": "#E7E1D6"
+                      }
+                    ]
+                  },
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "n948",
+                      "name": "Person",
+                      "width": 230.0,
+                      "height": "fit_content",
+                      "layout": "horizontal",
+                      "gap": 12.0,
+                      "alignItems": "center",
+                      "fill": [],
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "n949",
+                          "name": "Avatar PR",
+                          "width": 34.0,
+                          "height": 34.0,
+                          "layout": "horizontal",
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "cornerRadius": 17.0,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#F3EFE8"
+                            }
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "n950",
+                              "width": "fit_content",
+                              "height": "fit_content",
+                              "content": "PR",
+                              "fontFamily": "Inter",
+                              "fontSize": 13.0,
+                              "fontWeight": 700,
+                              "fill": [
+                                {
+                                  "type": "solid",
+                                  "color": "#78716C"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "n951",
+                          "width": "fit_content",
+                          "height": "fit_content",
+                          "content": "Pablo Ruiz",
+                          "fontFamily": "Inter",
+                          "fontSize": 14.0,
+                          "fontWeight": 700,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#78716C"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "n952",
+                      "width": 230.0,
+                      "height": "fit_content",
+                      "content": "pablo@example.test",
+                      "fontFamily": "Inter",
+                      "fontSize": 14.0,
+                      "fontWeight": 400,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#78716C"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n953",
+                      "name": "Role",
+                      "width": 150.0,
+                      "height": "fit_content",
+                      "layout": "horizontal",
+                      "fill": [],
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "n954",
+                          "name": "Badge Viewer",
+                          "height": 24.0,
+                          "layout": "horizontal",
+                          "padding": [
+                            0.0,
+                            10.0
+                          ],
+                          "alignItems": "center",
+                          "cornerRadius": 12.0,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#F3EFE8"
+                            }
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "n955",
+                              "width": "fit_content",
+                              "height": "fit_content",
+                              "content": "Viewer",
+                              "fontFamily": "Inter",
+                              "fontSize": 12.0,
+                              "fontWeight": 600,
+                              "fill": [
+                                {
+                                  "type": "solid",
+                                  "color": "#78716C"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n956",
+                      "name": "Status",
+                      "width": 100.0,
+                      "height": "fit_content",
+                      "layout": "horizontal",
+                      "gap": 8.0,
+                      "alignItems": "center",
+                      "fill": [],
+                      "children": [
+                        {
+                          "type": "ellipse",
+                          "id": "n957",
+                          "name": "Dot",
+                          "width": 10.0,
+                          "height": 10.0,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#A8A29E"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "n958",
+                          "width": "fit_content",
+                          "height": "fit_content",
+                          "content": "Inactive",
+                          "fontFamily": "Inter",
+                          "fontSize": 14.0,
+                          "fontWeight": 500,
+                          "fill": [
+                            {
+                              "type": "solid",
+                              "color": "#78716C"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n959",
+                      "name": "Actions",
+                      "width": "fill_container",
+                      "height": "fit_content",
+                      "layout": "horizontal",
+                      "gap": 14.0,
+                      "justifyContent": "end",
+                      "fill": [],
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "n960",
+      "name": "Login v4",
+      "x": 4200.0,
+      "y": 7000.0,
+      "width": 1280.0,
+      "height": 800.0,
+      "layout": "horizontal",
+      "fill": [
+        {
+          "type": "solid",
+          "color": "#FFFFFF"
+        }
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "n961",
+          "name": "Brand panel",
+          "width": 560.0,
+          "height": "fill_container",
+          "layout": "vertical",
+          "padding": 56.0,
+          "justifyContent": "space_between",
+          "fill": [
+            {
+              "type": "solid",
+              "color": "#143323"
+            }
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "n962",
+              "name": "Brand",
+              "height": "fit_content",
+              "layout": "horizontal",
+              "gap": 12.0,
+              "alignItems": "center",
+              "fill": [],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "n963",
+                  "name": "Mark",
+                  "width": 40.0,
+                  "height": 40.0,
+                  "layout": "horizontal",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "cornerRadius": 12.0,
+                  "fill": [
+                    {
+                      "type": "solid",
+                      "color": "#FFFFFF"
+                    }
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n964",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "P",
+                      "fontFamily": "Inter",
+                      "fontSize": 20.0,
+                      "fontWeight": 800,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#14532D"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "n965",
+                  "width": "fit_content",
+                  "height": "fit_content",
+                  "content": "Parkline",
+                  "fontFamily": "Inter",
+                  "fontSize": 24.0,
+                  "fontWeight": 800,
+                  "fill": [
+                    {
+                      "type": "solid",
+                      "color": "#FFFFFF"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "n966",
+              "name": "Pitch",
+              "width": "fill_container",
+              "height": "fit_content",
+              "layout": "vertical",
+              "gap": 14.0,
+              "fill": [],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "n967",
+                  "width": "fill_container",
+                  "height": "fit_content",
+                  "content": "Know what your fleet is doing, and what it is costing you.",
+                  "fontFamily": "Inter",
+                  "fontSize": 32.0,
+                  "fontWeight": 800,
+                  "lineHeight": 1.2,
+                  "textGrowth": "fixed-width",
+                  "fill": [
+                    {
+                      "type": "solid",
+                      "color": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "n968",
+                  "width": "fill_container",
+                  "height": "fit_content",
+                  "content": "Availability, repairs, preventives and invoices in one place.",
+                  "fontFamily": "Inter",
+                  "fontSize": 16.0,
+                  "fontWeight": 400,
+                  "textGrowth": "fixed-width",
+                  "fill": [
+                    {
+                      "type": "solid",
+                      "color": "#D3E4D9"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "n969",
+              "width": "fit_content",
+              "height": "fit_content",
+              "content": "Fleet and equipment management",
+              "fontFamily": "Inter",
+              "fontSize": 13.0,
+              "fontWeight": 500,
+              "fill": [
+                {
+                  "type": "solid",
+                  "color": "#86A593"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "n970",
+          "name": "Form panel",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "justifyContent": "center",
+          "alignItems": "center",
+          "fill": [
+            {
+              "type": "solid",
+              "color": "#FAF8F4"
+            }
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "n971",
+              "name": "Form",
+              "width": 380.0,
+              "height": "fit_content",
+              "layout": "vertical",
+              "gap": 20.0,
+              "fill": [],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "n972",
+                  "name": "Heading",
+                  "width": "fill_container",
+                  "height": "fit_content",
+                  "layout": "vertical",
+                  "gap": 4.0,
+                  "fill": [],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n973",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Sign in",
+                      "fontFamily": "Inter",
+                      "fontSize": 28.0,
+                      "fontWeight": 800,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#1C1917"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "n974",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Use the account your administrator gave you.",
+                      "fontFamily": "Inter",
+                      "fontSize": 14.0,
+                      "fontWeight": 400,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#78716C"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n975",
+                  "name": "Field Email",
+                  "width": "fill_container",
+                  "height": "fit_content",
+                  "layout": "vertical",
+                  "gap": 6.0,
+                  "fill": [],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n976",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Email",
+                      "fontFamily": "Inter",
+                      "fontSize": 13.0,
+                      "fontWeight": 600,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#1C1917"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text_input",
+                      "id": "n977",
+                      "name": "Email input",
+                      "width": "fill_container",
+                      "height": 44.0,
+                      "placeholder": "you@example.com",
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#FFFFFF"
+                        }
+                      ],
+                      "stroke": {
+                        "thickness": 1.0,
+                        "fill": [
+                          {
+                            "type": "solid",
+                            "color": "#D6CFC2"
+                          }
+                        ]
+                      },
+                      "cornerRadius": 10.0
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n978",
+                  "name": "Field Password",
+                  "width": "fill_container",
+                  "height": "fit_content",
+                  "layout": "vertical",
+                  "gap": 6.0,
+                  "fill": [],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n979",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Password",
+                      "fontFamily": "Inter",
+                      "fontSize": 13.0,
+                      "fontWeight": 600,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#1C1917"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text_input",
+                      "id": "n980",
+                      "name": "Password input",
+                      "width": "fill_container",
+                      "height": 44.0,
+                      "placeholder": "Your password",
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#FFFFFF"
+                        }
+                      ],
+                      "stroke": {
+                        "thickness": 1.0,
+                        "fill": [
+                          {
+                            "type": "solid",
+                            "color": "#D6CFC2"
+                          }
+                        ]
+                      },
+                      "cornerRadius": 10.0
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "n981",
+                  "name": "Button Sign in",
+                  "width": "fill_container",
+                  "height": 46.0,
+                  "layout": "horizontal",
+                  "padding": [
+                    0.0,
+                    18.0
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "cornerRadius": 10.0,
+                  "fill": [
+                    {
+                      "type": "solid",
+                      "color": "#14532D"
+                    }
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n982",
+                      "width": "fit_content",
+                      "height": "fit_content",
+                      "content": "Sign in",
+                      "fontFamily": "Inter",
+                      "fontSize": 14.0,
+                      "fontWeight": 600,
+                      "fill": [
+                        {
+                          "type": "solid",
+                          "color": "#FFFFFF"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "editorMeta": {
