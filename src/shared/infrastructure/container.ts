@@ -7,9 +7,11 @@ import type { IdentityDeps } from "../../identity/application/deps";
 import type { PasswordHasher } from "../../identity/application/ports/password-hasher";
 import { AssignRole } from "../../identity/application/use-cases/assign-role";
 import { AuthenticateSession } from "../../identity/application/use-cases/authenticate-session";
+import { ChangeUserRole } from "../../identity/application/use-cases/change-user-role";
 import { CreateUser } from "../../identity/application/use-cases/create-user";
 import { DeactivateUser } from "../../identity/application/use-cases/deactivate-user";
 import { InstallTenantAdmin } from "../../identity/application/use-cases/install-tenant-admin";
+import { ListUsers } from "../../identity/application/use-cases/list-users";
 import { RevokeRole } from "../../identity/application/use-cases/revoke-role";
 import { SignIn } from "../../identity/application/use-cases/sign-in";
 import { SignOut } from "../../identity/application/use-cases/sign-out";
@@ -55,6 +57,8 @@ export const createContainer = (sql: Sql, options: ContainerOptions = {}) => {
       assignRole: new AssignRole(deps),
       revokeRole: new RevokeRole(deps),
       deactivateUser: new DeactivateUser(deps),
+      listUsers: new ListUsers(deps),
+      changeUserRole: new ChangeUserRole(deps),
     },
   };
 };

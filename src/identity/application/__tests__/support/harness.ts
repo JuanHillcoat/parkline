@@ -13,9 +13,11 @@ import type { ActorContext } from "../../actor-context";
 import type { IdentityDeps } from "../../deps";
 import { AssignRole } from "../../use-cases/assign-role";
 import { AuthenticateSession } from "../../use-cases/authenticate-session";
+import { ChangeUserRole } from "../../use-cases/change-user-role";
 import { CreateUser } from "../../use-cases/create-user";
 import { DeactivateUser } from "../../use-cases/deactivate-user";
 import { InstallTenantAdmin } from "../../use-cases/install-tenant-admin";
+import { ListUsers } from "../../use-cases/list-users";
 import { RevokeRole } from "../../use-cases/revoke-role";
 import { SignIn } from "../../use-cases/sign-in";
 import { SignOut } from "../../use-cases/sign-out";
@@ -112,6 +114,8 @@ export const createHarness = (policy: SessionPolicy = DEFAULT_SESSION_POLICY) =>
     assignRole: new AssignRole(deps),
     revokeRole: new RevokeRole(deps),
     deactivateUser: new DeactivateUser(deps),
+    listUsers: new ListUsers(deps),
+    changeUserRole: new ChangeUserRole(deps),
   };
 };
 

@@ -16,6 +16,16 @@ export class PostgresRoleAssignmentRepository implements RoleAssignmentRepositor
     return rows.map(toAssignment);
   }
 
+  async listActiveByTenant(tenantId: string): Promise<readonly RoleAssignment[]> {
+    if (!isUuid(tenantId)) return [];
+    const rows = await this.sql<AssignmentRow[]>`
+      select user_id, role, scope_type, scope_id, active
+      from user_role_assignments
+      where tenant_id = ${tenantId} and active
+      order by created_at, id`;
+    return rows.map(toAssignment);
+  }
+
   async add(tenantId: string, assignment: RoleAssignment): Promise<void> {
     await this.sql`
       insert into user_role_assignments (id, tenant_id, user_id, role, scope_type, scope_id, active)

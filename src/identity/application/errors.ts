@@ -51,6 +51,22 @@ export class ReasonRequiredError extends ValidationError {
   }
 }
 
+export class RoleUnchangedError extends ConflictError {
+  readonly code: string = "role_unchanged";
+
+  constructor() {
+    super("The user already has exactly this role");
+  }
+}
+
+export class UserInactiveError extends ConflictError {
+  readonly code: string = "user_inactive";
+
+  constructor() {
+    super("The user is deactivated");
+  }
+}
+
 export class ScopeNotAssignableYetError extends DomainError {
   readonly code: string = "scope_not_assignable_yet";
 

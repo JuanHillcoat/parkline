@@ -116,6 +116,7 @@ const gatedUsers = (inner: UserRepository, gate: () => Promise<void>): UserRepos
   findById: (tenantId, id) => inner.findById(tenantId, id),
   add: (user, passwordHash) => inner.add(user, passwordHash),
   setActive: (tenantId, id, active) => inner.setActive(tenantId, id, active),
+  listByTenant: (tenantId) => inner.listByTenant(tenantId),
   findByEmail: async (tenantId, email) => {
     const found = await inner.findByEmail(tenantId, email);
     await gate();
