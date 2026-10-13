@@ -358,7 +358,7 @@ a.nav-item:hover {
   border-collapse: collapse;
 }
 
-.table th {
+.table thead th {
   padding: 12px 18px;
   background: var(--surface);
   color: var(--muted-strong);
@@ -369,13 +369,21 @@ a.nav-item:hover {
   text-transform: uppercase;
 }
 
-.table td {
+.table td,
+.table tbody th {
   padding: 14px 18px;
   border-top: 1px solid var(--border);
   white-space: nowrap;
 }
 
-.table tr[data-inactive="true"] td {
+.table tbody th {
+  background: var(--surface);
+  font-size: 14px;
+  text-align: left;
+}
+
+.table tr[data-inactive="true"] td,
+.table tr[data-inactive="true"] th {
   color: var(--muted-strong);
 }
 
