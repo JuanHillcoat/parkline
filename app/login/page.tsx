@@ -1,18 +1,19 @@
 import { redirect } from "next/navigation";
 import { currentActor } from "../_lib/session";
+import { copy } from "../_lib/copy";
 import { LoginForm } from "./login-form";
 
-export const metadata = { title: "Sign in - Parkline" };
+export const metadata = { title: copy.login.pageTitle };
 
 function BrandPanel() {
   return (
     <section className="login-brand">
-      <p className="brand">Parkline</p>
+      <p className="brand">{copy.common.productName}</p>
       <div>
-        <p className="login-pitch">Know what your fleet is doing, and what it is costing you.</p>
-        <p className="login-note">Availability, repairs, preventives and invoices in one place.</p>
+        <p className="login-pitch">{copy.login.pitch}</p>
+        <p className="login-note">{copy.login.note}</p>
       </div>
-      <p className="login-foot">Fleet and equipment management</p>
+      <p className="login-foot">{copy.common.tagline}</p>
     </section>
   );
 }

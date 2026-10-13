@@ -1,16 +1,17 @@
 import { requirePermission } from "../../../src/identity/application/actor-context";
 import { getContainer } from "../../../src/shared/infrastructure/container";
+import { copy } from "../../_lib/copy";
 import { requireActor } from "../../_lib/session";
 import { NewUserDialog } from "./user-dialogs";
 import { UserTable } from "./user-table";
 
-export const metadata = { title: "Users - Parkline" };
+export const metadata = { title: copy.users.pageTitle };
 
 function Restricted() {
   return (
     <section className="card" role="status">
-      <h1>You do not have permission to manage users</h1>
-      <p>Ask a system administrator if you need access to this page.</p>
+      <h1>{copy.users.restrictedTitle}</h1>
+      <p>{copy.users.restrictedText}</p>
     </section>
   );
 }
@@ -19,8 +20,8 @@ function Header({ canCreate }: { canCreate: boolean }) {
   return (
     <header className="page-head">
       <div>
-        <h1>Users</h1>
-        <p className="page-sub">Who can sign in, and what they can do.</p>
+        <h1>{copy.users.title}</h1>
+        <p className="page-sub">{copy.users.subtitle}</p>
       </div>
       {canCreate && <NewUserDialog />}
     </header>

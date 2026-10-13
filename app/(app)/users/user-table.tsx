@@ -1,4 +1,5 @@
 import type { UserSummary } from "../../../src/identity/application/use-cases/list-users";
+import { copy } from "../../_lib/copy";
 import { ROLE_LABELS } from "../../_lib/messages";
 import { ChangeRoleDialog, DeactivateDialog } from "./user-dialogs";
 
@@ -22,18 +23,18 @@ function RowActions({ user, isSelf, canAssign, canDeactivate }: RowProps) {
 
 function UserRow(props: RowProps) {
   const { user, isSelf } = props;
-  const roles = user.roles.map((role) => ROLE_LABELS[role]).join(", ") || "No role";
+  const roles = user.roles.map((role) => ROLE_LABELS[role]).join(", ") || copy.common.noRole;
   return (
     <tr data-inactive={!user.active}>
       <th scope="row" className="cell-name">
         {user.displayName}
-        {isSelf && " (you)"}
+        {isSelf && ` ${copy.common.you}`}
       </th>
       <td>{user.email}</td>
       <td>{roles}</td>
       <td>
         <span className={user.active ? "badge badge-ok" : "badge badge-neutral"}>
-          {user.active ? "Active" : "Inactive"}
+          {user.active ? copy.common.active : copy.common.inactive}
         </span>
       </td>
       <td className="cell-actions"><RowActions {...props} /></td>
@@ -52,11 +53,11 @@ function TableHead() {
   return (
     <thead>
       <tr>
-        <th scope="col">Name</th>
-        <th scope="col">Email</th>
-        <th scope="col">Role</th>
-        <th scope="col">Status</th>
-        <th scope="col"><span className="visually-hidden">Actions</span></th>
+        <th scope="col">{copy.users.columns.name}</th>
+        <th scope="col">{copy.users.columns.email}</th>
+        <th scope="col">{copy.users.columns.role}</th>
+        <th scope="col">{copy.users.columns.status}</th>
+        <th scope="col"><span className="visually-hidden">{copy.users.columns.actions}</span></th>
       </tr>
     </thead>
   );
@@ -66,7 +67,7 @@ export function UserTable({ users, selfId, canAssign, canDeactivate }: TableProp
   return (
     <div className="table-wrap">
       <table className="table">
-        <caption className="visually-hidden">Users of this organization</caption>
+        <caption className="visually-hidden">{copy.users.tableCaption}</caption>
         <TableHead />
         <tbody>
           {users.map((user) => (

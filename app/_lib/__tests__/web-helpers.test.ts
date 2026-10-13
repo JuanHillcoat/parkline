@@ -3,6 +3,7 @@ import { ConflictError, NotFoundError, ValidationError } from "../../../src/shar
 import { WeakPasswordError } from "../../../src/identity/domain/password-policy";
 import { LastAdminError, ReasonRequiredError } from "../../../src/identity/application/errors";
 import { ForbiddenError } from "../../../src/identity/domain/authorizer";
+import { copy } from "../copy";
 import { GENERIC_ERROR, ROLE_LABELS, errorMessage } from "../messages";
 import { isSameOrigin } from "../origin";
 import { SESSION_COOKIE, clearedCookieOptions, sessionCookieOptions } from "../session-cookie";
@@ -41,14 +42,14 @@ describe("isSameOrigin", () => {
 
 describe("errorMessage", () => {
   it("maps known domain errors to specific messages", () => {
-    expect(errorMessage(new ReasonRequiredError())).toMatch(/reason/i);
-    expect(errorMessage(new WeakPasswordError())).toMatch(/12 characters/);
-    expect(errorMessage(new LastAdminError())).toMatch(/last active/i);
-    expect(errorMessage(new ForbiddenError("Permission user.create is not granted"))).toMatch(/permission/i);
+    expect(errorMessage(new ReasonRequiredError())).toBe(copy.errors.byCode.reason_required);
+    expect(errorMessage(new WeakPasswordError())).toBe(copy.errors.byCode.weak_password);
+    expect(errorMessage(new LastAdminError())).toBe(copy.errors.byCode.last_admin_protected);
+    expect(errorMessage(new ForbiddenError("Permission user.create is not granted"))).toBe(copy.errors.byCode.forbidden);
   });
 
   it("maps validation errors by field", () => {
-    expect(errorMessage(new ValidationError("email is not valid", "email"))).toMatch(/email/i);
+    expect(errorMessage(new ValidationError("email is not valid", "email"))).toBe(copy.errors.byField.email);
   });
 
   it("never echoes the error message of unknown errors", () => {
@@ -61,6 +62,6 @@ describe("errorMessage", () => {
 
   it("labels every role", () => {
     expect(Object.keys(ROLE_LABELS)).toHaveLength(5);
-    expect(ROLE_LABELS.admin).toBe("System administrator");
+    expect(ROLE_LABELS.admin).toBe(copy.roles.admin);
   });
 });

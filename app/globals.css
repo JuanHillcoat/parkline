@@ -402,6 +402,9 @@ a.nav-item:hover {
 
 /* Dialogs */
 dialog.dialog {
+  /* The dialog lives inside table cells: do not inherit their alignment or nowrap. */
+  text-align: left;
+  white-space: normal;
   width: min(480px, calc(100vw - 32px));
   padding: 0;
   border: 1px solid var(--border);

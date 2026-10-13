@@ -2,6 +2,7 @@
 
 import { ROLES, type Role } from "../../../src/identity/domain/role";
 import { getContainer } from "../../../src/shared/infrastructure/container";
+import { copy } from "../../_lib/copy";
 import { failure, field, type ActionState } from "../../_lib/action-state";
 import { runMutation } from "../../_lib/run-action";
 
@@ -10,7 +11,7 @@ const identity = () => getContainer().identity;
 export async function createUserAction(_previous: ActionState, form: FormData): Promise<ActionState> {
   const raw = field(form, "role");
   const role = ROLES.find((candidate): candidate is Role => candidate === raw);
-  if (role === undefined) return failure("Choose a valid role.");
+  if (role === undefined) return failure(copy.errors.byCode.invalid_role);
   return runMutation("/users", (actor) =>
     identity().createUser.execute({
       actor,

@@ -10,6 +10,7 @@ import {
   type SyntheticEvent,
   type ReactNode,
 } from "react";
+import { copy } from "../_lib/copy";
 import { IDLE, type ActionState } from "../_lib/action-state";
 
 export type DialogAction = (previous: ActionState, form: FormData) => Promise<ActionState>;
@@ -63,7 +64,7 @@ function DialogFooter({ submitLabel, danger, pending, message, onCancel }: Foote
     <>
       {message !== null && <p role="alert" className="form-error">{message}</p>}
       <div className="dialog-actions">
-        <button type="button" className="btn" onClick={onCancel}>Cancel</button>
+        <button type="button" className="btn" onClick={onCancel}>{copy.common.cancel}</button>
         <button type="submit" disabled={pending} className={danger ? "btn btn-danger" : "btn btn-primary"}>
           {submitLabel}
         </button>

@@ -1,16 +1,17 @@
 import { requirePermission, type ActorContext } from "../../src/identity/application/actor-context";
+import { copy } from "../_lib/copy";
 import { ROLE_LABELS } from "../_lib/messages";
 import { signOutAction } from "./actions";
 import { NavLink } from "./nav-link";
 
-const COMING_SOON = ["Equipment", "Repair orders", "Hour readings", "Invoices", "Reports"];
+const COMING_SOON = copy.nav.comingSoon;
 
 function SoonItem({ label }: { label: string }) {
   return (
     <li>
       <span className="nav-item" aria-disabled="true">
         {label}
-        <span className="nav-tag">Soon</span>
+        <span className="nav-tag">{copy.common.soon}</span>
       </span>
     </li>
   );
@@ -21,9 +22,9 @@ function Account({ actor }: { actor: ActorContext }) {
   return (
     <div className="account">
       <p className="account-name">{actor.user.displayName}</p>
-      <p className="account-role">{roles.join(", ") || "No role"}</p>
+      <p className="account-role">{roles.join(", ") || copy.common.noRole}</p>
       <form action={signOutAction}>
-        <button type="submit" className="btn signout">Sign out</button>
+        <button type="submit" className="btn signout">{copy.nav.signOut}</button>
       </form>
     </div>
   );
@@ -32,8 +33,8 @@ function Account({ actor }: { actor: ActorContext }) {
 function Administration() {
   return (
     <>
-      <p className="nav-heading">Administration</p>
-      <ul className="nav"><li><NavLink href="/users">Users</NavLink></li></ul>
+      <p className="nav-heading">{copy.nav.administration}</p>
+      <ul className="nav"><li><NavLink href="/users">{copy.nav.users}</NavLink></li></ul>
     </>
   );
 }
@@ -42,10 +43,10 @@ export function Sidebar({ actor }: { actor: ActorContext }) {
   const canReadUsers = requirePermission(actor, "user.read").ok;
   return (
     <aside className="sidebar">
-      <p className="brand">Parkline</p>
-      <nav aria-label="Main">
+      <p className="brand">{copy.common.productName}</p>
+      <nav aria-label={copy.nav.main}>
         <ul className="nav">
-          <li><NavLink href="/">Home</NavLink></li>
+          <li><NavLink href="/">{copy.nav.home}</NavLink></li>
           {COMING_SOON.map((label) => <SoonItem key={label} label={label} />)}
         </ul>
         {canReadUsers && <Administration />}

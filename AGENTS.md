@@ -68,6 +68,7 @@ Before reporting a change as done, run:
 ## Language and documentation
 
 - Code, comments, identifiers, tests and technical documentation are in English.
+- User-facing web copy is in Latin American Spanish and lives in `app/_lib/copy.ts`; everything else stays English unless noted.
 - Business documents, such as `docs/00-analisis-inicial.md`, may be in Spanish.
 - If documentation and code disagree, the documentation is wrong. Fix it in the same change.
 - Project documents never reference other projects, companies, suppliers or people. Examples use synthetic names and identifiers.
