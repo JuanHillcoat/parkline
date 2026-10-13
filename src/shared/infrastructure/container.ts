@@ -2,7 +2,7 @@
  * Composition root: the only place that wires adapters to use cases and the
  * only file allowed to import across modules' infrastructure.
  */
-import type { Sql } from "postgres";
+import postgres, { type Sql } from "postgres";
 import type { IdentityDeps } from "../../identity/application/deps";
 import type { PasswordHasher } from "../../identity/application/ports/password-hasher";
 import { AssignRole } from "../../identity/application/use-cases/assign-role";
@@ -64,3 +64,21 @@ export const createContainer = (sql: Sql, options: ContainerOptions = {}) => {
 };
 
 export type Container = ReturnType<typeof createContainer>;
+
+type ContainerGlobal = { parklineContainer?: Container };
+const containerGlobal = globalThis as ContainerGlobal;
+
+const databaseUrl = (): string => {
+  const url = process.env.DATABASE_URL;
+  if (!url) throw new Error("DATABASE_URL is not set (see .env.example)");
+  return url;
+};
+
+/**
+ * Process-wide container for the web app. It is memoized on `globalThis` so
+ * that dev hot reloads reuse one connection pool. Import it only from `app/`.
+ */
+export const getContainer = (): Container => {
+  containerGlobal.parklineContainer ??= createContainer(postgres(databaseUrl()));
+  return containerGlobal.parklineContainer;
+};

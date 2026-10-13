@@ -22,6 +22,18 @@ pnpm db:migrate          # applies pending SQL migrations
 pnpm dev                 # http://localhost:3000
 ```
 
+## Running the app
+
+The database starts empty: there is no seed. Create the first tenant and administrator once, then start the app.
+
+```bash
+pnpm db:migrate                       # applies pending SQL migrations
+pnpm install:admin                    # prompts for tenant name, email, display name and a hidden password
+pnpm dev                              # http://localhost:3000, sign in at /login
+```
+
+`install:admin` also accepts `--tenant-name`, `--email` and `--display-name`; the password comes from the hidden prompt or from the `INSTALL_ADMIN_PASSWORD` environment variable, never from a flag. It is rejected when a tenant already exists. The app needs `DATABASE_URL` (see `.env.example`). Further users are created from the Users page by an administrator.
+
 ## Scripts
 
 | Script        | What it does                                                     |
