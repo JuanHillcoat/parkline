@@ -1,8 +1,8 @@
 # P0-02 Identity, tenant and roles x scope
 
-- Branch: `feat/p0-02-identity-tenant-roles`
+- Branch: `feat/p0-02-identity-web` (slice 3). Earlier slices: `feat/p0-02-identity-tenant-roles` (slice 1, merged) and `feat/p0-02-identity-use-cases` (slice 2, merged)
 - Source of truth: `docs/00-analisis-inicial.md` (sections 4, 8.6, 9, 10.3, 10.4, phase 0 in 12.2)
-- Status: planned
+- Status: in review
 
 ## Objective
 
@@ -45,7 +45,7 @@ Per-task heuristic: about 400 authored changed lines, advisory only. Route is re
 - [x] T5 Postgres adapters for T4 and the install command (`pnpm install:admin`). Route: delegated writer (sonnet).
 - [x] T6a Backend gaps for the screens: `ListUsers`, `ChangeUserRole` (reason required, last-admin guard, one transaction) with Postgres queries and tests. Route: delegated writer (sonnet), strict TDD.
 - [x] T6b Web: login page, session cookie handling, route guard, minimal users page, Origin check. Routes call use cases only. Route: delegated writer (sonnet).
-- [ ] T7 Docs: ADR-0003 (identity and sessions), README and AGENTS updates, CHANGELOG, analysis adjustments if decisions diverged. Route: delegated writer (haiku).
+- [x] T7 Docs: ADR-0003 (identity and sessions), README and AGENTS updates, CHANGELOG, analysis adjustments if decisions diverged. Route: delegated writer (haiku).
 
 ## Acceptance criteria
 
@@ -98,8 +98,8 @@ Pull request descriptions are in Latin American Spanish (see `AGENTS.md`).
 - 2026-10-13 Review of the localization and install-command fix (base `e4f41d0`, medium, 536 lines): consent granted, one lens (reliability), APPROVED and acknowledged. Advisory findings, open: the composed flow in `run()` of `scripts/install-admin.ts` (checkInput gate, confirmation, single prompt session) has no automated test, only its pure helpers do; and the parametrized copy templates in `app/_lib/copy.ts` are consumed only by components without a rendering test. Reviewed boundary advances to `e44b2ef`.
 
 - 2026-10-14 Login redesign by the maintainer (commit 8a2b25d): contour-line background, formal Spanish copy (usted), translucent form card; sketches compared outside the repo. Native review: medium, one lens, APPROVED with no findings, acknowledged.
-- 2026-10-14 Review follow-ups. T6b (commit 4ce522b, TDD: RED observed on 3 new `requestHost` tests): `x-forwarded-host` is trusted only with `TRUST_FORWARDED_HOST=true`; `createUserAction` validates the role inside the mutation, after Origin and re-authentication; the change-role dialog no longer preselects Viewer for a user without role (placeholder, required). T6a: `listByTenant` orders with an explicit `und-x-icu` collation; two DB tests added (last-admin guard and inactive target on `ChangeUserRole`, accent-insensitive ordering). The ordering test passed before the explicit collation (the default database collation already behaved), so it pins the behavior rather than proving a RED. `ListUsers` still merges roles of all scopes (harmless while only tenant scope is assignable). GREEN: `pnpm test` 184, `pnpm test:db` 48, lint and typecheck clean.
+- 2026-10-14 Review follow-ups. T6b (commit 4ce522b, TDD: RED observed on 3 new `requestHost` tests): `x-forwarded-host` is trusted only with `TRUST_FORWARDED_HOST=true`; `createUserAction` validates the role inside the mutation, after Origin and re-authentication; the change-role dialog no longer preselects Viewer for a user without role (placeholder, required). T6a: `listByTenant` orders with an explicit `und-x-icu` collation; two DB tests added (last-admin guard and inactive target on `ChangeUserRole`, accent-insensitive ordering). The ordering test passed before the explicit collation (the default database collation already behaved), so it pins the behavior rather than proving a RED. `ListUsers` still merges roles of all scopes (harmless while only tenant scope is assignable). GREEN: `pnpm test` 184, `pnpm test:db` 48, lint and typecheck clean.- 2026-10-14 T7 done (route: delegated writer, docs only). Files: `docs/adr/0003-identity-and-sessions.md` (new), `README.md`, `AGENTS.md`, `CHANGELOG.md`, `.env.example` (`TRUST_FORWARDED_HOST`, commented), and this document (header, T7). Claims verified against code. Corrections found: no single `IdentityProvider` port exists (use cases depend on narrower ports; ADR says so), and session lifetimes are code defaults (`DEFAULT_SESSION_POLICY`), not configuration. GREEN (docs-only): `pnpm lint`, `pnpm typecheck`, `pnpm test` (184), `pnpm build` clean. `pnpm test:db` not run (no database change).
 
 ## Next step
 
-T7: ADR-0003 (identity and sessions, including the missing sign-in rate limit, actor context not re-read inside the transaction, `TRUST_FORWARDED_HOST`), README, AGENTS, CHANGELOG. Also correct the header (`Status`, branch) of this document. Open advisory items: composed flow of `install-admin.ts` and the parametrized copy templates have no automated test; interactive install confirmation not exercised in a real terminal.
+Maintainer review of slice 3. Open advisory items: composed flow of `install-admin.ts` and the parametrized copy templates have no automated test; interactive install confirmation not exercised in a real terminal.

@@ -13,3 +13,13 @@ All notable changes to this project are documented in this file. The format foll
 - Database tests that run against an ephemeral database (`p0-01`, T3).
 - GitHub Actions CI: lint, typecheck, unit tests and build; migrations and database tests against Postgres 16 (`p0-01`, T4).
 - Project conventions in `AGENTS.md`, a `CLAUDE.md` that imports it, the project `README.md`, and ADRs 0001 (hexagonal modular monolith) and 0002 (append-only audit log) (`p0-01`, T5).
+- Identity domain: roles, scopes, permissions and a pure `Authorizer` policy, with ports and security primitives (scrypt hasher, session token service) (`p0-02`, T1, T2).
+- Migration `0002_identity.sql`: `tenants`, `users`, `user_role_assignments` and `sessions`, with composite tenant keys; `audit_log.operation_id` becomes nullable (`p0-02`, T3).
+- Identity use cases and Postgres adapters: install, sign in, sign out, authenticate session, create user, assign and revoke role, change user role, deactivate user, list users; every mutation is audited in the same transaction (`p0-02`, T4, T5, T6a).
+- `pnpm install:admin`: creates the first tenant and administrator once, with a single prompt session, a typed confirmation and a guard against a display name containing the password; the password is never a flag (`p0-02`, T5).
+- Web: login page, session cookie, route guard, first-run home and users page with create, change-role and deactivate dialogs; Origin check against the request host; Spanish copy in `app/_lib/copy.ts` (`p0-02`, T6b).
+- ADR 0003 (identity, sessions and install) and the `TRUST_FORWARDED_HOST` setting in `.env.example` (`p0-02`, T7).
+
+### Known limitations
+
+- Sign-in has no rate limiting yet (`p0-02`; see ADR 0003).

@@ -7,6 +7,8 @@ These conventions apply to every change, human or agent.
 ## Current state
 
 - The application starts empty. There is no seed data: no suppliers, equipment, contracts, rates or readings are created by migrations or code.
+- The first tenant and administrator are created only by the explicit `pnpm install:admin` command (see `docs/adr/0003-identity-and-sessions.md`). It is not a seed: it runs once, on request, and never accepts the password as a flag.
+- Identity (sign-in, sessions, roles by scope) exists. Only the `tenant` scope is assignable until the catalog migration (P0-04).
 - Test datasets are synthetic fixtures. They are loaded only by specific tests, into an ephemeral Postgres database.
 
 ## Architecture and import boundaries
