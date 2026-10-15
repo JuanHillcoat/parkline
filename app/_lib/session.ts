@@ -3,7 +3,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { ActorContext } from "../../src/identity/application/actor-context";
 import { getContainer } from "../../src/shared/infrastructure/container";
-import { isSameOrigin } from "./origin";
+import { isSameOrigin, requestHost } from "./origin";
 import { SESSION_COOKIE } from "./session-cookie";
 
 /**
@@ -28,7 +28,8 @@ export const requireActor = async (): Promise<ActorContext> => {
 /** CSRF check (decision D7) for server actions: the Origin header must match the Host. */
 export const originAllowed = async (): Promise<boolean> => {
   const incoming = await headers();
-  const host = incoming.get("x-forwarded-host") ?? incoming.get("host");
+  const trustProxy = process.env.TRUST_FORWARDED_HOST === "true";
+  const host = requestHost(incoming.get("x-forwarded-host"), incoming.get("host"), trustProxy);
   return isSameOrigin(incoming.get("origin"), host);
 };
 

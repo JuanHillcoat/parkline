@@ -5,11 +5,12 @@ import { copy } from "../../_lib/copy";
 import { ROLE_LABELS } from "../../_lib/messages";
 import { changeRoleAction, createUserAction, deactivateUserAction } from "./actions";
 
-function RoleSelect({ id, current }: { id: string; current: Role }) {
+function RoleSelect({ id, current }: { id: string; current: Role | null }) {
   return (
     <div className="field">
       <label htmlFor={id}>{copy.common.role}</label>
-      <select id={id} name="role" defaultValue={current} className="input">
+      <select id={id} name="role" defaultValue={current ?? ""} required className="input">
+        {current === null && <option value="" disabled>{copy.common.selectRole}</option>}
         {ROLES.map((role) => <option key={role} value={role}>{ROLE_LABELS[role]}</option>)}
       </select>
     </div>
@@ -60,7 +61,7 @@ export function ChangeRoleDialog({ target }: { target: Target }) {
     <ActionDialog triggerLabel={t.trigger} triggerClassName="btn btn-link" title={t.title}
       description={t.description(target.displayName)} submitLabel={t.submit} action={changeRoleAction}>
       <input type="hidden" name="userId" value={target.id} />
-      <RoleSelect id={`role-${target.id}`} current={target.role ?? "viewer"} />
+      <RoleSelect id={`role-${target.id}`} current={target.role} />
       <p className="hint">{t.scopeHint}</p>
       <ReasonField id={`reason-role-${target.id}`} placeholder={t.reasonPlaceholder} />
     </ActionDialog>

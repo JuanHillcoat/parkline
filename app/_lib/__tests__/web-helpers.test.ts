@@ -5,7 +5,7 @@ import { LastAdminError, ReasonRequiredError } from "../../../src/identity/appli
 import { ForbiddenError } from "../../../src/identity/domain/authorizer";
 import { copy } from "../copy";
 import { GENERIC_ERROR, ROLE_LABELS, errorMessage } from "../messages";
-import { isSameOrigin } from "../origin";
+import { isSameOrigin, requestHost } from "../origin";
 import { SESSION_COOKIE, clearedCookieOptions, sessionCookieOptions } from "../session-cookie";
 
 describe("session cookie", () => {
@@ -23,6 +23,20 @@ describe("session cookie", () => {
 
   it("is cleared with an expiry in the past", () => {
     expect(clearedCookieOptions(true).expires.getTime()).toBe(0);
+  });
+});
+
+describe("requestHost", () => {
+  it("ignores x-forwarded-host unless the proxy is trusted", () => {
+    expect(requestHost("evil.example", "app.internal", false)).toBe("app.internal");
+  });
+
+  it("uses x-forwarded-host when the proxy is trusted", () => {
+    expect(requestHost("app.example", "app.internal", true)).toBe("app.example");
+  });
+
+  it("falls back to host when a trusted proxy sent nothing", () => {
+    expect(requestHost(null, "app.internal", true)).toBe("app.internal");
   });
 });
 

@@ -1,26 +1,24 @@
 "use server";
 
-import { ROLES, type Role } from "../../../src/identity/domain/role";
+import { parseRole } from "../../../src/identity/domain/role";
 import { getContainer } from "../../../src/shared/infrastructure/container";
-import { copy } from "../../_lib/copy";
-import { failure, field, type ActionState } from "../../_lib/action-state";
+import { field, type ActionState } from "../../_lib/action-state";
 import { runMutation } from "../../_lib/run-action";
 
 const identity = () => getContainer().identity;
 
 export async function createUserAction(_previous: ActionState, form: FormData): Promise<ActionState> {
-  const raw = field(form, "role");
-  const role = ROLES.find((candidate): candidate is Role => candidate === raw);
-  if (role === undefined) return failure(copy.errors.byCode.invalid_role);
-  return runMutation("/users", (actor) =>
-    identity().createUser.execute({
+  return runMutation("/users", async (actor) => {
+    const role = parseRole(field(form, "role"));
+    if (!role.ok) return role;
+    return identity().createUser.execute({
       actor,
       email: field(form, "email"),
       displayName: field(form, "displayName"),
       password: field(form, "password"),
-      role,
-    }),
-  );
+      role: role.value,
+    });
+  });
 }
 
 export async function changeRoleAction(_previous: ActionState, form: FormData): Promise<ActionState> {

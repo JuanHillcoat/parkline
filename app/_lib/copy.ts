@@ -10,6 +10,7 @@ const es = {
     tagline: "Gestión de flota y equipos",
     cancel: "Cancelar",
     noRole: "Sin rol",
+    selectRole: "Seleccione un rol",
     you: "(tú)",
     soon: "Pronto",
     availableSoon: "Disponible pronto",
