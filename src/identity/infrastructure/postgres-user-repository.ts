@@ -28,7 +28,7 @@ export class PostgresUserRepository implements UserRepository {
     const rows = await this.sql<UserRow[]>`
       select id, tenant_id, email, display_name, active
       from users where tenant_id = ${tenantId}
-      order by lower(display_name), id`;
+      order by lower(display_name) collate "und-x-icu", id`;
     return rows.map(toUser);
   }
 

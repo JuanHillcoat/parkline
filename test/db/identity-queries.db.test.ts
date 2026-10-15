@@ -139,4 +139,55 @@ describe("identity list queries on Postgres", () => {
       expect(listed.find((u) => u.id === ana.id)?.roles).toEqual(["manager"]);
     });
   });
+
+  it("ChangeUserRole protects the last administrator and rejects an inactive target", async () => {
+    await withDb(async (sql) => {
+      const c = createContainer(sql, { hasher });
+      const install = { tenantName: "Synthetic Tenant", email: "admin@example.test", displayName: "Synthetic Admin" };
+      must(await c.identity.install.execute({ ...install, password: PASSWORD }));
+      const signed = must(await c.identity.signIn.execute({ email: install.email, password: PASSWORD }));
+      const actor = must(await c.identity.authenticate.execute({ token: signed.token }));
+      const ana = must(
+        await c.identity.createUser.execute({
+          actor,
+          email: "ana@example.test",
+          displayName: "Ana",
+          password: PASSWORD,
+          role: "viewer",
+        }),
+      );
+      const demote = await c.identity.changeUserRole.execute({
+        actor,
+        userId: actor.user.id,
+        newRole: "viewer",
+        reason: "step down",
+      });
+      expect(demote.ok ? null : demote.error.code).toBe("last_admin_protected");
+      must(await c.identity.deactivateUser.execute({ actor, userId: ana.id, reason: "left the company" }));
+      const inactive = await c.identity.changeUserRole.execute({
+        actor,
+        userId: ana.id,
+        newRole: "manager",
+        reason: "reactivation attempt",
+      });
+      expect(inactive.ok ? null : inactive.error.code).toBe("user_inactive");
+      const roles = await sql<{ role: string }[]>`
+        select role from user_role_assignments where user_id = ${actor.user.id} and active`;
+      expect(roles.map((r) => r.role)).toEqual(["admin"]);
+    });
+  });
+
+  it("orders names case- and accent-insensitively regardless of the database default", async () => {
+    await withDb(async (sql) => {
+      const t = { id: randomUUID(), name: "Tenant A" };
+      const names = ["Zed", "ana", "Álvaro", "Émile", "bruno"];
+      const users = names.map((n, i) => newUser(t.id, `u${String(i)}@example.test`, n));
+      const result = await uow(sql).run(async (tx) => {
+        await tx.tenants.add(t);
+        for (const user of users) await tx.users.add(user, "stored-hash");
+        return ok(await tx.users.listByTenant(t.id));
+      });
+      expect(must(result).map((u) => u.displayName)).toEqual(["Álvaro", "ana", "bruno", "Émile", "Zed"]);
+    });
+  });
 });
