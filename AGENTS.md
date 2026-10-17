@@ -50,6 +50,13 @@ These conventions apply to every change, human or agent.
 - CI must pass before a change is merged. CI runs the `verify` job (lint, typecheck, test, build) and the `database` job (migrations and `test:db`) from `.github/workflows/ci.yml`.
 - Pushing, opening pull requests and merging are decisions for the maintainer.
 
+## Cost
+
+- Every service, hosting plan, API, SaaS, package registry feature or tool this project uses or connects to must have a real cost of $0. No charge may ever reach the maintainer's card.
+- Before adding or connecting any service, check its free-tier limits and what happens when they are exceeded. Accept it only if exceeding the limit stops or throttles the service instead of billing. Never enable usage-based or pay-as-you-go billing, and never attach a payment method to a service just to unlock a free tier.
+- If a choice could bill (paid tier, overage, trial that converts to paid, paid model or API calls), do not do it: stop and ask the maintainer first, naming the cost.
+- Record the free-tier assumption and its limits in the ADR or feature document that introduces the service.
+
 ## Feature tracking
 
 - Each feature has one tracking document in `odd/tasks/<feature>.md`: objective, scope, decisions, tasks with stable IDs, acceptance criteria, verification and dated progress with evidence.
