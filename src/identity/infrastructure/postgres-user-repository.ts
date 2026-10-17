@@ -23,6 +23,15 @@ export class PostgresUserRepository implements UserRepository {
     return row ? { user: toUser(row), passwordHash: row.password_hash } : null;
   }
 
+  async listByTenant(tenantId: string): Promise<readonly User[]> {
+    if (!isUuid(tenantId)) return [];
+    const rows = await this.sql<UserRow[]>`
+      select id, tenant_id, email, display_name, active
+      from users where tenant_id = ${tenantId}
+      order by lower(display_name) collate "und-x-icu", id`;
+    return rows.map(toUser);
+  }
+
   async add(user: User, passwordHash: string): Promise<boolean> {
     const rows = await this.sql`
       insert into users (id, tenant_id, email, display_name, password_hash, active)

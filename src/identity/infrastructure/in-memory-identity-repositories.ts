@@ -64,6 +64,16 @@ export class InMemoryUserRepository implements UserRepository {
     return Promise.resolve(true);
   }
 
+  listByTenant(tenantId: string): Promise<readonly User[]> {
+    const users = this.state.users.filter((s) => s.user.tenantId === tenantId).map((s) => s.user);
+    const key = (user: User): string => user.displayName.toLowerCase();
+    const byName = (a: User, b: User): number => {
+      if (key(a) !== key(b)) return key(a) < key(b) ? -1 : 1;
+      return a.id < b.id ? -1 : 1;
+    };
+    return Promise.resolve(users.sort(byName));
+  }
+
   setActive(tenantId: string, id: string, active: boolean): Promise<void> {
     const index = this.state.users.findIndex((s) => s.user.tenantId === tenantId && s.user.id === id);
     const current = this.state.users[index];
@@ -82,6 +92,11 @@ export class InMemoryRoleAssignmentRepository implements RoleAssignmentRepositor
     const own = this.state.assignments.filter(
       (s) => s.tenantId === tenantId && s.assignment.userId === userId && s.assignment.active,
     );
+    return Promise.resolve(own.map((s) => s.assignment));
+  }
+
+  listActiveByTenant(tenantId: string): Promise<readonly RoleAssignment[]> {
+    const own = this.state.assignments.filter((s) => s.tenantId === tenantId && s.assignment.active);
     return Promise.resolve(own.map((s) => s.assignment));
   }
 

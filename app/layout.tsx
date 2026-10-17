@@ -1,13 +1,15 @@
 import type { ReactNode } from "react";
+import "./globals.css";
+import { copy } from "./_lib/copy";
 
 export const metadata = {
-  title: "Parkline",
-  description: "Fleet and equipment management",
+  title: copy.meta.title,
+  description: copy.meta.description,
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang={copy.meta.lang}>
       <body>{children}</body>
     </html>
   );

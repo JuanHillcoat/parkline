@@ -7,6 +7,8 @@ These conventions apply to every change, human or agent.
 ## Current state
 
 - The application starts empty. There is no seed data: no suppliers, equipment, contracts, rates or readings are created by migrations or code.
+- The first tenant and administrator are created only by the explicit `pnpm install:admin` command (see `docs/adr/0003-identity-and-sessions.md`). It is not a seed: it runs once, on request, and never accepts the password as a flag.
+- Identity (sign-in, sessions, roles by scope) exists. Only the `tenant` scope is assignable until the catalog migration (P0-04).
 - Test datasets are synthetic fixtures. They are loaded only by specific tests, into an ephemeral Postgres database.
 
 ## Architecture and import boundaries
@@ -68,6 +70,7 @@ Before reporting a change as done, run:
 ## Language and documentation
 
 - Code, comments, identifiers, tests and technical documentation are in English.
+- User-facing web copy is in Latin American Spanish and lives in `app/_lib/copy.ts`; everything else stays English unless noted.
 - Business documents, such as `docs/00-analisis-inicial.md`, may be in Spanish.
 - If documentation and code disagree, the documentation is wrong. Fix it in the same change.
 - Project documents never reference other projects, companies, suppliers or people. Examples use synthetic names and identifiers.
