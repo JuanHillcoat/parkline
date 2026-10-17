@@ -19,7 +19,8 @@ All notable changes to this project are documented in this file. The format foll
 - `pnpm install:admin`: creates the first tenant and administrator once, with a single prompt session, a typed confirmation and a guard against a display name containing the password; the password is never a flag (`p0-02`, T5).
 - Web: login page, session cookie, route guard, first-run home and users page with create, change-role and deactivate dialogs; Origin check against the request host; Spanish copy in `app/_lib/copy.ts` (`p0-02`, T6b).
 - ADR 0003 (identity, sessions and install) and the `TRUST_FORWARDED_HOST` setting in `.env.example` (`p0-02`, T7).
+- Sign-in throttling (issue 5): backoff per attempted email and per client address, counted in the new `sign_in_attempts` table (migration `0003`, hashed subjects only), a `auth.sign_in_locked` audit entry per lock and a Spanish message with the wait in minutes. The per-address limit needs `TRUST_FORWARDED_HOST=true`.
 
 ### Known limitations
 
-- Sign-in has no rate limiting yet (`p0-02`; see ADR 0003).
+- Without `TRUST_FORWARDED_HOST=true`, sign-in is throttled per email only (issue 5; see ADR 0003).

@@ -3,6 +3,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { ActorContext } from "../../src/identity/application/actor-context";
 import { getContainer } from "../../src/shared/infrastructure/container";
+import { clientAddress } from "./client-address";
 import { isSameOrigin, requestHost } from "./origin";
 import { SESSION_COOKIE } from "./session-cookie";
 
@@ -25,12 +26,19 @@ export const requireActor = async (): Promise<ActorContext> => {
   return actor;
 };
 
+/** The same proxy declaration drives the Origin check and the per-address sign-in limit. */
+const proxyTrusted = (): boolean => process.env.TRUST_FORWARDED_HOST === "true";
+
 /** CSRF check (decision D7) for server actions: the Origin header must match the Host. */
 export const originAllowed = async (): Promise<boolean> => {
   const incoming = await headers();
-  const trustProxy = process.env.TRUST_FORWARDED_HOST === "true";
+  const trustProxy = proxyTrusted();
   const host = requestHost(incoming.get("x-forwarded-host"), incoming.get("host"), trustProxy);
   return isSameOrigin(incoming.get("origin"), host);
 };
+
+/** The client address for sign-in throttling, or null when no trusted proxy vouches for it. */
+export const requestClientAddress = async (): Promise<string | null> =>
+  clientAddress((await headers()).get("x-forwarded-for"), proxyTrusted());
 
 export const isProduction = (): boolean => process.env.NODE_ENV === "production";

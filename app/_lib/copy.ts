@@ -103,6 +103,8 @@ const es = {
     generic: "Algo salió mal. Inténtalo de nuevo.",
     rejected: "La solicitud fue rechazada. Recarga la página e inténtalo de nuevo.",
     login: "Correo o contraseña incorrectos.",
+    tooManyAttempts: (minutes: number): string =>
+      `Demasiados intentos fallidos. Intente nuevamente en ${String(minutes)} ${minutes === 1 ? "minuto" : "minutos"}.`,
     checkForm: "Revisa el formulario e inténtalo de nuevo.",
     byCode: {
       reason_required: "Ingresa un motivo. Queda registrado en la auditoría.",
