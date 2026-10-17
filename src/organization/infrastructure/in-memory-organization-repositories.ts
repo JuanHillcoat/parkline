@@ -6,6 +6,7 @@ import type {
 } from "../application/ports/repositories";
 import type { BusinessUnit, Operation, OperationSite, Site } from "../domain/entities";
 import { nameKey } from "../domain/name";
+import { compareByName } from "./row-order";
 
 /** The data of one in-memory organization database. A transaction works on a copy. */
 export type OrganizationState = {
@@ -27,7 +28,7 @@ type Row = { readonly id: string; readonly tenantId: string; readonly name: stri
 const sorted = <T extends Row>(rows: readonly T[], tenantId: string): readonly T[] =>
   rows
     .filter((row) => row.tenantId === tenantId)
-    .sort((a, b) => nameKey(a.name).localeCompare(nameKey(b.name)) || a.id.localeCompare(b.id));
+    .sort(compareByName);
 
 const byId = <T extends Row>(rows: readonly T[], tenantId: string, id: string): T | null =>
   rows.find((row) => row.tenantId === tenantId && row.id === id) ?? null;

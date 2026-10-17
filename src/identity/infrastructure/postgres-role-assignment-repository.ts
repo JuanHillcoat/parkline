@@ -1,6 +1,7 @@
 import type { TransactionSql } from "postgres";
 import type { RoleAssignmentRepository } from "../application/ports/role-assignment-repository";
 import type { RoleAssignment } from "../domain/role-assignment";
+import type { ScopeType } from "../domain/scope";
 import { isUuid, toAssignment, type AssignmentRow } from "./postgres-rows";
 
 export class PostgresRoleAssignmentRepository implements RoleAssignmentRepository {
@@ -27,10 +28,16 @@ export class PostgresRoleAssignmentRepository implements RoleAssignmentRepositor
   }
 
   async add(tenantId: string, assignment: RoleAssignment): Promise<void> {
+    const { type, id } = assignment.scope;
+    // Migration 0005: the column that matches the scope type carries the real foreign key.
+    const typed = (scopeType: ScopeType): string | null => (type === scopeType ? id : null);
     await this.sql`
-      insert into user_role_assignments (id, tenant_id, user_id, role, scope_type, scope_id, active)
+      insert into user_role_assignments
+        (id, tenant_id, user_id, role, scope_type, scope_id, active,
+         scope_business_unit_id, scope_operation_id, scope_site_id)
       values (gen_random_uuid(), ${tenantId}, ${assignment.userId}, ${assignment.role},
-              ${assignment.scope.type}, ${assignment.scope.id}, ${assignment.active})`;
+              ${type}, ${id}, ${assignment.active},
+              ${typed("business_unit")}, ${typed("operation")}, ${typed("site")})`;
   }
 
   async deactivate(tenantId: string, assignment: RoleAssignment): Promise<void> {
