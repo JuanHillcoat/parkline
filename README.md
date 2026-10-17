@@ -23,6 +23,21 @@ pnpm install:admin       # creates the first tenant and administrator (once)
 pnpm dev                 # http://localhost:3000, sign in at /login
 ```
 
+With the defaults the app connects as the database owner. To run it as the restricted application role (recommended, see below), do the two-login setup first.
+
+## Two logins: owner and application
+
+The audit log is append-only in the database itself ([ADR-0004](docs/adr/0004-audit-hardening.md)). Migration `0004` creates the group role `parkline_app`, which can only `INSERT` and `SELECT` on `audit_log`. The application should connect as a login that is a member of that role; migrations run as the owner.
+
+```bash
+pnpm db:up
+pnpm db:migrate                                   # as the owner (MIGRATE_DATABASE_URL, or DATABASE_URL when unset)
+export APP_DB_PASSWORD='<at least 12 characters>' # PowerShell: $env:APP_DB_PASSWORD = '...'
+pnpm db:create-app-login                          # once; safe to re-run (it updates the password)
+```
+
+Then set `MIGRATE_DATABASE_URL` to the owner URL and `DATABASE_URL` to `postgres://parkline_login:<password>@localhost:54329/parkline` in `.env`, and run `pnpm install:admin` and `pnpm dev` as usual: both work with the restricted login. The password lives only in your environment or `.env`, never in the repository.
+
 ## Running the app
 
 The database starts empty: there is no seed. Create the first tenant and administrator once, then start the app.
@@ -41,7 +56,10 @@ Sign-in uses a session cookie (`HttpOnly`, `SameSite=Lax`, `Secure` in productio
 
 | Variable                | Purpose                                                                                      |
 | ----------------------- | -------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`          | Postgres connection string (required by the app, the migrations and the install command)     |
+| `DATABASE_URL`          | Postgres connection string of the application and the install command. Also used by migrations when `MIGRATE_DATABASE_URL` is unset |
+| `MIGRATE_DATABASE_URL`  | Optional. Owner connection for `db:migrate` and `db:create-app-login`; falls back to `DATABASE_URL` |
+| `APP_DB_USER`           | Optional, default `parkline_login`. Login role created by `db:create-app-login`              |
+| `APP_DB_PASSWORD`       | Required by `db:create-app-login` only (at least 12 characters). Environment only, never a flag |
 | `INSTALL_ADMIN_PASSWORD`| Optional. Password for `install:admin` when there is no terminal. Never a command-line flag  |
 | `TRUST_FORWARDED_HOST`  | Optional, default `false`. Set to `true` only behind a proxy that overwrites `X-Forwarded-Host`; it affects the CSRF origin check and also enables the per-address sign-in limit, which reads the first `X-Forwarded-For` value (the proxy must overwrite both headers) |
 
@@ -60,7 +78,8 @@ See `.env.example`. Never commit a real `.env`.
 | `test:watch`  | Runs unit tests in watch mode                                    |
 | `test:db`     | Runs database tests (Vitest `db` project; needs Docker)          |
 | `db:up`       | Starts the local Postgres 16 container and waits until it is ready |
-| `db:migrate`  | Applies pending migrations from `db/migrations/` (needs `DATABASE_URL`) |
+| `db:migrate`  | Applies pending migrations from `db/migrations/` as the owner (`MIGRATE_DATABASE_URL`, else `DATABASE_URL`) |
+| `db:create-app-login` | Creates or updates the restricted application login (member of `parkline_app`); needs `APP_DB_PASSWORD` and the owner connection |
 | `install:admin` | Creates the first tenant and administrator (once). Flags `--tenant-name`, `--email`, `--display-name` or prompts; password from a hidden prompt or `INSTALL_ADMIN_PASSWORD`, never a flag |
 
 ## Project layout
@@ -71,6 +90,7 @@ db/migrations/           plain SQL migrations, one file per change
 docs/                    analysis, architecture decision records (docs/adr/)
 odd/tasks/               feature tracking documents
 scripts/migrate.ts       migration runner
+scripts/app-login.ts     creates the restricted application login
 scripts/install-admin.ts first tenant and administrator
 src/<module>/            business modules: domain, application, infrastructure
 src/shared/              shared kernel (Result, Money, domain errors) and shared adapters
@@ -82,6 +102,6 @@ Import rules between these layers are described in [`src/README.md`](src/README.
 ## Documentation
 
 - [`docs/00-analisis-inicial.md`](docs/00-analisis-inicial.md): initial analysis (Spanish). Scope, business rules, architecture, audit, stack and phases.
-- [`docs/adr/`](docs/adr/): architecture decisions, including [ADR-0003](docs/adr/0003-identity-and-sessions.md) (identity, sessions and install).
+- [`docs/adr/`](docs/adr/): architecture decisions, including [ADR-0003](docs/adr/0003-identity-and-sessions.md) (identity, sessions and install) and [ADR-0004](docs/adr/0004-audit-hardening.md) (audit hardening).
 - [`AGENTS.md`](AGENTS.md): project conventions for contributors and agents.
 - [`CHANGELOG.md`](CHANGELOG.md): notable changes.

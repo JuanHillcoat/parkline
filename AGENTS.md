@@ -8,6 +8,7 @@ These conventions apply to every change, human or agent.
 
 - The application starts empty. There is no seed data: no suppliers, equipment, contracts, rates or readings are created by migrations or code.
 - The first tenant and administrator are created only by the explicit `pnpm install:admin` command (see `docs/adr/0003-identity-and-sessions.md`). It is not a seed: it runs once, on request, and never accepts the password as a flag.
+- The application should connect as a member of the restricted group role `parkline_app` (`INSERT` and `SELECT` only on `audit_log`; migration `0004`, ADR-0004). Migrations and `pnpm db:create-app-login` run as the owner (`MIGRATE_DATABASE_URL`, falling back to `DATABASE_URL`). Sensitive audit actions (`SENSITIVE_AUDIT_ACTIONS`) require a non-blank reason, enforced in the `AuditLog` adapters and by a database trigger.
 - Identity (sign-in, sessions, roles by scope) exists. Only the `tenant` scope is assignable until the catalog migration (P0-04).
 - Test datasets are synthetic fixtures. They are loaded only by specific tests, into an ephemeral Postgres database.
 
@@ -39,6 +40,8 @@ These conventions apply to every change, human or agent.
 - Adapter fixtures are synthetic replicas of the document format.
 - Migrations are plain SQL in `db/migrations/`, named `NNNN_<name>.sql`, one file per change. Applied migrations are never edited; add a new one. Business tables carry `tenant_id`.
 - Business mutations write an audit entry in the same transaction (see `docs/adr/0002-append-only-audit-log.md`).
+- A migration that creates a table the application must not update or delete from revokes those privileges explicitly (default privileges grant them; see `docs/adr/0004-audit-hardening.md`). A new sensitive audit action is added to `SENSITIVE_AUDIT_ACTIONS` and to the trigger function in a new migration.
+- The application password (`APP_DB_PASSWORD`) comes from the environment only and is never committed, printed or passed as a flag.
 
 ## Git and delivery
 
