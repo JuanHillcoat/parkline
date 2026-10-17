@@ -39,7 +39,7 @@ Strict TDD for domain, use cases and the shared port (RED observed first). Runne
 
 Per-task heuristic: about 400 authored changed lines, advisory only. One writer per task, parent commits.
 
-- [ ] T1 Shared kernel authorization port and `identity` implementation (`Actor`, `AccessPolicy`), existing identity use cases keep passing; ADR-0005. Strict TDD (refactor with green tests).
+- [x] T1 Shared kernel authorization port and `identity` implementation (`Actor`, `AccessPolicy`), existing identity use cases keep passing; ADR-0005. Strict TDD (refactor with green tests).
 - [ ] T2 `organization` domain and use cases with in-memory fakes: entities, name rules, shift profile versioning, visibility function, create/rename/link/set-shift use cases, list use cases filtered by scope. Strict TDD.
 - [ ] T3 Migration `0005` and Postgres adapters: tables, exclusion constraint, scope foreign keys on `user_role_assignments`, grants, identity insert path fills the typed scope column; DB tests including tenant isolation, scope integrity and restricted-role grants.
 - [ ] T4 Web: `/organization` page (lists and create dialogs, Spanish copy in `app/_lib/copy.ts`), sidebar entry, routes call use cases only.
@@ -69,6 +69,8 @@ Forecast above 400 authored lines. One slice per pull request would be the clean
 
 - 2026-10-17: feature document created from `main` (`d604aff`) on branch `feat/p0-04-organization`. Maintainer chose option A for cross-module authorization (shared-kernel port). Costs: nothing new, $0.
 
+- 2026-10-17 T1 done (route: delegated writer, sonnet, strict TDD for the new port, regression net = the existing suite). RED: `identity-access-policy.test.ts` failed with `Cannot find module ../actor-mapper`. GREEN (parent re-run): `pnpm test` 290, `pnpm test:db` 92, lint and typecheck clean; the writer also reported `pnpm build` clean. Shared kernel gets `AccessPolicy`, `Actor` (user id, tenant id, `active`, and a snapshot `grants` list of role, scope type and scope id), `ResourcePosition` and `ForbiddenError` (identity re-exports the same class). Decision beyond D1: the actor carries `grants` instead of a single role string because one role cannot represent per-scope grants; it avoids a query per check and keeps identity types out of shared-domain (the rejected alternative, a read port loading assignments on every check, is in ADR-0005). `authorize` now delegates to `authorizeRole`, which returns the granting role; `IdentityAccessPolicy` and `toActor` live in identity; the container exposes `accessPolicy`. Only behavior change: the forbidden message of `requirePermission` now ends in "for this resource". Boundary tests prove that shared-domain cannot import a module and that a module can use the port but not import identity; the lint rules are untouched. Open risks (ADR-0005): grants are strings, so a typo denies at runtime instead of failing compilation; grants are a snapshot taken at authentication; `ResourcePosition` duplicates the shape of identity's `ResourceScope`.
+
 ## Next step
 
-Maintainer confirms the slicing of the delivery, then T1.
+T2 (PR 1 of the stacked delivery is T1 alone).

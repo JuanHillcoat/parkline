@@ -30,6 +30,10 @@ export class NotFoundError extends DomainError {
   }
 }
 
+export class ForbiddenError extends DomainError {
+  readonly code: string = "forbidden";
+}
+
 export class ConflictError extends DomainError {
   readonly code: string = "conflict";
 }

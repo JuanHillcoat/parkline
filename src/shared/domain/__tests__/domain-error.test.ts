@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ConflictError, DomainError, NotFoundError, ValidationError } from "../domain-error";
+import { ConflictError, DomainError, ForbiddenError, NotFoundError, ValidationError } from "../domain-error";
 
 describe("domain errors", () => {
   it("carry a stable code and message", () => {
@@ -15,5 +15,6 @@ describe("domain errors", () => {
     expect(new NotFoundError("Equipment", "42").code).toBe("not_found");
     expect(new NotFoundError("Equipment", "42").message).toBe("Equipment 42 not found");
     expect(new ConflictError("period is closed").code).toBe("conflict");
+    expect(new ForbiddenError("no access").code).toBe("forbidden");
   });
 });

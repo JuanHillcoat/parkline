@@ -4,6 +4,7 @@
  */
 import postgres, { type Sql } from "postgres";
 import type { IdentityDeps } from "../../identity/application/deps";
+import { IdentityAccessPolicy } from "../../identity/application/identity-access-policy";
 import type { PasswordHasher } from "../../identity/application/ports/password-hasher";
 import { AssignRole } from "../../identity/application/use-cases/assign-role";
 import { AuthenticateSession } from "../../identity/application/use-cases/authenticate-session";
@@ -19,6 +20,7 @@ import { DEFAULT_SESSION_POLICY, type SessionPolicy } from "../../identity/domai
 import { CryptoSessionTokenService } from "../../identity/infrastructure/crypto-session-token-service";
 import { createPostgresIdentityTx } from "../../identity/infrastructure/postgres-identity-tx";
 import { ScryptPasswordHasher } from "../../identity/infrastructure/scrypt-password-hasher";
+import type { AccessPolicy } from "../domain/ports/access-policy";
 import type { AuditLog } from "../domain/ports/audit-log";
 import { PostgresAuditLog } from "./postgres-audit-log";
 import { PostgresUnitOfWork } from "./postgres-unit-of-work";
@@ -48,6 +50,8 @@ const identityDeps = (sql: Sql, options: ContainerOptions): IdentityDeps => ({
 export const createContainer = (sql: Sql, options: ContainerOptions = {}) => {
   const deps = identityDeps(sql, options);
   return {
+    /** Cross-module authorization (ADR-0005); modules receive it instead of importing identity. */
+    accessPolicy: new IdentityAccessPolicy() satisfies AccessPolicy,
     identity: {
       install: new InstallTenantAdmin(deps),
       signIn: new SignIn(deps),
