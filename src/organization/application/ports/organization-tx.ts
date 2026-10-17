@@ -3,7 +3,6 @@ import type {
   BusinessUnitRepository,
   OperationRepository,
   OperationSiteRepository,
-  ShiftProfileRepository,
   SiteRepository,
 } from "./repositories";
 
@@ -13,6 +12,5 @@ export type OrganizationTx = {
   readonly operations: OperationRepository;
   readonly sites: SiteRepository;
   readonly links: OperationSiteRepository;
-  readonly shiftProfiles: ShiftProfileRepository;
   readonly audit: AuditLog;
 };

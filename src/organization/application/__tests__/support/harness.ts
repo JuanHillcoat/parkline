@@ -15,7 +15,6 @@ import { ListSites } from "../../use-cases/list-sites";
 import { RenameBusinessUnit } from "../../use-cases/rename-business-unit";
 import { RenameOperation } from "../../use-cases/rename-operation";
 import { RenameSite } from "../../use-cases/rename-site";
-import { SetShiftProfile } from "../../use-cases/set-shift-profile";
 
 export const START = new Date("2026-01-01T09:00:00Z");
 
@@ -47,7 +46,6 @@ export const createHarness = () => {
     renameOperation: new RenameOperation(deps),
     renameSite: new RenameSite(deps),
     link: new LinkOperationSite(deps),
-    setShiftProfile: new SetShiftProfile(deps),
     listBusinessUnits: new ListBusinessUnits(deps),
     listOperations: new ListOperations(deps),
     listSites: new ListSites(deps),

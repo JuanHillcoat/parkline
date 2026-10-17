@@ -2,14 +2,10 @@ import type {
   BusinessUnitRepository,
   OperationRepository,
   OperationSiteRepository,
-  ShiftProfileRepository,
   SiteRepository,
 } from "../application/ports/repositories";
 import type { BusinessUnit, Operation, OperationSite, Site } from "../domain/entities";
 import { nameKey } from "../domain/name";
-import type { ShiftProfile } from "../domain/shift-profile";
-
-export type StoredProfile = { readonly tenantId: string; readonly profile: ShiftProfile };
 
 /** The data of one in-memory organization database. A transaction works on a copy. */
 export type OrganizationState = {
@@ -17,7 +13,6 @@ export type OrganizationState = {
   operations: Operation[];
   sites: Site[];
   links: OperationSite[];
-  profiles: StoredProfile[];
 };
 
 export const emptyState = (): OrganizationState => ({
@@ -25,7 +20,6 @@ export const emptyState = (): OrganizationState => ({
   operations: [],
   sites: [],
   links: [],
-  profiles: [],
 });
 
 type Row = { readonly id: string; readonly tenantId: string; readonly name: string };
@@ -151,29 +145,5 @@ export class InMemoryOperationSiteRepository implements OperationSiteRepository 
 
   listByTenant(tenantId: string): Promise<readonly OperationSite[]> {
     return Promise.resolve(this.state.links.filter((l) => l.tenantId === tenantId));
-  }
-}
-
-export class InMemoryShiftProfileRepository implements ShiftProfileRepository {
-  constructor(private readonly state: OrganizationState) {}
-
-  listByOperation(tenantId: string, operationId: string): Promise<readonly ShiftProfile[]> {
-    const versions = this.state.profiles
-      .filter((s) => s.tenantId === tenantId && s.profile.operationId === operationId)
-      .map((s) => s.profile)
-      .sort((a, b) => a.validFrom.localeCompare(b.validFrom));
-    return Promise.resolve(versions);
-  }
-
-  replaceForOperation(
-    tenantId: string,
-    operationId: string,
-    versions: readonly ShiftProfile[],
-  ): Promise<void> {
-    const others = this.state.profiles.filter(
-      (s) => !(s.tenantId === tenantId && s.profile.operationId === operationId),
-    );
-    this.state.profiles = [...others, ...versions.map((profile) => ({ tenantId, profile }))];
-    return Promise.resolve();
   }
 }

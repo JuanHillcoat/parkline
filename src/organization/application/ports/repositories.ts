@@ -1,5 +1,4 @@
 import type { BusinessUnit, Operation, OperationSite, Site } from "../../domain/entities";
-import type { ShiftProfile } from "../../domain/shift-profile";
 
 // Every query takes the tenant id: a row of another tenant is never visible.
 // `*ByName` receives the normalized key (`nameKey`) and returns the owner's match.
@@ -32,15 +31,4 @@ export interface OperationSiteRepository {
   find(tenantId: string, operationId: string, siteId: string): Promise<OperationSite | null>;
   add(link: OperationSite): Promise<void>;
   listByTenant(tenantId: string): Promise<readonly OperationSite[]>;
-}
-
-export interface ShiftProfileRepository {
-  /** Every version of the operation, oldest first. */
-  listByOperation(tenantId: string, operationId: string): Promise<readonly ShiftProfile[]>;
-  /** Stores the full history produced by `setShiftProfile` (closed versions plus the new open one). */
-  replaceForOperation(
-    tenantId: string,
-    operationId: string,
-    versions: readonly ShiftProfile[],
-  ): Promise<void>;
 }

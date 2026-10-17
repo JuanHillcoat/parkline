@@ -33,6 +33,25 @@ describe("list use cases (visibility, D4)", () => {
     });
   });
 
+  it("a user with only a business unit scope sees every operation of that division and none of another", async () => {
+    const h = createHarness();
+    const division = async (name: string) =>
+      h.orThrow(await h.createBusinessUnit.execute({ actor: h.admin, name }));
+    const operation = async (businessUnitId: string, name: string) =>
+      h.orThrow(await h.createOperation.execute({ actor: h.admin, businessUnitId, name }));
+    const divisionA = await division("Division A");
+    const divisionB = await division("Division B");
+    await operation(divisionA.id, "Operation A1");
+    await operation(divisionA.id, "Operation A2");
+    await operation(divisionB.id, "Operation B1");
+    const actor = actorWith([grant("viewer", "business_unit", divisionA.id)]);
+    expect(await listAs(h, actor)).toEqual({
+      units: ["Division A"],
+      operations: ["Operation A1", "Operation A2"],
+      sites: [],
+    });
+  });
+
   it("operation scope sees only itself and its sites, not its sibling, its unit or unrelated sites", async () => {
     const h = createHarness();
     const s = await h.seedTenantA();
