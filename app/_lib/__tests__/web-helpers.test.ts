@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { ConflictError, NotFoundError, ValidationError } from "../../../src/shared/domain/domain-error";
 import { WeakPasswordError } from "../../../src/identity/domain/password-policy";
-import { LastAdminError, ReasonRequiredError } from "../../../src/identity/application/errors";
+import { LastAdminError, ReasonRequiredError, TooManyAttemptsError } from "../../../src/identity/application/errors";
 import { ForbiddenError } from "../../../src/identity/domain/authorizer";
 import { copy } from "../copy";
-import { GENERIC_ERROR, ROLE_LABELS, errorMessage } from "../messages";
+import { GENERIC_ERROR, ROLE_LABELS, errorMessage, throttledMessage } from "../messages";
 import { isSameOrigin, requestHost } from "../origin";
 import { SESSION_COOKIE, clearedCookieOptions, sessionCookieOptions } from "../session-cookie";
 
@@ -51,6 +51,25 @@ describe("isSameOrigin", () => {
     expect(isSameOrigin(null, "localhost:3200")).toBe(false);
     expect(isSameOrigin("not a url", "localhost:3200")).toBe(false);
     expect(isSameOrigin("http://localhost:3200", null)).toBe(false);
+  });
+});
+
+describe("throttledMessage", () => {
+  it("rounds the wait up to whole minutes", () => {
+    expect(throttledMessage(1)).toBe("Demasiados intentos fallidos. Intente nuevamente en 1 minuto.");
+    expect(throttledMessage(60)).toBe("Demasiados intentos fallidos. Intente nuevamente en 1 minuto.");
+    expect(throttledMessage(61)).toBe("Demasiados intentos fallidos. Intente nuevamente en 2 minutos.");
+    expect(throttledMessage(180)).toBe("Demasiados intentos fallidos. Intente nuevamente en 3 minutos.");
+    expect(throttledMessage(900)).toBe("Demasiados intentos fallidos. Intente nuevamente en 15 minutos.");
+  });
+
+  it("never shows less than one minute", () => {
+    expect(throttledMessage(0)).toBe("Demasiados intentos fallidos. Intente nuevamente en 1 minuto.");
+    expect(throttledMessage(-5)).toBe("Demasiados intentos fallidos. Intente nuevamente en 1 minuto.");
+  });
+
+  it("is what errorMessage shows for a throttled sign-in", () => {
+    expect(errorMessage(new TooManyAttemptsError(121))).toBe(throttledMessage(121));
   });
 });
 

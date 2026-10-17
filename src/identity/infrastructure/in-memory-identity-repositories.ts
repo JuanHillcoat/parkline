@@ -1,6 +1,7 @@
 import type { RoleAssignmentRepository } from "../application/ports/role-assignment-repository";
 import type { SessionRepository } from "../application/ports/session-repository";
 import type { TenantRepository } from "../application/ports/tenant-repository";
+import type { SignInThrottle, ThrottleFailure, ThrottleSubject } from "../application/ports/sign-in-throttle";
 import type { StoredUser, UserRepository } from "../application/ports/user-repository";
 import type { RoleAssignment } from "../domain/role-assignment";
 import type { Session } from "../domain/session";
@@ -9,12 +10,15 @@ import type { User } from "../domain/user";
 
 export type StoredAssignment = { readonly tenantId: string; assignment: RoleAssignment };
 
+export type StoredFailure = ThrottleFailure & { readonly tenantId: string };
+
 /** The data of one in-memory identity database. A transaction works on a copy. */
 export type IdentityState = {
   tenants: Tenant[];
   users: StoredUser[];
   assignments: StoredAssignment[];
   sessions: Session[];
+  failures: StoredFailure[];
 };
 
 export const emptyState = (): IdentityState => ({
@@ -22,6 +26,7 @@ export const emptyState = (): IdentityState => ({
   users: [],
   assignments: [],
   sessions: [],
+  failures: [],
 });
 
 export class InMemoryTenantRepository implements TenantRepository {
@@ -160,6 +165,38 @@ export class InMemorySessionRepository implements SessionRepository {
 
   private update(match: (session: Session) => boolean, change: Partial<Session>): Promise<void> {
     this.state.sessions = this.state.sessions.map((s) => (match(s) ? { ...s, ...change } : s));
+    return Promise.resolve();
+  }
+}
+
+const sameSubject = (a: ThrottleSubject, b: ThrottleSubject): boolean => a.kind === b.kind && a.hash === b.hash;
+
+export class InMemorySignInThrottle implements SignInThrottle {
+  constructor(private readonly state: IdentityState) {}
+
+  failuresSince(
+    tenantId: string,
+    subjects: readonly ThrottleSubject[],
+    since: Date,
+  ): Promise<readonly ThrottleFailure[]> {
+    const own = this.state.failures.filter(
+      (f) => f.tenantId === tenantId && f.at > since && subjects.some((s) => sameSubject(s, f)),
+    );
+    return Promise.resolve(own.map(({ kind, hash, at }) => ({ kind, hash, at })));
+  }
+
+  recordFailure(tenantId: string, subjects: readonly ThrottleSubject[], at: Date): Promise<void> {
+    for (const { kind, hash } of subjects) this.state.failures.push({ tenantId, kind, hash, at });
+    return Promise.resolve();
+  }
+
+  clear(tenantId: string, subject: ThrottleSubject): Promise<void> {
+    this.state.failures = this.state.failures.filter((f) => f.tenantId !== tenantId || !sameSubject(f, subject));
+    return Promise.resolve();
+  }
+
+  prune(tenantId: string, before: Date): Promise<void> {
+    this.state.failures = this.state.failures.filter((f) => f.tenantId !== tenantId || f.at > before);
     return Promise.resolve();
   }
 }

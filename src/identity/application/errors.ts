@@ -10,6 +10,15 @@ export class InvalidCredentialsError extends DomainError {
   }
 }
 
+/** Identical for existing and unknown emails: it only says to wait, never why. */
+export class TooManyAttemptsError extends DomainError {
+  readonly code: string = "too_many_attempts";
+
+  constructor(readonly retryAfterSeconds: number) {
+    super("Too many sign-in attempts");
+  }
+}
+
 export class UnauthenticatedError extends DomainError {
   readonly code: string = "unauthenticated";
 

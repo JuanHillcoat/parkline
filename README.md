@@ -35,7 +35,7 @@ pnpm dev                              # http://localhost:3000, sign in at /login
 
 `install:admin` also accepts `--tenant-name`, `--email` and `--display-name`; the password comes from the hidden prompt or from the `INSTALL_ADMIN_PASSWORD` environment variable, never from a flag. It is rejected when a tenant already exists. On a terminal it shows what it will create and asks you to type `yes`; `--yes` skips that step. Further users are created from the Users page (`/users`) by an administrator; role changes and deactivation require a reason.
 
-Sign-in uses a session cookie (`HttpOnly`, `SameSite=Lax`, `Secure` in production): 12 hours idle, 7 days absolute. There is no rate limiting on sign-in yet. See [ADR-0003](docs/adr/0003-identity-and-sessions.md).
+Sign-in uses a session cookie (`HttpOnly`, `SameSite=Lax`, `Secure` in production): 12 hours idle, 7 days absolute. Failed sign-ins are slowed down by a backoff per email (5 failures in 15 minutes) and, behind a trusted proxy, per client address (20 failures); the user sees how many minutes to wait. See [ADR-0003](docs/adr/0003-identity-and-sessions.md).
 
 ## Environment variables
 
@@ -43,7 +43,7 @@ Sign-in uses a session cookie (`HttpOnly`, `SameSite=Lax`, `Secure` in productio
 | ----------------------- | -------------------------------------------------------------------------------------------- |
 | `DATABASE_URL`          | Postgres connection string (required by the app, the migrations and the install command)     |
 | `INSTALL_ADMIN_PASSWORD`| Optional. Password for `install:admin` when there is no terminal. Never a command-line flag  |
-| `TRUST_FORWARDED_HOST`  | Optional, default `false`. Set to `true` only behind a proxy that overwrites `X-Forwarded-Host`; it affects the CSRF origin check |
+| `TRUST_FORWARDED_HOST`  | Optional, default `false`. Set to `true` only behind a proxy that overwrites `X-Forwarded-Host`; it affects the CSRF origin check and also enables the per-address sign-in limit, which reads the first `X-Forwarded-For` value (the proxy must overwrite both headers) |
 
 See `.env.example`. Never commit a real `.env`.
 

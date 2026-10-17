@@ -4,6 +4,7 @@ import { PostgresAuditLog } from "../../shared/infrastructure/postgres-audit-log
 import type { IdentityTx } from "../application/ports/identity-tx";
 import { PostgresRoleAssignmentRepository } from "./postgres-role-assignment-repository";
 import { PostgresSessionRepository } from "./postgres-session-repository";
+import { PostgresSignInThrottle } from "./postgres-sign-in-throttle";
 import { PostgresTenantRepository } from "./postgres-tenant-repository";
 import { PostgresUserRepository } from "./postgres-user-repository";
 
@@ -16,5 +17,6 @@ export const createPostgresIdentityTx = (
   users: new PostgresUserRepository(handle),
   assignments: new PostgresRoleAssignmentRepository(handle),
   sessions: new PostgresSessionRepository(handle),
+  throttle: new PostgresSignInThrottle(handle),
   audit,
 });
