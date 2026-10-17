@@ -1,6 +1,7 @@
 import type { AuditLog } from "../../../shared/domain/ports/audit-log";
 import type { RoleAssignmentRepository } from "./role-assignment-repository";
 import type { SessionRepository } from "./session-repository";
+import type { SignInThrottle } from "./sign-in-throttle";
 import type { TenantRepository } from "./tenant-repository";
 import type { UserRepository } from "./user-repository";
 
@@ -10,5 +11,6 @@ export type IdentityTx = {
   readonly users: UserRepository;
   readonly assignments: RoleAssignmentRepository;
   readonly sessions: SessionRepository;
+  readonly throttle: SignInThrottle;
   readonly audit: AuditLog;
 };

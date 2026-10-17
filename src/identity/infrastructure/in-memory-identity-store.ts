@@ -6,9 +6,11 @@ import {
   emptyState,
   InMemoryRoleAssignmentRepository,
   InMemorySessionRepository,
+  InMemorySignInThrottle,
   InMemoryTenantRepository,
   InMemoryUserRepository,
   type IdentityState,
+  type StoredFailure,
 } from "./in-memory-identity-repositories";
 
 const txOver = (state: IdentityState, audit: AuditLog): IdentityTx => ({
@@ -16,6 +18,7 @@ const txOver = (state: IdentityState, audit: AuditLog): IdentityTx => ({
   users: new InMemoryUserRepository(state),
   assignments: new InMemoryRoleAssignmentRepository(state),
   sessions: new InMemorySessionRepository(state),
+  throttle: new InMemorySignInThrottle(state),
   audit,
 });
 
@@ -42,6 +45,11 @@ export class InMemoryIdentityStore {
 
   get sessionCount(): number {
     return this.committed.sessions.length;
+  }
+
+  /** The committed sign-in failure rows, for assertions. */
+  get failures(): readonly StoredFailure[] {
+    return this.committed.failures;
   }
 
   private begin(): Transaction<IdentityTx> {

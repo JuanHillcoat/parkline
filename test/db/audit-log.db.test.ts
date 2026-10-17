@@ -61,6 +61,7 @@ describe("database after migrations", () => {
       "outbox_events",
       "schema_migrations",
       "sessions",
+      "sign_in_attempts",
       "tenants",
       "user_role_assignments",
       "users",
@@ -114,6 +115,6 @@ describe("migration runner", () => {
     const applied = await migrate(sql, MIGRATIONS_DIR);
     expect(applied).toEqual([]);
     const rows = await sql`select count(*)::int as n from schema_migrations`;
-    expect(rows[0]?.n).toBe(2);
+    expect(rows[0]?.n).toBe(3);
   });
 });

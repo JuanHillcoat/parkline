@@ -31,8 +31,8 @@ Strict TDD for domain and use-case code (RED observed first). Runner: `pnpm test
 
 Per-task heuristic: about 400 authored changed lines, advisory only. One writer per task, parent commits.
 
-- [ ] T1 Domain and application: `SignInThrottlePolicy` (pure decision: failures + now -> blocked-until), `SignInThrottle` port, in-memory fake, `TooManyAttemptsError`, `SignIn` use case integration (check before verify, record on failure, clear on success, audit on first lock), input gets an optional `clientAddress`. Strict TDD.
-- [ ] T2 Migration `0003_sign_in_attempts.sql` (`tenant_id`, subject kind, subject hash, attempted_at, index, no PII) and the Postgres adapter inside `IdentityTx`, with DB tests (window, prune, tenant isolation, concurrent inserts).
+- [x] T1 Domain and application: `SignInThrottlePolicy` (pure decision: failures + now -> blocked-until), `SignInThrottle` port, in-memory fake, `TooManyAttemptsError`, `SignIn` use case integration (check before verify, record on failure, clear on success, audit on first lock), input gets an optional `clientAddress`. Strict TDD.
+- [x] T2 Migration `0003_sign_in_attempts.sql` (`tenant_id`, subject kind, subject hash, attempted_at, index, no PII) and the Postgres adapter inside `IdentityTx`, with DB tests (window, prune, tenant isolation, concurrent inserts).
 - [ ] T3 Web and docs: address extraction behind `TRUST_FORWARDED_HOST`, throttled message in `app/_lib/copy.ts` and `messages.ts`, generic behavior preserved, tests for the helper; ADR-0003, README env notes, CHANGELOG; close known limitation in the ADR.
 
 ## Acceptance criteria
@@ -57,6 +57,8 @@ Single slice, one pull request, merged with a merge commit after CI. Work-unit c
 
 - 2026-10-17: feature document created from `main` (`262d740`) on branch `feat/issue-5-sign-in-rate-limit`. Nothing implemented yet. Policy chosen by the maintainer: backoff per email and per address.
 
+- 2026-10-17 T1 and T2 done, committed together because T1 alone leaves `pnpm typecheck` red (the Postgres tx factory needs the port). Route: delegated writers (sonnet), strict TDD. T1 RED: policy test file failed to import, 10 of 12 new `sign-in` tests failed before the change (2 are regression guards without a meaningful RED). T2 RED: 20 DB failures (`relation "sign_in_attempts" does not exist`, missing `throttle`, inventory mismatch). GREEN (parent re-run): `pnpm test` 209, `pnpm test:db` 59, lint and typecheck clean; the writer also reported `pnpm build` clean. Decisions beyond the brief: subject hashing reuses `deps.tokens.hash` (SHA-256); the lock audit is written only when a failure makes the in-window count equal the limit; pruning runs on every attempt; the policy is an optional `SignIn` constructor argument; `sign_in_attempts.id` uses `gen_random_uuid()` like `audit_log`. Gaps: `createContainer` cannot take a clock, so the end-to-end DB tests use real time with the default policy (boundaries are covered by direct adapter tests with fixed dates); no dedicated concurrency test (plain inserts, nothing to race on; concurrent attempts can overshoot the limit by a few, accepted).
+
 ## Next step
 
-T1.
+T3: web (address extraction, throttled message) and docs.
