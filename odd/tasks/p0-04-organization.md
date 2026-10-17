@@ -79,6 +79,8 @@ Forecast above 400 authored lines. One slice per pull request would be the clean
 
 - 2026-10-17 PR 1 (shared authorization port) merged into `main` (`80cd0d3`). Review of T2 after the shift-profile removal (base `3235967`, medium, 1,652 lines): the maintainer asked for the review, one lens (reliability), APPROVED and acknowledged with three advisory findings, tracked in issue #16: existence is checked before authorization in `CreateOperation` and `LinkOperationSite` (an actor with no grants can tell an existing id from a missing one); the in-memory fakes throw plain `Error` instead of typed domain errors. Shift profile deferred in issue #15.
 
+- 2026-10-17 Product decision by the maintainer: v1 is only for the Flota y Equipos sector and every user of that sector sees costs; no separate cost permission now. Expansion to the rest of the company (operation heads and managers and division managers see costs of their scope; an operation clerk loads repair requests and sees preventive due dates without costs) is tracked in issue #17 and recorded in section 4 of the analysis. Nothing in P0-04 changes: the organization structure and scopes already support it.
+
 ## Next step
 
 T3: migration 0005 and Postgres adapters (PR 2 with T2).
