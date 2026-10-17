@@ -1,5 +1,6 @@
 import type { JSONValue, TransactionSql } from "postgres";
 import type { AuditEntry, AuditLog } from "../domain/ports/audit-log";
+import { assertReasonRule } from "../domain/sensitive-actions";
 
 /**
  * Appends to `audit_log` through the handle of the unit of work, so the entry
@@ -9,6 +10,7 @@ export class PostgresAuditLog implements AuditLog {
   constructor(private readonly sql: TransactionSql) {}
 
   async record(entry: AuditEntry): Promise<void> {
+    assertReasonRule(entry);
     const { sql } = this;
     const json = (value: unknown) => (value === undefined ? null : sql.json(value as JSONValue));
     await sql`

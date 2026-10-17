@@ -35,7 +35,7 @@ Strict TDD for domain/shared-kernel code (RED observed first). Runner: `pnpm tes
 
 Per-task heuristic: about 400 authored changed lines, advisory only. One writer per task, parent commits.
 
-- [ ] T1 Shared kernel: closed list of sensitive actions and the reason rule in the `AuditLog` adapters (in-memory and Postgres), strict TDD, unit tests.
+- [x] T1 Shared kernel: closed list of sensitive actions and the reason rule in the `AuditLog` adapters (in-memory and Postgres), strict TDD, unit tests.
 - [ ] T2 Migration `0004_audit_hardening.sql`: `parkline_app` group role, grants and default privileges, sensitive-action reason trigger; DB tests as the restricted role (privilege errors, trigger, identity flow under the restricted role).
 - [ ] T3 Wiring and docs: `MIGRATE_DATABASE_URL` in the migrate script, `pnpm db:create-app-login`, CI `database` job using both logins, `.env.example`, README, AGENTS, CHANGELOG, ADR-0004 and the "Not yet implemented" notes in ADR-0002.
 
@@ -61,6 +61,8 @@ Single slice, one pull request with `Closes` keywords in English if an issue is 
 
 - 2026-10-17: feature document created from `main` (`57b6b51`) on branch `feat/p0-03-audit-hardening`. The zero-cost rule was added to `AGENTS.md` (section Cost) and saved in Engram. Maintainer chose separate logins (D1). Repository is public, so GitHub Actions cost $0.
 
+- 2026-10-17 T1 done (route: delegated writer, sonnet, strict TDD). RED: 2 test files and 7 tests failed before the implementation (missing module; guard did not reject in memory, in the rollback case and in three Postgres-adapter cases). GREEN (parent re-run): `pnpm test` 240, lint and typecheck clean. Closed list `SENSITIVE_AUDIT_ACTIONS` (`role.assign`, `role.revoke`, `role.change`, `user.deactivate`) with `requiresReason`, `hasReason`, `reasonRuleViolation` and `assertReasonRule` in the shared kernel; both `AuditLog` adapters throw before any write when a sensitive action has a blank reason (the guard is in the adapters, not in `recordAudit`, so the port cannot be bypassed); the Postgres path is tested with a fake `sql` that records calls, and the real-database path is left to T2. The guard runs before the `failNextRecord` injection.
+
 ## Next step
 
-T1.
+T2.
