@@ -4,12 +4,14 @@
  * Applies `db/migrations/*.sql` in filename order. Each migration runs in its
  * own transaction together with its `schema_migrations` bookkeeping row, so a
  * failure leaves no partial state. Re-running applies only what is pending.
+ * Runs as the database owner: MIGRATE_DATABASE_URL, falling back to DATABASE_URL.
  * Lives outside `src/` on purpose: it must not import application code.
  */
 import { readdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import postgres, { type Sql } from "postgres";
+import { migrationUrl } from "./migrate-url";
 
 const MIGRATION_FILE = /^\d{4}_[a-z0-9_]+\.sql$/;
 
@@ -39,9 +41,9 @@ export async function migrate(sql: Sql, dir: string): Promise<string[]> {
 }
 
 async function main(): Promise<void> {
-  const url = process.env.DATABASE_URL;
+  const url = migrationUrl(process.env);
   if (!url) {
-    throw new Error("DATABASE_URL is not set (see .env.example)");
+    throw new Error("MIGRATE_DATABASE_URL or DATABASE_URL must be set (see .env.example)");
   }
   const sql = postgres(url, { max: 1, onnotice: () => undefined });
   try {

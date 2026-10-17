@@ -29,8 +29,8 @@ Every business mutation must record who did what, where and when. Corrections mu
 - The column is named `role`; section 9 calls it `actor_role`.
 - `actor_kind` also accepts `import`, and `origin` also accepts `api`.
 - `operation_id` and `metadata` exist in the table but are not listed in section 9.
-- Not yet implemented: the restricted application role that has only `INSERT` and `SELECT` on `audit_log`. Migration 0001 creates no roles. Until that role exists, the triggers are the only enforcement.
-- Not yet implemented: the rule that a reason is mandatory for sensitive actions. The `reason` column is nullable; use cases will enforce the requirement per feature.
+- Resolved by [ADR-0004](0004-audit-hardening.md): the restricted application role that has only `INSERT` and `SELECT` on `audit_log`. Migration 0001 creates no roles; migration 0004 does. (Originally not yet implemented; until then the triggers were the only enforcement.)
+- Resolved by [ADR-0004](0004-audit-hardening.md): the rule that a reason is mandatory for sensitive actions. The `reason` column stays nullable; the rule is enforced for a closed list of actions in the `AuditLog` adapters and by a database trigger.
 
 ## Consequences
 

@@ -68,7 +68,13 @@ jobs:
           --health-timeout 3s
           --health-retries 20
     env:
-      DATABASE_URL: postgres://parkline:parkline_dev@localhost:5432/parkline
+      # Two logins, as in local development. Migrations and the app-login command run as the
+      # owner (the service user above). The application connects as a restricted login that
+      # is a member of parkline_app. All values are CI-only throwaways, not secrets.
+      MIGRATE_DATABASE_URL: postgres://parkline:parkline_dev@localhost:5432/parkline
+      APP_DB_USER: parkline_login
+      APP_DB_PASSWORD: ci-only-app-login-password
+      DATABASE_URL: postgres://parkline_login:ci-only-app-login-password@localhost:5432/parkline
     steps:
       - uses: actions/checkout@v4
         with:
@@ -85,6 +91,16 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm db:migrate
+      - name: Apply migrations as the owner
+        run: pnpm db:migrate
 
-      - run: pnpm test:db
+      - name: Create the restricted application login
+        run: pnpm db:create-app-login
+
+      # The database tests create and drop their own ephemeral databases, so their harness
+      # needs the owner connection. They connect as parkline_app and as a login created by
+      # db:create-app-login to prove the restrictions.
+      - name: Database tests
+        run: pnpm test:db
+        env:
+          DATABASE_URL: ${{ env.MIGRATE_DATABASE_URL }}

@@ -20,7 +20,9 @@ All notable changes to this project are documented in this file. The format foll
 - Web: login page, session cookie, route guard, first-run home and users page with create, change-role and deactivate dialogs; Origin check against the request host; Spanish copy in `app/_lib/copy.ts` (`p0-02`, T6b).
 - ADR 0003 (identity, sessions and install) and the `TRUST_FORWARDED_HOST` setting in `.env.example` (`p0-02`, T7).
 - Sign-in throttling (issue 5): backoff per attempted email and per client address, counted in the new `sign_in_attempts` table (migration `0003`, hashed subjects only), a `auth.sign_in_locked` audit entry per lock and a Spanish message with the wait in minutes. The per-address limit needs `TRUST_FORWARDED_HOST=true`.
+- Audit hardening (`p0-03`, ADR 0004): the restricted group role `parkline_app` (migration `0004`) with `INSERT` and `SELECT` only on `audit_log`; a closed list of sensitive audit actions that require a non-blank reason, enforced in the `AuditLog` adapters and by a database trigger; `MIGRATE_DATABASE_URL` for migrations; `pnpm db:create-app-login` to create the application login from `APP_DB_PASSWORD`; the CI `database` job migrates as the owner and creates the restricted login.
 
 ### Known limitations
 
 - Without `TRUST_FORWARDED_HOST=true`, sign-in is throttled per email only (issue 5; see ADR 0003).
+- The audit guarantees protect against the application, not against the database owner or a superuser, and there is no hash chain (see ADR 0004).

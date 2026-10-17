@@ -1,4 +1,5 @@
 import type { AuditEntry, AuditLog } from "../domain/ports/audit-log";
+import { reasonRuleViolation } from "../domain/sensitive-actions";
 
 /** In-memory fake of the Postgres audit log. */
 export class InMemoryAuditLog implements AuditLog {
@@ -15,6 +16,8 @@ export class InMemoryAuditLog implements AuditLog {
   }
 
   record(entry: AuditEntry): Promise<void> {
+    const violation = reasonRuleViolation(entry);
+    if (violation !== null) return Promise.reject(violation);
     if (this.nextFailure !== null) {
       const failure = this.nextFailure;
       this.nextFailure = null;

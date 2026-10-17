@@ -16,7 +16,8 @@
     "test:watch": "vitest --project unit",
     "test:db": "vitest run --project db",
     "db:up": "docker compose up -d --wait postgres",
-    "db:migrate": "node --env-file-if-exists=.env scripts/migrate.ts",
+    "db:migrate": "node --env-file-if-exists=.env --import ./scripts/register-ts-resolver.mjs --experimental-transform-types scripts/migrate.ts",
+    "db:create-app-login": "node --env-file-if-exists=.env --import ./scripts/register-ts-resolver.mjs --experimental-transform-types scripts/app-login.ts",
     "install:admin": "node --env-file-if-exists=.env --import ./scripts/register-ts-resolver.mjs --experimental-transform-types scripts/install-admin.ts"
   },
   "dependencies": {
