@@ -19,7 +19,16 @@ const base: AuditEntry = {
   origin: "ui",
 };
 
-const blankReasons: (string | undefined)[] = [undefined, "", "   "];
+const blankReasons: (string | undefined)[] = [
+  undefined,
+  "",
+  "   ",
+  "\u00A0",
+  "\u200B",
+  "\u3000",
+  "\uFEFF",
+  " \t\u00A0\u200B\n\u3000\uFEFF",
+];
 
 describe("InMemoryAuditLog reason guard", () => {
   it.each(blankReasons)("rejects a sensitive action with reason %j and writes nothing", async (reason) => {
@@ -31,8 +40,9 @@ describe("InMemoryAuditLog reason guard", () => {
   it("records a sensitive action with a reason and a non-sensitive one without", async () => {
     const audit = new InMemoryAuditLog();
     await audit.record({ ...base, reason: "approved by owner" });
+    await audit.record({ ...base, reason: "\u200B ok \uFEFF" });
     await audit.record({ ...base, action: "user.create" });
-    expect(audit.entries).toHaveLength(2);
+    expect(audit.entries).toHaveLength(3);
   });
 
   it("rolls back the business change when the guard throws", async () => {

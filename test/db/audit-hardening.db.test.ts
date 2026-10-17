@@ -1,11 +1,16 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import postgres, { type Sql, type TransactionSql } from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { migrate } from "../../scripts/migrate";
-import type { Result } from "../../src/shared/domain/result";
-import { SENSITIVE_AUDIT_ACTIONS } from "../../src/shared/domain/sensitive-actions";
+import type { AuditEntry } from "../../src/shared/domain/ports/audit-log";
+import { ok, type Result } from "../../src/shared/domain/result";
+import { hasReason, SENSITIVE_AUDIT_ACTIONS } from "../../src/shared/domain/sensitive-actions";
 import { createContainer } from "../../src/shared/infrastructure/container";
+import { PostgresAuditLog } from "../../src/shared/infrastructure/postgres-audit-log";
+import { PostgresUnitOfWork } from "../../src/shared/infrastructure/postgres-unit-of-work";
+import type { IdentityTx } from "../../src/identity/application/ports/identity-tx";
+import { createPostgresIdentityTx } from "../../src/identity/infrastructure/postgres-identity-tx";
 import { ScryptPasswordHasher } from "../../src/identity/infrastructure/scrypt-password-hasher";
 
 const MIGRATIONS_DIR = resolve(import.meta.dirname, "../../db/migrations");
@@ -94,7 +99,19 @@ async function failureAsApp(
 }
 
 describe("sensitive-action reason trigger (owner connection)", () => {
-  const blanks: readonly (string | null)[] = [null, "", "   ", "\t\n "];
+  const blanks: readonly (string | null)[] = [
+    null,
+    "",
+    "   ",
+    "\t\n ",
+    "\u00A0",
+    "\u200B",
+    "\u3000",
+    "\uFEFF",
+    "\u2060",
+    "\u0085",
+    " \t\u00A0\u200B\n\u3000\uFEFF\r",
+  ];
 
   it("rejects every sensitive action with a null, empty or blank reason", async () => {
     await withDb(async (owner) => {
@@ -127,6 +144,31 @@ describe("sensitive-action reason trigger (owner connection)", () => {
       }
       const rows = await owner`select count(*)::int as n from audit_log`;
       expect(rows[0]?.n).toBe(SENSITIVE_AUDIT_ACTIONS.length);
+    });
+  });
+
+  it("accepts a reason with a visible character among invisible ones", async () => {
+    await withDb(async (owner) => {
+      const reasons = ["\u200B\u00A0x\uFEFF", "\u200E", " ok "];
+      for (const reason of reasons) await insertAudit(owner, { action: "role.assign", reason });
+      const rows = await owner`select count(*)::int as n from audit_log`;
+      expect(rows[0]?.n).toBe(reasons.length);
+    });
+  });
+
+  it("agrees with hasReason on every boundary character of the blank set (no drift)", async () => {
+    const edges = [0x09, 0x0d, 0x20, 0x85, 0xa0, 0x1680, 0x2000, 0x200d, 0x2028, 0x2029, 0x202f, 0x205f, 0x2060, 0x3000, 0xfeff];
+    const codes = new Set<number>();
+    for (let c = 0x09; c <= 0x0d; c++) codes.add(c);
+    for (const edge of edges) for (const delta of [-1, 0, 1]) codes.add(edge + delta);
+    for (let c = 0x2000; c <= 0x200d; c++) codes.add(c);
+    await withDb(async (owner) => {
+      for (const code of codes) {
+        const reason = String.fromCharCode(code);
+        const error = await insertAudit(owner, { action: "role.assign", reason }).then(() => null, asPgError);
+        const label = `U+${code.toString(16).toUpperCase().padStart(4, "0")}`;
+        expect(error === null, `${label}: database accepts`).toBe(hasReason(reason));
+      }
     });
   });
 
@@ -203,12 +245,14 @@ describe("restricted application role", () => {
 
   it("cannot reference, trigger or alter audit_log, nor create objects", async () => {
     await withDb(async (owner) => {
+      const fn = await owner`select 1 as ok from pg_proc where proname = 'audit_log_require_reason'`;
+      expect(fn).toHaveLength(1);
       const statements = [
         "create table intruder (id int)",
         "alter table audit_log add column extra text",
         "alter table audit_log disable trigger user",
         "drop table audit_log",
-        "create trigger t before insert on audit_log for each row execute function audit_log_reject_mutation()",
+        "create trigger t before insert on audit_log for each row execute function audit_log_require_reason()",
         "create schema intruder",
         "create function intruder() returns int language sql as 'select 1'",
       ];
@@ -256,6 +300,75 @@ describe("restricted application role", () => {
     await withDb(async (owner) => {
       const rows = await owner`select count(*)::int as n from pg_roles where rolname = ${APP_ROLE}`;
       expect(rows[0]?.n).toBe(1);
+    });
+  });
+});
+
+describe("rollback of business writes when the reason rule fails (real unit of work)", () => {
+  type Scope = { readonly tx: IdentityTx; readonly handle: TransactionSql };
+  const unitOfWork = (sql: Sql) =>
+    new PostgresUnitOfWork<Scope>(sql, (handle) => ({
+      tx: createPostgresIdentityTx(handle, new PostgresAuditLog(handle)),
+      handle,
+    }));
+  const entry = (tenantId: string): AuditEntry => ({
+    occurredAt: new Date("2026-01-01T00:00:00Z"),
+    actorId: "actor-1",
+    actorKind: "user",
+    actorRole: "tester",
+    action: "role.change",
+    entityType: "user",
+    entityId: "user-1",
+    tenantId,
+    correlationId: "corr-1",
+    origin: "ui",
+    reason: "\u200B \uFEFF",
+  });
+  const persisted = async (owner: Sql, tenantId: string) => {
+    const tenants = await owner<{ n: number }[]>`select count(*)::int as n from tenants where id = ${tenantId}`;
+    const audits = await owner<{ n: number }[]>`select count(*)::int as n from audit_log`;
+    return { tenants: tenants[0]?.n, audits: audits[0]?.n };
+  };
+
+  it("adapter guard: a blank reason rejects the unit of work and the tenant row is not persisted", async () => {
+    await withDb(async (owner) => {
+      const tenantId = randomUUID();
+      await expect(
+        unitOfWork(owner).run(async ({ tx }) => {
+          await tx.tenants.add({ id: tenantId, name: "Synthetic Rollback Tenant" });
+          await tx.audit.record(entry(tenantId));
+          return ok(undefined);
+        }),
+      ).rejects.toThrow(/role\.change.*reason/);
+      expect(await persisted(owner, tenantId)).toEqual({ tenants: 0, audits: 0 });
+    });
+  });
+
+  it("database trigger: bypassing the adapter still rolls the business write back", async () => {
+    await withDb(async (owner) => {
+      const tenantId = randomUUID();
+      const error = await unitOfWork(owner)
+        .run(async ({ tx, handle }) => {
+          await tx.tenants.add({ id: tenantId, name: "Synthetic Rollback Tenant" });
+          await insertAudit(handle, { action: "role.change", reason: "\u200B" });
+          return ok(undefined);
+        })
+        .catch(asPgError);
+      expect((error as PgError).code).toBe("23514");
+      expect(await persisted(owner, tenantId)).toEqual({ tenants: 0, audits: 0 });
+    });
+  });
+
+  it("control: with a visible reason the same unit of work commits both rows", async () => {
+    await withDb(async (owner) => {
+      const tenantId = randomUUID();
+      const result = await unitOfWork(owner).run(async ({ tx }) => {
+        await tx.tenants.add({ id: tenantId, name: "Synthetic Committed Tenant" });
+        await tx.audit.record({ ...entry(tenantId), reason: "documented" });
+        return ok(undefined);
+      });
+      expect(result.ok).toBe(true);
+      expect(await persisted(owner, tenantId)).toEqual({ tenants: 1, audits: 1 });
     });
   });
 });

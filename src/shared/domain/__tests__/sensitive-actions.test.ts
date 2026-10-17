@@ -39,6 +39,24 @@ describe("hasReason", () => {
   it("is true for non-blank text", () => {
     expect(hasReason(" because ")).toBe(true);
   });
+
+  it.each([
+    ["no-break space", "\u00A0"],
+    ["zero-width space", "\u200B"],
+    ["ideographic space", "\u3000"],
+    ["byte order mark", "\uFEFF"],
+    ["word joiner", "\u2060"],
+    ["next line", "\u0085"],
+    ["mixed with ASCII whitespace", " \t\u00A0\u200B\n\u3000\uFEFF\r"],
+  ])("is false for a reason made only of invisible characters (%s)", (_name, value) => {
+    expect(hasReason(value)).toBe(false);
+  });
+
+  it("is true when a visible character sits among invisible ones", () => {
+    expect(hasReason("\u200B\u00A0x\uFEFF")).toBe(true);
+    expect(hasReason("\u200E")).toBe(true);
+    expect(hasReason("\u200A\u200E")).toBe(true);
+  });
 });
 
 describe("assertReasonRule", () => {
