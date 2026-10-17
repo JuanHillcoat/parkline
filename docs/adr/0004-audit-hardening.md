@@ -31,3 +31,4 @@ ADR-0002 made `audit_log` append-only with triggers, but the application still c
 - Unverified until the pull request runs: the CI wiring of the two logins.
 
 - Open risk: `pnpm db:create-app-login` sends the password to the server inside a `CREATE ROLE ... PASSWORD` statement, so a server configured with `log_statement` set to `ddl` or `all` would write it to its logs. Local Docker and the CI service do not enable that setting; check it before using any hosted database.
+- Open risk: `db:migrate` and `db:create-app-login` fall back to DATABASE_URL when MIGRATE_DATABASE_URL is unset, so with the two-login setup an omitted MIGRATE_DATABASE_URL makes them run DDL as the restricted login and fail with a bare 42501; an actionable message is tracked as a follow-up.

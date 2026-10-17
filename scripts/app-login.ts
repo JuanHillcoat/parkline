@@ -47,8 +47,20 @@ async function readRoleState(tx: Sql, user: string): Promise<RoleState | undefin
   return row;
 }
 
-/** Builds the role statements server-side: identifiers with %I, the password with %L. */
-async function roleStatements(tx: Sql, verb: string, config: AppLoginConfig): Promise<string[]> {
+/**
+ * Fixed key of the transaction-scoped advisory lock that serializes createAppLogin runs, so two
+ * concurrent runs cannot both see the role as missing and collide on CREATE ROLE.
+ */
+export const APP_LOGIN_LOCK_KEY = 7_120_403;
+
+type RoleVerb = "create" | "alter";
+
+/**
+ * Builds the role statements server-side. The role name goes through %I and the password
+ * through %L. The verb goes through %s because it is not data: the RoleVerb union admits only
+ * the two literals "create" and "alter", so nothing caller-controlled can reach that slot.
+ */
+async function roleStatements(tx: Sql, verb: RoleVerb, config: AppLoginConfig): Promise<string[]> {
   const rows = await tx<{ statement: string }[]>`
     select 1 as step, format('%s role %I login nosuperuser nocreatedb nocreaterole noreplication password %L',
       ${verb}::text, ${config.user}::text, ${config.password}::text) as statement
@@ -62,6 +74,7 @@ async function roleStatements(tx: Sql, verb: string, config: AppLoginConfig): Pr
 export async function createAppLogin(sql: Sql, config: AppLoginConfig): Promise<"created" | "updated"> {
   return sql.begin(async (transaction) => {
     const tx = transaction as unknown as Sql;
+    await tx`select pg_advisory_xact_lock(${APP_LOGIN_LOCK_KEY}::bigint)`;
     const state = await readRoleState(tx, config.user);
     if (!state?.groupExists) {
       throw new Error(`The group role ${APP_GROUP_ROLE} does not exist yet. Run "pnpm db:migrate" first.`);

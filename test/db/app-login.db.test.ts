@@ -34,6 +34,7 @@ afterAll(async () => {
   await admin.unsafe(`drop database if exists ${DB}`);
   // Roles are cluster-level: the login must not outlive the test.
   await admin.unsafe(`drop role if exists ${USER}`);
+  for (const user of extraUsers) await admin.unsafe(`drop role if exists ${user}`);
   await admin.end();
 });
 
@@ -45,6 +46,39 @@ function connectAs(user: string, password: string): Sql {
   const sql = postgres(url.toString(), { max: 1, onnotice: () => undefined });
   opened.push(sql);
   return sql;
+}
+
+const extraUsers: string[] = [];
+
+/** Throwaway password with the characters that break naive SQL building (generated at runtime). */
+function awkwardPassword(): string {
+  return `${randomBytes(6).toString("hex")}'"\\;$% ${randomBytes(3).toString("hex")}`;
+}
+
+/** Connects with explicit options so the password never goes through URL encoding. */
+function connectAsOptions(user: string, password: string): Sql {
+  const sql = postgres({
+    host: adminUrl.hostname,
+    port: Number(adminUrl.port || 5432),
+    database: DB,
+    username: user,
+    password,
+    max: 1,
+    onnotice: () => undefined,
+  });
+  opened.push(sql);
+  return sql;
+}
+
+async function expectPlainAppLogin(user: string): Promise<void> {
+  const [role] = await owner<{ rolsuper: boolean; rolcreatedb: boolean; rolcreaterole: boolean; rolreplication: boolean; rolcanlogin: boolean }[]>`
+    select rolsuper, rolcreatedb, rolcreaterole, rolreplication, rolcanlogin from pg_roles where rolname = ${user}::text`;
+  expect(role).toEqual({ rolsuper: false, rolcreatedb: false, rolcreaterole: false, rolreplication: false, rolcanlogin: true });
+  const groups = await owner<{ name: string }[]>`
+    select g.rolname as name from pg_auth_members m
+    join pg_roles g on g.oid = m.roleid join pg_roles u on u.oid = m.member
+    where u.rolname = ${user}::text`;
+  expect(groups.map((group) => group.name)).toEqual(["parkline_app"]);
 }
 
 const code = async (run: Promise<unknown>): Promise<string | undefined> =>
@@ -77,6 +111,33 @@ describe("db:create-app-login", () => {
     expect(await code(insertAudit(stale))).toBe("28P01");
     const [member] = await owner<{ yes: boolean }[]>`select pg_has_role(${USER}::text, 'parkline_app', 'member') as yes`;
     expect(member?.yes).toBe(true);
+  });
+
+  it("keeps awkward passwords intact on create and on update, and alters no other statement", async () => {
+    const user = `parkline_test_awk_${suffix}`;
+    extraUsers.push(user);
+    const first = awkwardPassword();
+    expect(await createAppLogin(owner, { user, password: first })).toBe("created");
+    await insertAudit(connectAsOptions(user, first));
+    await expectPlainAppLogin(user);
+    const second = awkwardPassword();
+    expect(await createAppLogin(owner, { user, password: second })).toBe("updated");
+    await insertAudit(connectAsOptions(user, second));
+    expect(await code(insertAudit(connectAsOptions(user, first)))).toBe("28P01");
+    await expectPlainAppLogin(user);
+  });
+
+  it.each([1, 2, 3, 4, 5, 6])("serializes two concurrent runs (round %i): both succeed, one valid login results", async (round) => {
+    const user = `parkline_test_race${String(round)}_${suffix}`;
+    extraUsers.push(user);
+    const passwords = [`race-a-${randomBytes(9).toString("hex")}`, `race-b-${randomBytes(9).toString("hex")}`];
+    const outcomes = await Promise.all(passwords.map((password) => createAppLogin(owner, { user, password })));
+    expect([...outcomes].sort()).toEqual(["created", "updated"]);
+    const [count] = await owner<{ n: number }[]>`select count(*)::int as n from pg_roles where rolname = ${user}::text`;
+    expect(count?.n).toBe(1);
+    await expectPlainAppLogin(user);
+    const results = await Promise.all(passwords.map((password) => code(insertAudit(connectAs(user, password)))));
+    expect(results.filter((result) => result === undefined)).toHaveLength(1);
   });
 
   it("refuses to change a superuser", async () => {
