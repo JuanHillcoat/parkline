@@ -25,7 +25,13 @@ describe("clientAddress", () => {
   it("accepts IPv6 addresses", () => {
     expect(clientAddress("2001:db8::1", true)).toBe("2001:db8::1");
     expect(clientAddress("::1, 10.0.0.1", true)).toBe("::1");
-    expect(clientAddress("::ffff:203.0.113.7", true)).toBe("::ffff:203.0.113.7");
+  });
+
+  it("counts every spelling of the same address as one address", () => {
+    expect(clientAddress("2001:DB8::1", true)).toBe("2001:db8::1");
+    expect(clientAddress("2001:0db8:0000:0000:0000:0000:0000:0001", true)).toBe("2001:db8::1");
+    expect(clientAddress("::ffff:203.0.113.7", true)).toBe("203.0.113.7");
+    expect(clientAddress("::FFFF:CB00:7107", true)).toBe("203.0.113.7");
   });
 
   it("rejects empty, blank and garbage values", () => {

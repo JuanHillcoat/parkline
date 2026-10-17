@@ -2,7 +2,7 @@
 
 - Branch: `feat/issue-5-sign-in-rate-limit`
 - Issue: #5 (follow-up of P0-02, see `docs/adr/0003-identity-and-sessions.md`)
-- Status: in progress
+- Status: in review
 
 ## Objective
 
@@ -60,6 +60,8 @@ Single slice, one pull request, merged with a merge commit after CI. Work-unit c
 - 2026-10-17 T1 and T2 done, committed together because T1 alone leaves `pnpm typecheck` red (the Postgres tx factory needs the port). Route: delegated writers (sonnet), strict TDD. T1 RED: policy test file failed to import, 10 of 12 new `sign-in` tests failed before the change (2 are regression guards without a meaningful RED). T2 RED: 20 DB failures (`relation "sign_in_attempts" does not exist`, missing `throttle`, inventory mismatch). GREEN (parent re-run): `pnpm test` 209, `pnpm test:db` 59, lint and typecheck clean; the writer also reported `pnpm build` clean. Decisions beyond the brief: subject hashing reuses `deps.tokens.hash` (SHA-256); the lock audit is written only when a failure makes the in-window count equal the limit; pruning runs on every attempt; the policy is an optional `SignIn` constructor argument; `sign_in_attempts.id` uses `gen_random_uuid()` like `audit_log`. Gaps: `createContainer` cannot take a clock, so the end-to-end DB tests use real time with the default policy (boundaries are covered by direct adapter tests with fixed dates); no dedicated concurrency test (plain inserts, nothing to race on; concurrent attempts can overshoot the limit by a few, accepted).
 
 - 2026-10-17 T3 done (delegated writer, sonnet). Files: `app/_lib/client-address.ts` and its test (new), `app/_lib/session.ts` (`requestClientAddress`, shared `proxyTrusted`), `app/_lib/copy.ts`, `app/_lib/messages.ts` (`throttledMessage`, `errorMessage` maps `TooManyAttemptsError`), `app/_lib/__tests__/web-helpers.test.ts`, `app/login/actions.ts`, ADR-0003, README, CHANGELOG, `.env.example`. RED: `client-address.test.ts` failed to import the missing module; 3 new `throttledMessage`/`errorMessage` tests failed before the change. GREEN: `pnpm lint` and `pnpm typecheck` clean, `pnpm test` 220 passed, `pnpm build` ok; `pnpm test:db` not run (no DB change). Decisions beyond the brief: address validation uses `node:net` `isIP` with a 45 character cap; the ADR notes the hashes are unsalted and that a known email can be kept in backoff by failing on purpose.
+
+- 2026-10-17 Review of the whole issue slice (base `262d740`, medium, 986 lines): consent granted, one lens (reliability), APPROVED and acknowledged with three advisory findings. R3-2 fixed here with TDD (RED observed: new spelling test failed): `clientAddress` now canonicalizes the address (lower case, compressed IPv6, IPv4-mapped IPv6 as plain IPv4) so varying the spelling cannot reset the per-address count. GREEN: `pnpm test` 221, lint and typecheck clean. Open as follow-ups (added to issue #6): R3-1 two concurrent attempts can each write `auth.sign_in_locked` for one lock (consistent with the accepted concurrency overshoot, no test); R3-3 the end-to-end DB suite cannot advance time, so expiry, doubling and window pruning are proved only in isolation.
 
 ## Next step
 
