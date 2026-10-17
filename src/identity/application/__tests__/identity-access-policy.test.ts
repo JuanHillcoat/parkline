@@ -98,6 +98,14 @@ describe("IdentityAccessPolicy", () => {
     const admin = actorOf([assign("admin", { type: "tenant", id: "tenant-a" })]);
     expect(policy.check(admin, "made.up", tenantA).ok).toBe(false);
   });
+
+  it("denies a grant whose scope type is unknown even when its role would allow the action", () => {
+    const grants: Grant[] = [{ role: "admin", scopeType: "galaxy", scopeId: "tenant-a" }];
+    const actor: Actor = { userId: "user-1", tenantId: "tenant-a", active: true, grants };
+    expect(policy.check(actor, "catalog.read", tenantA).ok).toBe(false);
+    const tenantGrant: Grant = { role: "admin", scopeType: "tenant", scopeId: "tenant-a" };
+    expect(policy.check({ ...actor, grants: [...grants, tenantGrant] }, "catalog.read", tenantA).ok).toBe(true);
+  });
 });
 
 describe("toActor", () => {
