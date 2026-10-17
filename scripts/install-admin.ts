@@ -27,21 +27,26 @@ import {
  * One readline interface for the whole session (a new one per question can drop
  * buffered lines). Echo is switched off only while a hidden answer is typed.
  */
-function createPrompter(): { ask: Ask; close: () => void } {
+export type PrompterStreams = { input: NodeJS.ReadableStream; output: NodeJS.WritableStream; isTty: boolean };
+
+export function createPrompter(streams: PrompterStreams): { ask: Ask; close: () => void } {
   let muted = false;
   const output = new Writable({
     write(chunk: Buffer, _encoding, done) {
-      if (!muted) process.stdout.write(chunk);
+      if (!muted) streams.output.write(chunk);
       done();
     },
   });
-  const rl = createInterface({ input: process.stdin, output, terminal: true });
+  const rl = createInterface({ input: streams.input, output, terminal: true });
   const ask: Ask = async (label, hidden) => {
-    requireTerminal(label, process.stdin.isTTY);
-    process.stdout.write(`${label}: `);
+    requireTerminal(label, streams.isTty);
+    // The label is the readline prompt: readline redraws the line when a question
+    // starts, so a label written beforehand would be erased. Echo is muted only
+    // after the prompt is drawn.
+    const pending = rl.question(`${label}: `);
     muted = hidden;
     try {
-      return (await rl.question("")).trim();
+      return (await pending).trim();
     } finally {
       muted = false;
       if (hidden) process.stdout.write("\n");
@@ -72,7 +77,7 @@ async function install(url: string, input: InstallInput): Promise<number> {
 
 async function run(url: string, argv: string[]): Promise<number> {
   const flags = readFlags(argv);
-  const prompter = createPrompter();
+  const prompter = createPrompter({ input: process.stdin, output: process.stdout, isTty: process.stdin.isTTY });
   try {
     const input = await collectInput(flags, process.env, prompter.ask);
     const problem = checkInput(input);
