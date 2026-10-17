@@ -73,6 +73,27 @@ describe("architecture boundaries", () => {
     expect(errors).toEqual([]);
   });
 
+  it("keeps the shared kernel free of module imports", async () => {
+    const errors = await dependencyErrors(
+      "src/shared/domain/ports/access-policy.ts",
+      'import type { Role } from "../../../identity/domain/role";\nexport type X = Role;\n',
+    );
+    expect(errors).toHaveLength(1);
+  });
+
+  it("lets a module use the shared access policy port and forbids importing identity", async () => {
+    const port = await dependencyErrors(
+      "src/organization/application/use-cases/create.ts",
+      'import type { AccessPolicy } from "../../../shared/domain/ports/access-policy";\nexport type X = AccessPolicy;\n',
+    );
+    const identity = await dependencyErrors(
+      "src/organization/application/use-cases/create.ts",
+      'import { requirePermission } from "../../../identity/application/actor-context";\nexport const x = requirePermission;\n',
+    );
+    expect(port).toEqual([]);
+    expect(identity).toHaveLength(1);
+  });
+
   it("fails functions longer than 20 lines in non-test code", async () => {
     const body = Array.from({ length: 22 }, (_, i) => `  const v${String(i)} = ${String(i)};`).join("\n");
     const code = `export function long(): void {\n${body}\n}\n`;
