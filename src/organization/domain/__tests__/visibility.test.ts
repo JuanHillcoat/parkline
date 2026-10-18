@@ -1,29 +1,31 @@
 import { describe, expect, it } from "vitest";
 import type { Actor, Grant } from "../../../shared/domain/ports/access-policy";
 import { FakeAccessPolicy } from "../../__tests__/support/fake-access-policy";
-import type { BusinessUnit, Operation, OperationSite, Site } from "../entities";
+import type { BusinessUnit, Operation, Site } from "../entities";
 import { visibleBusinessUnits, visibleOperations, visibleSites, type CanRead } from "../visibility";
 
-// Synthetic world. Tenant A: bu-1 {op-1, op-2}, bu-2 {op-3}; sites s-1 (op-1),
-// s-2 (op-2 and op-3), s-3 (unlinked). Tenant B repeats the shape with other ids.
+// Synthetic world. Tenant A: Division A {Operation A1 at Site A1, Operation A2
+// at Site A2}, Division B {Operation B1 at Site A2: two operations share a
+// site}; Site A3 has no operation. Tenant B repeats the shape with other ids.
 const bu = (id: string, tenantId = "t-a"): BusinessUnit => ({ id, tenantId, name: id });
-const op = (id: string, businessUnitId: string, tenantId = "t-a"): Operation => ({
+const op = (id: string, businessUnitId: string, siteId: string, costCenter: string, tenantId = "t-a"): Operation => ({
   id,
   tenantId,
   businessUnitId,
+  siteId,
   name: id,
+  costCenter,
 });
 const site = (id: string, tenantId = "t-a"): Site => ({ id, tenantId, name: id });
-const link = (operationId: string, siteId: string, tenantId = "t-a"): OperationSite => ({
-  tenantId,
-  operationId,
-  siteId,
-});
 
-const units = [bu("bu-1"), bu("bu-2"), bu("bu-x", "t-b")];
-const operations = [op("op-1", "bu-1"), op("op-2", "bu-1"), op("op-3", "bu-2"), op("op-x", "bu-x", "t-b")];
-const sites = [site("s-1"), site("s-2"), site("s-3"), site("s-x", "t-b")];
-const links = [link("op-1", "s-1"), link("op-2", "s-2"), link("op-3", "s-2"), link("op-x", "s-x", "t-b")];
+const units = [bu("div-a"), bu("div-b"), bu("div-x", "t-b")];
+const operations = [
+  op("op-a1", "div-a", "site-a1", "0001"),
+  op("op-a2", "div-a", "site-a2", "0002"),
+  op("op-b1", "div-b", "site-a2", "0003"),
+  op("op-x", "div-x", "site-x", "0001", "t-b"),
+];
+const sites = [site("site-a1"), site("site-a2"), site("site-a3"), site("site-x", "t-b")];
 
 const policy = new FakeAccessPolicy();
 const canReadAs =
@@ -40,51 +42,55 @@ const see = (...grants: Grant[]) => {
   const canRead = canReadAs(...grants);
   return {
     units: ids(visibleBusinessUnits(units, canRead)),
-    operations: ids(visibleOperations(operations, links, canRead)),
-    sites: ids(visibleSites(sites, operations, links, canRead)),
+    operations: ids(visibleOperations(operations, canRead)),
+    sites: ids(visibleSites(sites, operations, canRead)),
   };
 };
 
 describe("visibility (D4)", () => {
   it("tenant scope sees everything of its tenant and nothing of another", () => {
     expect(see(grant("tenant", "t-a"))).toEqual({
-      units: ["bu-1", "bu-2"],
-      operations: ["op-1", "op-2", "op-3"],
-      sites: ["s-1", "s-2", "s-3"],
+      units: ["div-a", "div-b"],
+      operations: ["op-a1", "op-a2", "op-b1"],
+      sites: ["site-a1", "site-a2", "site-a3"],
     });
   });
 
-  it("business unit scope sees its unit, its operations and the sites linked to them", () => {
-    expect(see(grant("business_unit", "bu-1"))).toEqual({
-      units: ["bu-1"],
-      operations: ["op-1", "op-2"],
-      sites: ["s-1", "s-2"],
+  it("division scope sees its division, its operations and their sites, not the other division", () => {
+    expect(see(grant("business_unit", "div-a"))).toEqual({
+      units: ["div-a"],
+      operations: ["op-a1", "op-a2"],
+      sites: ["site-a1", "site-a2"],
     });
   });
 
-  it("operation scope sees itself and its sites, not its siblings, its unit or unrelated sites", () => {
-    expect(see(grant("operation", "op-1"))).toEqual({ units: [], operations: ["op-1"], sites: ["s-1"] });
+  it("operation scope sees itself and its site, not its siblings, its division or unrelated sites", () => {
+    expect(see(grant("operation", "op-a1"))).toEqual({ units: [], operations: ["op-a1"], sites: ["site-a1"] });
   });
 
-  it("operation scope sees a site shared with other operations but not those operations", () => {
-    expect(see(grant("operation", "op-3"))).toEqual({ units: [], operations: ["op-3"], sites: ["s-2"] });
+  it("operation scope sees a shared site but not the other operation at it", () => {
+    expect(see(grant("operation", "op-b1"))).toEqual({ units: [], operations: ["op-b1"], sites: ["site-a2"] });
   });
 
-  it("site scope sees the site and every operation linked to it", () => {
-    expect(see(grant("site", "s-2"))).toEqual({ units: [], operations: ["op-2", "op-3"], sites: ["s-2"] });
+  it("site scope sees the site and every operation located at it, across divisions", () => {
+    expect(see(grant("site", "site-a2"))).toEqual({
+      units: [],
+      operations: ["op-a2", "op-b1"],
+      sites: ["site-a2"],
+    });
   });
 
-  it("an unlinked site is seen only through its own scope", () => {
-    expect(see(grant("site", "s-3"))).toEqual({ units: [], operations: [], sites: ["s-3"] });
+  it("a site without operations is seen only through its own scope", () => {
+    expect(see(grant("site", "site-a3"))).toEqual({ units: [], operations: [], sites: ["site-a3"] });
   });
 
   it("several grants add up", () => {
-    expect(see(grant("operation", "op-1"), grant("site", "s-3")).sites).toEqual(["s-1", "s-3"]);
+    expect(see(grant("operation", "op-a1"), grant("site", "site-a3")).sites).toEqual(["site-a1", "site-a3"]);
   });
 
   it("no grants, or grants over another tenant's nodes, see nothing", () => {
     const nothing = { units: [], operations: [], sites: [] };
     expect(see()).toEqual(nothing);
-    expect(see(grant("operation", "op-x"), grant("site", "s-x"), grant("business_unit", "bu-x"))).toEqual(nothing);
+    expect(see(grant("operation", "op-x"), grant("site", "site-x"), grant("business_unit", "div-x"))).toEqual(nothing);
   });
 });

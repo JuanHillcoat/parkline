@@ -1,7 +1,7 @@
 import { ForbiddenError, type DomainError } from "../../shared/domain/domain-error";
 import type { AccessPolicy, Actor } from "../../shared/domain/ports/access-policy";
 import { err, ok, type Result } from "../../shared/domain/result";
-import { NameTakenError } from "../domain/errors";
+import { CostCenterTakenError, NameTakenError } from "../domain/errors";
 import type { CanRead } from "../domain/visibility";
 import type { AuditFields } from "./audit";
 
@@ -34,6 +34,10 @@ export const requireFreeName = (
 /** The same conflict, when the repository reports that the unique name index rejected the write. */
 export const nameTaken = (name: string): Result<never, DomainError> =>
   err(new NameTakenError(`"${name}" is already in use`));
+
+/** D7: a cost center is unique per tenant. */
+export const costCenterTaken = (costCenter: string): Result<never, DomainError> =>
+  err(new CostCenterTakenError(`The cost center ${costCenter} is already in use`));
 
 type ActorFields = Pick<AuditFields, "actorId" | "actorKind" | "actorRole" | "tenantId">;
 

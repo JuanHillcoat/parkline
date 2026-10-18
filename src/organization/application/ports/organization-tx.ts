@@ -2,7 +2,6 @@ import type { AuditLog } from "../../../shared/domain/ports/audit-log";
 import type {
   BusinessUnitRepository,
   OperationRepository,
-  OperationSiteRepository,
   SiteRepository,
 } from "./repositories";
 
@@ -11,6 +10,5 @@ export type OrganizationTx = {
   readonly businessUnits: BusinessUnitRepository;
   readonly operations: OperationRepository;
   readonly sites: SiteRepository;
-  readonly links: OperationSiteRepository;
   readonly audit: AuditLog;
 };

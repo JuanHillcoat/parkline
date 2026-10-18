@@ -59,7 +59,6 @@ describe("database after migrations", () => {
     expect(rows.map((r) => r.table_name)).toEqual([
       "audit_log",
       "business_units",
-      "operation_sites",
       "operations",
       "outbox_events",
       "schema_migrations",

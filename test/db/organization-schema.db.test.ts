@@ -11,7 +11,7 @@ const DEFAULT_URL = "postgres://parkline:parkline_dev@localhost:54329/parkline";
 const adminUrl = new URL(process.env.DATABASE_URL ?? DEFAULT_URL);
 const dbName = `parkline_test_${randomBytes(6).toString("hex")}`;
 const APP_ROLE = "parkline_app";
-const TABLES = ["business_units", "operations", "sites", "operation_sites"] as const;
+const TABLES = ["business_units", "operations", "sites"] as const;
 
 let admin: Sql;
 let sql: Sql;
@@ -44,14 +44,20 @@ const addTenant = (name: string) =>
   one(sql<{ id: string }[]>`insert into tenants (id, name) values (gen_random_uuid(), ${name}) returning id`);
 const addUnit = (tenant: string, name: string) =>
   one(sql<{ id: string }[]>`insert into business_units (tenant_id, name) values (${tenant}, ${name}) returning id`);
-const addOperation = (tenant: string, unit: string, name: string) =>
-  one(
-    sql<{ id: string }[]>`insert into operations (tenant_id, business_unit_id, name) values (${tenant}, ${unit}, ${name}) returning id`,
-  );
 const addSite = (tenant: string, name: string) =>
   one(sql<{ id: string }[]>`insert into sites (tenant_id, name) values (${tenant}, ${name}) returning id`);
-const addLink = (tenant: string, operation: string, site: string) =>
-  sql`insert into operation_sites (tenant_id, operation_id, site_id) values (${tenant}, ${operation}, ${site})`;
+// Every call that does not care about the cost center gets a fresh four-digit code.
+let nextCode = 0;
+const freshCode = (): string => String((nextCode += 1)).padStart(4, "0");
+const insertOperation = (tenant: string, unit: string, site: string, name: string, costCenter: string) =>
+  sql<{ id: string }[]>`
+    insert into operations (tenant_id, business_unit_id, site_id, name, cost_center)
+    values (${tenant}, ${unit}, ${site}, ${name}, ${costCenter}) returning id`;
+const addOperationAt = (tenant: string, unit: string, site: string, name: string, costCenter = freshCode()) =>
+  one(insertOperation(tenant, unit, site, name, costCenter));
+/** An operation at a fresh site of its own. */
+const addOperation = async (tenant: string, unit: string, name: string, costCenter = freshCode()) =>
+  addOperationAt(tenant, unit, await addSite(tenant, `Site of ${name} ${freshCode()}`), name, costCenter);
 const addUser = (tenant: string, email: string) =>
   one(
     sql<{ id: string }[]>`insert into users (id, tenant_id, email, display_name, password_hash)
@@ -66,9 +72,23 @@ const failure = (run: PromiseLike<unknown>): Promise<PgError | null> =>
   );
 
 describe("organization schema after migrating", () => {
-  it("applies 0005_organization.sql and the four tables start empty (no seed)", () => {
+  it("applies 0005_organization.sql and the three tables start empty (no seed)", () => {
     expect(applied).toContain("0005_organization.sql");
-    expect(emptyAfterMigrating).toEqual({ business_units: 0, operations: 0, sites: 0, operation_sites: 0 });
+    expect(emptyAfterMigrating).toEqual({ business_units: 0, operations: 0, sites: 0 });
+  });
+
+  it("has no operation_sites table: an operation carries exactly one site and a cost center", async () => {
+    const tables = await sql<{ table_name: string }[]>`
+      select table_name from information_schema.tables
+      where table_schema = 'public' and table_name = 'operation_sites'`;
+    expect(tables).toHaveLength(0);
+    const columns = await sql<{ column_name: string; is_nullable: string }[]>`
+      select column_name, is_nullable from information_schema.columns
+      where table_name = 'operations' and column_name in ('site_id', 'cost_center') order by column_name`;
+    expect(columns).toEqual([
+      { column_name: "cost_center", is_nullable: "NO" },
+      { column_name: "site_id", is_nullable: "NO" },
+    ]);
   });
 });
 
@@ -77,30 +97,46 @@ describe("composite foreign keys and tenant isolation", () => {
     const a = await addTenant("Tenant FK A");
     const b = await addTenant("Tenant FK B");
     const unitA = await addUnit(a, "Division A");
-    expect((await failure(addOperation(b, unitA, "Op")))?.code).toBe("23503");
-    expect((await failure(addOperation(a, randomUUID(), "Op")))?.code).toBe("23503");
-    await addOperation(a, unitA, "Op");
+    const siteA = await addSite(a, "Site A1");
+    const siteB = await addSite(b, "Site B1");
+    expect((await failure(insertOperation(b, unitA, siteB, "Op", freshCode())))?.code).toBe("23503");
+    expect((await failure(insertOperation(a, randomUUID(), siteA, "Op", freshCode())))?.code).toBe("23503");
+    await addOperationAt(a, unitA, siteA, "Op");
   });
 
-  it("rejects a link whose operation or site belongs to another tenant or does not exist", async () => {
-    const a = await addTenant("Tenant LK A");
-    const b = await addTenant("Tenant LK B");
-    const opA = await addOperation(a, await addUnit(a, "Division"), "Op A");
-    const siteA = await addSite(a, "Site A");
-    const siteB = await addSite(b, "Site B");
-    expect((await failure(addLink(a, opA, siteB)))?.code).toBe("23503");
-    expect((await failure(addLink(b, opA, siteB)))?.code).toBe("23503");
-    expect((await failure(addLink(a, randomUUID(), siteA)))?.code).toBe("23503");
-    await addLink(a, opA, siteA);
+  it("rejects an operation whose site belongs to another tenant, does not exist or is missing", async () => {
+    const a = await addTenant("Tenant ST A");
+    const b = await addTenant("Tenant ST B");
+    const unitA = await addUnit(a, "Division");
+    const siteA = await addSite(a, "Site A1");
+    const siteB = await addSite(b, "Site B1");
+    // Right tenant column, foreign site: the composite key (tenant_id, site_id) does not match.
+    expect((await failure(insertOperation(a, unitA, siteB, "Op", freshCode())))?.code).toBe("23503");
+    expect((await failure(insertOperation(a, unitA, randomUUID(), "Op", freshCode())))?.code).toBe("23503");
+    const noSite = await failure(
+      sql`insert into operations (tenant_id, business_unit_id, name, cost_center)
+          values (${a}, ${unitA}, 'Op', ${freshCode()})`,
+    );
+    expect(noSite?.code).toBe("23502");
+    await addOperationAt(a, unitA, siteA, "Op");
   });
 
-  it("rejects a duplicate link and allows many-to-many", async () => {
-    const t = await addTenant("Tenant NM");
-    const unit = await addUnit(t, "Division");
-    const [op1, op2] = [await addOperation(t, unit, "Op 1"), await addOperation(t, unit, "Op 2")] as const;
-    const [s1, s2] = [await addSite(t, "Site 1"), await addSite(t, "Site 2")] as const;
-    for (const [op, site] of [[op1, s1], [op1, s2], [op2, s1]] as const) await addLink(t, op, site);
-    expect((await failure(addLink(t, op1, s1)))?.code).toBe("23505");
+  it("allows several operations at the same site, in different divisions", async () => {
+    const t = await addTenant("Tenant SH");
+    const [u1, u2] = [await addUnit(t, "Division 1"), await addUnit(t, "Division 2")] as const;
+    const shared = await addSite(t, "Shared Site");
+    await addOperationAt(t, u1, shared, "Operation 1");
+    await addOperationAt(t, u1, shared, "Operation 2");
+    await addOperationAt(t, u2, shared, "Operation 3");
+    const rows = await sql`select 1 from operations where tenant_id = ${t} and site_id = ${shared}`;
+    expect(rows).toHaveLength(3);
+  });
+
+  it("restricts deleting a site that an operation sits at", async () => {
+    const t = await addTenant("Tenant SR");
+    const site = await addSite(t, "Only Site");
+    await addOperationAt(t, await addUnit(t, "Division"), site, "Op");
+    expect((await failure(sql`delete from sites where id = ${site}`))?.code).toBe("23503");
   });
 
   it("restricts deleting a row that something references", async () => {
@@ -147,6 +183,43 @@ describe("name uniqueness (D7)", () => {
     await addSite(t, "Second");
     expect((await failure(sql`update sites set name = ' SECOND ' where id = ${first}`))?.code).toBe("23505");
     await sql`update sites set name = 'FIRST' where id = ${first}`;
+  });
+});
+
+describe("cost center (D7)", () => {
+  it("accepts exactly four digits and keeps leading zeros", async () => {
+    const t = await addTenant("Tenant CC1");
+    const unit = await addUnit(t, "Division");
+    for (const code of ["0050", "0009", "1234", "0000"]) {
+      await addOperation(t, unit, `Op ${code}`, code);
+    }
+    const rows = await sql<{ cost_center: string }[]>`
+      select cost_center from operations where tenant_id = ${t} order by cost_center`;
+    expect(rows.map((r) => r.cost_center)).toEqual(["0000", "0009", "0050", "1234"]);
+  });
+
+  it("rejects anything that is not exactly four ASCII digits (check constraint)", async () => {
+    const t = await addTenant("Tenant CC2");
+    const unit = await addUnit(t, "Division");
+    const site = await addSite(t, "Site");
+    for (const code of ["50", "00500", "abcd", "00 50", "", " 0050", "0050 ", "0050\n", "٠٠٠٠"]) {
+      const error = await failure(insertOperation(t, unit, site, `Op ${JSON.stringify(code)}`, code));
+      expect(error?.code, JSON.stringify(code)).toBe("23514");
+    }
+  });
+
+  it("is unique within a tenant, across divisions and sites", async () => {
+    const t = await addTenant("Tenant CC3");
+    const [u1, u2] = [await addUnit(t, "Division 1"), await addUnit(t, "Division 2")] as const;
+    await addOperation(t, u1, "Op One", "0050");
+    expect((await failure(addOperation(t, u2, "Op Two", "0050")))?.code).toBe("23505");
+    expect((await failure(addOperation(t, u1, "Op Three", "0050")))?.code).toBe("23505");
+  });
+
+  it("may be reused by another tenant", async () => {
+    const [a, b] = [await addTenant("Tenant CC4"), await addTenant("Tenant CC5")] as const;
+    await addOperation(a, await addUnit(a, "Division"), "Op", "0077");
+    await addOperation(b, await addUnit(b, "Division"), "Op", "0077");
   });
 });
 
@@ -293,15 +366,15 @@ describe("restricted application role on the organization tables", () => {
     return raised;
   };
 
-  it("can SELECT, INSERT and UPDATE all four tables", async () => {
+  it("can SELECT, INSERT and UPDATE all three tables", async () => {
     const t = await addTenant("Tenant APP");
     const [unit, site] = [await addUnit(t, "Division"), await addSite(t, "Site")] as const;
-    const op = await addOperation(t, unit, "Op");
+    const op = await addOperationAt(t, unit, site, "Op");
     const results = await asApp([
       `insert into business_units (tenant_id, name) values ('${t}', 'App Unit')`,
       `insert into sites (tenant_id, name) values ('${t}', 'App Site')`,
-      `insert into operations (tenant_id, business_unit_id, name) values ('${t}', '${unit}', 'App Op')`,
-      `insert into operation_sites (tenant_id, operation_id, site_id) values ('${t}', '${op}', '${site}')`,
+      `insert into operations (tenant_id, business_unit_id, site_id, name, cost_center)
+       values ('${t}', '${unit}', '${site}', 'App Op', '${freshCode()}')`,
       `update business_units set name = 'Renamed' where id = '${unit}'`,
       `update operations set name = 'Renamed' where id = '${op}'`,
       `update sites set name = 'Renamed' where id = '${site}'`,

@@ -6,7 +6,6 @@ import {
   emptyState,
   InMemoryBusinessUnitRepository,
   InMemoryOperationRepository,
-  InMemoryOperationSiteRepository,
   InMemorySiteRepository,
   type OrganizationState,
 } from "./in-memory-organization-repositories";
@@ -15,7 +14,6 @@ const txOver = (state: OrganizationState, audit: AuditLog): OrganizationTx => ({
   businessUnits: new InMemoryBusinessUnitRepository(state),
   operations: new InMemoryOperationRepository(state),
   sites: new InMemorySiteRepository(state),
-  links: new InMemoryOperationSiteRepository(state),
   audit,
 });
 

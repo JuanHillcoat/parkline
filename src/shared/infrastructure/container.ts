@@ -24,7 +24,6 @@ import type { OrganizationDeps } from "../../organization/application/deps";
 import { CreateBusinessUnit } from "../../organization/application/use-cases/create-business-unit";
 import { CreateOperation } from "../../organization/application/use-cases/create-operation";
 import { CreateSite } from "../../organization/application/use-cases/create-site";
-import { LinkOperationSite } from "../../organization/application/use-cases/link-operation-site";
 import { ListBusinessUnits } from "../../organization/application/use-cases/list-business-units";
 import { ListOperations } from "../../organization/application/use-cases/list-operations";
 import { ListSites } from "../../organization/application/use-cases/list-sites";
@@ -76,7 +75,6 @@ const organizationUseCases = (deps: OrganizationDeps) => ({
   renameBusinessUnit: new RenameBusinessUnit(deps),
   renameOperation: new RenameOperation(deps),
   renameSite: new RenameSite(deps),
-  linkOperationSite: new LinkOperationSite(deps),
   listBusinessUnits: new ListBusinessUnits(deps),
   listOperations: new ListOperations(deps),
   listSites: new ListSites(deps),

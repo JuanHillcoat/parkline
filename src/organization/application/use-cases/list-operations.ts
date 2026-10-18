@@ -18,8 +18,7 @@ export class ListOperations {
     return whenActive(actor, () =>
       this.deps.unitOfWork.run(async (tx) => {
         const operations = await tx.operations.listByTenant(actor.tenantId);
-        const links = await tx.links.listByTenant(actor.tenantId);
-        return ok(visibleOperations(operations, links, canRead));
+        return ok(visibleOperations(operations, canRead));
       }),
     );
   }

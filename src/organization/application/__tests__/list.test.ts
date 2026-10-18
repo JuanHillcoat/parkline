@@ -37,18 +37,19 @@ describe("list use cases (visibility, D4)", () => {
     const h = createHarness();
     const division = async (name: string) =>
       h.orThrow(await h.createBusinessUnit.execute({ actor: h.admin, name }));
-    const operation = async (businessUnitId: string, name: string) =>
-      h.orThrow(await h.createOperation.execute({ actor: h.admin, businessUnitId, name }));
-    const divisionA = await division("Division A");
-    const divisionB = await division("Division B");
-    await operation(divisionA.id, "Operation A1");
-    await operation(divisionA.id, "Operation A2");
-    await operation(divisionB.id, "Operation B1");
+    const site = async (name: string) => h.orThrow(await h.createSite.execute({ actor: h.admin, name }));
+    const operation = async (businessUnitId: string, siteId: string, name: string, costCenter: string) =>
+      h.orThrow(await h.createOperation.execute({ actor: h.admin, businessUnitId, siteId, name, costCenter }));
+    const [divisionA, divisionB] = [await division("Division A"), await division("Division B")] as const;
+    const [siteA1, siteA2, siteB1] = [await site("Site A1"), await site("Site A2"), await site("Site B1")] as const;
+    await operation(divisionA.id, siteA1.id, "Operation A1", "0101");
+    await operation(divisionA.id, siteA2.id, "Operation A2", "0102");
+    await operation(divisionB.id, siteB1.id, "Operation B1", "0201");
     const actor = actorWith([grant("viewer", "business_unit", divisionA.id)]);
     expect(await listAs(h, actor)).toEqual({
       units: ["Division A"],
       operations: ["Operation A1", "Operation A2"],
-      sites: [],
+      sites: ["Site A1", "Site A2"],
     });
   });
 
@@ -66,12 +67,26 @@ describe("list use cases (visibility, D4)", () => {
     expect(await listAs(h, actor)).toEqual({ units: [], operations: ["Mina 2", "Planta"], sites: ["Patio"] });
   });
 
-  it("a link made later widens what an operation scope sees", async () => {
+  it("operation scope sees a site shared with a sibling operation but not that operation", async () => {
     const h = createHarness();
     const s = await h.seedTenantA();
-    await h.link.execute({ actor: h.admin, operationId: s.mina1.id, siteId: s.lote.id });
-    const actor = actorWith([grant("viewer", "operation", s.mina1.id)]);
-    expect((await listAs(h, actor)).sites).toEqual(["Lote", "Taller"]);
+    const actor = actorWith([grant("viewer", "operation", s.planta.id)]);
+    expect(await listAs(h, actor)).toEqual({ units: [], operations: ["Planta"], sites: ["Patio"] });
+  });
+
+  it("a new operation at a site widens what a site scope sees", async () => {
+    const h = createHarness();
+    const s = await h.seedTenantA();
+    const actor = actorWith([grant("viewer", "site", s.lote.id)]);
+    expect((await listAs(h, actor)).operations).toEqual([]);
+    await h.createOperation.execute({
+      actor: h.admin,
+      businessUnitId: s.south.id,
+      siteId: s.lote.id,
+      name: "Operation S2",
+      costCenter: "0020",
+    });
+    expect((await listAs(h, actor)).operations).toEqual(["Operation S2"]);
   });
 
   it("never shows another tenant's rows, even to a tenant-scoped admin or with a foreign scope id", async () => {

@@ -1,7 +1,8 @@
--- 0005: organization catalogs (business units, operations, sites and the
--- operation-site link) and real foreign keys for the non-tenant role scopes.
+-- 0005: organization catalogs (business units, sites and operations, each with
+-- one site and a cost center) and real foreign keys for the non-tenant role scopes.
 -- The database starts empty: no seed data. Business units, operations and sites
 -- are created by the application on request, never by a migration.
+-- There is no operation-site link table: an operation carries its single site.
 -- Shift profiles are not part of this migration (deferred by the maintainer).
 
 -- The comparison key of a name (decision D7): inner whitespace runs collapse to
@@ -40,20 +41,6 @@ create table business_units (
   unique (tenant_id, name_key)
 );
 
-create table operations (
-  id               uuid        primary key default gen_random_uuid(),
-  tenant_id        uuid        not null references tenants (id),
-  business_unit_id uuid        not null,
-  name             text        not null,
-  name_key         text        generated always as (organization_name_key(name)) stored,
-  created_at       timestamptz not null default now(),
-  unique (tenant_id, id),
-  check (name_key <> ''),
-  foreign key (tenant_id, business_unit_id) references business_units (tenant_id, id) on delete restrict,
-  -- An operation name is unique per business unit: two divisions may share one.
-  unique (tenant_id, business_unit_id, name_key)
-);
-
 create table sites (
   id         uuid        primary key default gen_random_uuid(),
   tenant_id  uuid        not null references tenants (id),
@@ -66,20 +53,33 @@ create table sites (
   unique (tenant_id, name_key)
 );
 
--- Many-to-many link: a site can serve several operations and the reverse.
-create table operation_sites (
-  tenant_id    uuid        not null,
-  operation_id uuid        not null,
-  site_id      uuid        not null,
-  created_at   timestamptz not null default now(),
-  primary key (tenant_id, operation_id, site_id),
-  foreign key (tenant_id, operation_id) references operations (tenant_id, id) on delete restrict,
-  foreign key (tenant_id, site_id) references sites (tenant_id, id) on delete restrict
+-- An operation has exactly one site, belongs to exactly one business unit
+-- (division) and has a cost center. Two locations of the same client are two
+-- operations that share only the division. Two operations may share a site.
+create table operations (
+  id               uuid        primary key default gen_random_uuid(),
+  tenant_id        uuid        not null references tenants (id),
+  business_unit_id uuid        not null,
+  site_id          uuid        not null,
+  name             text        not null,
+  name_key         text        generated always as (organization_name_key(name)) stored,
+  -- Exactly four ASCII digits; text because leading zeros matter ("0050").
+  cost_center      text        not null,
+  created_at       timestamptz not null default now(),
+  unique (tenant_id, id),
+  check (name_key <> ''),
+  check (cost_center ~ '^[0-9]{4}$'),
+  foreign key (tenant_id, business_unit_id) references business_units (tenant_id, id) on delete restrict,
+  foreign key (tenant_id, site_id) references sites (tenant_id, id) on delete restrict,
+  -- An operation name is unique per business unit: two divisions may share one.
+  unique (tenant_id, business_unit_id, name_key),
+  -- A cost center is unique per tenant: two tenants may reuse the same code.
+  unique (tenant_id, cost_center)
 );
 
--- Reverse lookups: the operations of a site.
-create index operation_sites_site_idx on operation_sites (tenant_id, site_id);
+-- Lookups by owner: the operations of a division and the operations at a site.
 create index operations_business_unit_idx on operations (tenant_id, business_unit_id);
+create index operations_site_idx on operations (tenant_id, site_id);
 
 -- Role scope integrity (decision D3). The text scope_id stays, so the identity
 -- domain keeps working; the typed column that matches scope_type carries the
@@ -119,6 +119,6 @@ alter table user_role_assignments
 -- these tables (decision D8: mistakes are fixed by renaming). The default
 -- privileges set in 0004 grant DELETE on every table created later, so the
 -- REVOKE below is required, not redundant. Nothing is granted to PUBLIC.
-revoke all on business_units, operations, sites, operation_sites from public;
-grant select, insert, update on business_units, operations, sites, operation_sites to parkline_app;
-revoke delete, truncate on business_units, operations, sites, operation_sites from parkline_app;
+revoke all on business_units, operations, sites from public;
+grant select, insert, update on business_units, operations, sites to parkline_app;
+revoke delete, truncate on business_units, operations, sites from parkline_app;

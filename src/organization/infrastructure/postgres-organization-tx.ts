@@ -5,7 +5,6 @@ import type { OrganizationTx } from "../application/ports/organization-tx";
 import {
   PostgresBusinessUnitRepository,
   PostgresOperationRepository,
-  PostgresOperationSiteRepository,
   PostgresSiteRepository,
 } from "./postgres-organization-repositories";
 
@@ -17,6 +16,5 @@ export const createPostgresOrganizationTx = (
   businessUnits: new PostgresBusinessUnitRepository(handle),
   operations: new PostgresOperationRepository(handle),
   sites: new PostgresSiteRepository(handle),
-  links: new PostgresOperationSiteRepository(handle),
   audit,
 });

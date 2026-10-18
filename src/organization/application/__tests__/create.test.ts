@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ForbiddenError, NotFoundError } from "../../../shared/domain/domain-error";
-import { InvalidNameError, NameTakenError } from "../../domain/errors";
-import { actorWith, createHarness, grant } from "./support/harness";
+import { CostCenterTakenError, InvalidCostCenterError, InvalidNameError, NameTakenError } from "../../domain/errors";
+import { actorWith, createHarness, grant, type Harness } from "./support/harness";
 
 const tenantActor = (role: string) => actorWith([grant(role, "tenant", "t-a")]);
 
@@ -77,69 +77,154 @@ describe("CreateBusinessUnit", () => {
 });
 
 describe("CreateOperation", () => {
-  it("creates the operation under its unit and audits it with the unit id", async () => {
+  const base = (s: Awaited<ReturnType<Harness["seedTenantA"]>>) => ({
+    businessUnitId: s.north.id,
+    siteId: s.lote.id,
+    name: "Mina 9",
+    costCenter: "0009",
+  });
+
+  it("creates the operation under its division at its site and audits cost center and site", async () => {
     const h = createHarness();
     const unit = h.orThrow(await h.createBusinessUnit.execute({ actor: h.admin, name: "Norte" }));
-    const op = h.orThrow(await h.createOperation.execute({ actor: h.admin, businessUnitId: unit.id, name: "Mina 1" }));
-    expect(op).toMatchObject({ tenantId: "t-a", businessUnitId: unit.id, name: "Mina 1" });
+    const site = h.orThrow(await h.createSite.execute({ actor: h.admin, name: "Taller" }));
+    const input = { actor: h.admin, businessUnitId: unit.id, siteId: site.id, name: " Mina 1 ", costCenter: " 0050 " };
+    const op = h.orThrow(await h.createOperation.execute(input));
+    expect(op).toMatchObject({
+      tenantId: "t-a",
+      businessUnitId: unit.id,
+      siteId: site.id,
+      name: "Mina 1",
+      costCenter: "0050",
+    });
     expect(h.auditOf("organization.operation.create")).toEqual([
       expect.objectContaining({
         entityType: "operation",
         entityId: op.id,
         businessUnitId: unit.id,
         operationId: op.id,
-        after: { name: "Mina 1", businessUnitId: unit.id },
+        siteId: site.id,
+        after: { name: "Mina 1", businessUnitId: unit.id, siteId: site.id, costCenter: "0050" },
       }),
     ]);
   });
 
-  it("lets a business-unit-scoped analyst create under its unit but not under a sibling unit", async () => {
+  it("lets a division-scoped analyst create under its division but not under another one", async () => {
     const h = createHarness();
     const s = await h.seedTenantA();
     const actor = actorWith([grant("fleet_analyst", "business_unit", s.north.id)]);
-    expect((await h.createOperation.execute({ actor, businessUnitId: s.north.id, name: "Mina 3" })).ok).toBe(true);
-    const denied = await h.createOperation.execute({ actor, businessUnitId: s.south.id, name: "Mina 4" });
+    expect((await h.createOperation.execute({ actor, ...base(s) })).ok).toBe(true);
+    const denied = await h.createOperation.execute({
+      actor,
+      ...base(s),
+      businessUnitId: s.south.id,
+      name: "Mina 10",
+      costCenter: "0010",
+    });
     expect(!denied.ok && denied.error).toBeInstanceOf(ForbiddenError);
   });
 
-  it("denies a viewer and an operation-scoped analyst", async () => {
+  it("denies a viewer, an operation-scoped analyst and a site-scoped analyst (a site write is not enough)", async () => {
     const h = createHarness();
     const s = await h.seedTenantA();
-    for (const actor of [tenantActor("viewer"), actorWith([grant("fleet_analyst", "operation", s.mina1.id)])]) {
-      const result = await h.createOperation.execute({ actor, businessUnitId: s.north.id, name: "Mina 9" });
+    const actors = [
+      tenantActor("viewer"),
+      actorWith([grant("fleet_analyst", "operation", s.mina1.id)]),
+      actorWith([grant("fleet_analyst", "site", s.lote.id)]),
+    ];
+    for (const actor of actors) {
+      const result = await h.createOperation.execute({ actor, ...base(s) });
       expect(!result.ok && result.error).toBeInstanceOf(ForbiddenError);
     }
+    expect(h.auditOf("organization.operation.create")).toHaveLength(3);
   });
 
-  it("returns not found for a missing unit and for a unit of another tenant", async () => {
+  it("returns not found for a missing division or site and for ids of another tenant", async () => {
     const h = createHarness();
     const s = await h.seedTenantA();
-    for (const [actor, businessUnitId] of [[h.admin, "missing"], [h.adminB, s.north.id]] as const) {
-      const result = await h.createOperation.execute({ actor, businessUnitId, name: "X" });
+    const siteB = h.orThrow(await h.createSite.execute({ actor: h.adminB, name: "Taller" }));
+    const unitB = h.orThrow(await h.createBusinessUnit.execute({ actor: h.adminB, name: "Norte" }));
+    const attempts = [
+      { actor: h.admin, ...base(s), businessUnitId: "missing" },
+      { actor: h.admin, ...base(s), siteId: "missing" },
+      { actor: h.adminB, ...base(s), siteId: siteB.id },
+      { actor: h.adminB, ...base(s), businessUnitId: unitB.id },
+      { actor: h.admin, ...base(s), siteId: siteB.id },
+      { actor: h.admin, ...base(s), businessUnitId: unitB.id },
+    ];
+    for (const input of attempts) {
+      const result = await h.createOperation.execute(input);
       expect(!result.ok && result.error).toBeInstanceOf(NotFoundError);
     }
   });
 
-  it("rejects a duplicate name inside the unit but allows it in another unit", async () => {
+  it("rejects an invalid cost center without writing", async () => {
     const h = createHarness();
     const s = await h.seedTenantA();
-    const dup = await h.createOperation.execute({ actor: h.admin, businessUnitId: s.north.id, name: " MINA 1" });
+    const before = h.audit.entries.length;
+    for (const costCenter of ["50", "00500", "abcd", "00 50", ""]) {
+      const result = await h.createOperation.execute({ actor: h.admin, ...base(s), costCenter });
+      expect(!result.ok && result.error).toBeInstanceOf(InvalidCostCenterError);
+    }
+    expect(h.audit.entries).toHaveLength(before);
+  });
+
+  it("rejects a duplicate name inside the division but allows it in another division", async () => {
+    const h = createHarness();
+    const s = await h.seedTenantA();
+    const dup = await h.createOperation.execute({ actor: h.admin, ...base(s), name: " MINA 1" });
     expect(!dup.ok && dup.error).toBeInstanceOf(NameTakenError);
-    const other = await h.createOperation.execute({ actor: h.admin, businessUnitId: s.south.id, name: "Mina 1" });
+    const other = await h.createOperation.execute({ actor: h.admin, ...base(s), businessUnitId: s.south.id, name: "Mina 1" });
     expect(other.ok).toBe(true);
+  });
+
+  it("rejects a cost center already used in the tenant, even in another division and site", async () => {
+    const h = createHarness();
+    const s = await h.seedTenantA();
+    const dup = await h.createOperation.execute({
+      actor: h.admin,
+      ...base(s),
+      businessUnitId: s.south.id,
+      siteId: s.taller.id,
+      costCenter: " 0001 ",
+    });
+    expect(!dup.ok && dup.error).toBeInstanceOf(CostCenterTakenError);
+    expect(!dup.ok && dup.error.code).toBe("cost_center_taken");
+  });
+
+  it("lets two tenants reuse the same cost center", async () => {
+    const h = createHarness();
+    const s = await h.seedTenantA();
+    const unitB = h.orThrow(await h.createBusinessUnit.execute({ actor: h.adminB, name: "Norte" }));
+    const siteB = h.orThrow(await h.createSite.execute({ actor: h.adminB, name: "Taller" }));
+    const result = await h.createOperation.execute({
+      actor: h.adminB,
+      businessUnitId: unitB.id,
+      siteId: siteB.id,
+      name: "Mina 1",
+      costCenter: s.mina1.costCenter,
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  it("lets two operations share a site", async () => {
+    const h = createHarness();
+    const s = await h.seedTenantA();
+    const result = await h.createOperation.execute({ actor: h.admin, ...base(s), siteId: s.patio.id });
+    expect(result.ok).toBe(true);
   });
 
   it("rolls back when the audit write fails", async () => {
     const h = createHarness();
     const unit = h.orThrow(await h.createBusinessUnit.execute({ actor: h.admin, name: "Norte" }));
+    const site = h.orThrow(await h.createSite.execute({ actor: h.admin, name: "Taller" }));
     h.audit.failNextRecord(new Error("audit down"));
     await expect(
-      h.createOperation.execute({ actor: h.admin, businessUnitId: unit.id, name: "Mina 1" }),
+      h.createOperation.execute({ actor: h.admin, businessUnitId: unit.id, siteId: site.id, name: "Mina 1", costCenter: "0050" }),
     ).rejects.toThrow("audit down");
     expect(await h.store.read((tx) => tx.operations.listByTenant("t-a"))).toEqual([]);
   });
 });
-
 describe("CreateSite", () => {
   it("creates the site and audits it", async () => {
     const h = createHarness();

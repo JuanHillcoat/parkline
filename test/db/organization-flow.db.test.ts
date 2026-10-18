@@ -77,23 +77,26 @@ const adminToken = async (): Promise<string> =>
 
 /**
  * The identity use case only assigns the tenant scope today, so the test swaps the analyst's
- * tenant assignment for an operation scope through the identity repository, as the future
+ * tenant assignment for another scope through the identity repository, as the future
  * scope-assignment feature will.
  */
-async function scopeToOperation(userId: string, operationId: string): Promise<void> {
+async function scopeTo(userId: string, type: "operation" | "business_unit" | "site", id: string): Promise<void> {
   await app.begin(async (handle) => {
     const repository = new PostgresRoleAssignmentRepository(handle);
     const tenantGrant = createRoleAssignment({ userId, role: "fleet_analyst", scope: { type: "tenant", id: tenantId } });
-    const operationGrant = createRoleAssignment({ userId, role: "fleet_analyst", scope: { type: "operation", id: operationId } });
+    const scopedGrant = createRoleAssignment({ userId, role: "fleet_analyst", scope: { type, id } });
     await repository.deactivate(tenantId, must(tenantGrant));
-    await repository.add(tenantId, must(operationGrant));
+    await repository.add(tenantId, must(scopedGrant));
   });
 }
 
 const names = (rows: readonly { name: string }[]): string[] => rows.map((row) => row.name);
 
 describe("organization flow through the container as parkline_app", () => {
-  it("builds the structure: divisions, operations, sites, links and a rename", async () => {
+  const createOp = (businessUnitId: string, siteId: string, name: string, costCenter: string) =>
+    c.organization.createOperation.execute({ actor: adminActor, businessUnitId, siteId, name, costCenter });
+
+  it("builds the structure: divisions, sites, operations with one site and a cost center, and renames", async () => {
     const installed = must(
       await c.identity.install.execute({ tenantName: "Synthetic Tenant", displayName: "Admin", ...credentials("admin@example.test") }),
     );
@@ -102,30 +105,36 @@ describe("organization flow through the container as parkline_app", () => {
     const o = c.organization;
     ids.divA = must(await o.createBusinessUnit.execute({ actor: adminActor, name: "Division A" })).id;
     ids.divB = must(await o.createBusinessUnit.execute({ actor: adminActor, name: "Division B" })).id;
-    ids.opA1 = must(await o.createOperation.execute({ actor: adminActor, businessUnitId: ids.divA, name: "Operation A1" })).id;
-    ids.opA2 = must(await o.createOperation.execute({ actor: adminActor, businessUnitId: ids.divA, name: "Operation A2" })).id;
-    ids.opB1 = must(await o.createOperation.execute({ actor: adminActor, businessUnitId: ids.divB, name: "Operation B1" })).id;
     ids.site1 = must(await o.createSite.execute({ actor: adminActor, name: "Site 1" })).id;
     ids.site2 = must(await o.createSite.execute({ actor: adminActor, name: "Site 2" })).id;
     ids.site3 = must(await o.createSite.execute({ actor: adminActor, name: "Site 3" })).id;
-    for (const [op, site] of [["opA1", "site1"], ["opA1", "site2"], ["opB1", "site3"]] as const) {
-      must(await o.linkOperationSite.execute({ actor: adminActor, operationId: ids[op] ?? "", siteId: ids[site] ?? "" }));
-    }
+    ids.opA1 = must(await createOp(ids.divA, ids.site1, "Operation A1", "0001")).id;
+    ids.opA2 = must(await createOp(ids.divA, ids.site2, "Operation A2", "0002")).id;
+    ids.opB1 = must(await createOp(ids.divB, ids.site3, "Operation B1", "0003")).id;
     must(await o.renameSite.execute({ actor: adminActor, id: ids.site2, name: "Site Two" }));
     must(await o.renameBusinessUnit.execute({ actor: adminActor, id: ids.divB, name: "Division Bravo" }));
     must(await o.renameOperation.execute({ actor: adminActor, id: ids.opB1, name: "Operation Bravo 1" }));
+    const stored = await owner<{ cost_center: string; site_id: string }[]>`
+      select cost_center, site_id from operations where id = ${ids.opA1}`;
+    expect(stored[0]).toEqual({ cost_center: "0001", site_id: ids.site1 });
   });
 
-  it("returns typed conflicts for duplicate names and allows the same operation name in two divisions", async () => {
+  it("returns typed conflicts and validation errors, and allows the same operation name in two divisions", async () => {
     const o = c.organization;
     const dup = await o.createBusinessUnit.execute({ actor: adminActor, name: "  division   a " });
     expect(!dup.ok && dup.error.code).toBe("name_taken");
-    const twin = await o.createOperation.execute({ actor: adminActor, businessUnitId: ids.divB ?? "", name: "operation a1" });
+    const twin = await createOp(ids.divB ?? "", ids.site1 ?? "", "operation a1", "0004");
     expect(twin.ok).toBe(true);
-    const sameDivision = await o.createOperation.execute({ actor: adminActor, businessUnitId: ids.divA ?? "", name: "OPERATION A1" });
+    const sameDivision = await createOp(ids.divA ?? "", ids.site1 ?? "", "OPERATION A1", "0005");
     expect(!sameDivision.ok && sameDivision.error.code).toBe("name_taken");
-    const again = await o.linkOperationSite.execute({ actor: adminActor, operationId: ids.opA1 ?? "", siteId: ids.site1 ?? "" });
-    expect(!again.ok && again.error.code).toBe("already_linked");
+    const sameCode = await createOp(ids.divB ?? "", ids.site3 ?? "", "Operation B9", " 0001 ");
+    expect(!sameCode.ok && sameCode.error.code).toBe("cost_center_taken");
+    const badCode = await createOp(ids.divB ?? "", ids.site3 ?? "", "Operation B9", "50");
+    expect(!badCode.ok && badCode.error.code).toBe("invalid_cost_center");
+    const noSite = await createOp(ids.divB ?? "", "00000000-0000-4000-8000-000000000000", "Operation B9", "0009");
+    expect(!noSite.ok && noSite.error.code).toBe("not_found");
+    const noDivision = await createOp("not-a-uuid", ids.site3 ?? "", "Operation B9", "0009");
+    expect(!noDivision.ok && noDivision.error.code).toBe("not_found");
   });
 
   it("lists everything for a tenant-scoped analyst", async () => {
@@ -139,13 +148,41 @@ describe("organization flow through the container as parkline_app", () => {
     expect(names(must(await o.listSites.execute({ actor })))).toEqual(["Site 1", "Site 3", "Site Two"]);
   });
 
-  it("shows an operation-scoped analyst only its operation and the sites linked to it", async () => {
+  it("shows a division-scoped analyst its division, its operations and their sites", async () => {
+    const userId = await createAnalyst("division.analyst@example.test");
+    await scopeTo(userId, "business_unit", ids.divA ?? "");
+    const actor = await signInActor("division.analyst@example.test");
+    const o = c.organization;
+    expect(names(must(await o.listBusinessUnits.execute({ actor })))).toEqual(["Division A"]);
+    expect(names(must(await o.listOperations.execute({ actor })))).toEqual(["Operation A1", "Operation A2"]);
+    expect(names(must(await o.listSites.execute({ actor })))).toEqual(["Site 1", "Site Two"]);
+    expect((await o.createSite.execute({ actor, name: "Not Allowed" })).ok).toBe(false);
+    const own = await o.createOperation.execute({ actor, businessUnitId: ids.divA ?? "", siteId: ids.site3 ?? "", name: "Operation A9", costCenter: "0090" });
+    expect(own.ok).toBe(true);
+    const other = await o.createOperation.execute({ actor, businessUnitId: ids.divB ?? "", siteId: ids.site3 ?? "", name: "Operation B8", costCenter: "0091" });
+    expect(!other.ok && other.error.code).toBe("forbidden");
+  });
+
+  it("shows a site-scoped analyst the site and the operations located at it, and cannot create", async () => {
+    const userId = await createAnalyst("site.analyst@example.test");
+    await scopeTo(userId, "site", ids.site1 ?? "");
+    const actor = await signInActor("site.analyst@example.test");
+    const o = c.organization;
+    expect(must(await o.listBusinessUnits.execute({ actor }))).toEqual([]);
+    const operations = names(must(await o.listOperations.execute({ actor }))).map((name) => name.toLowerCase());
+    expect(operations).toEqual(["operation a1", "operation a1"]);
+    expect(names(must(await o.listSites.execute({ actor })))).toEqual(["Site 1"]);
+    const denied = await o.createOperation.execute({ actor, businessUnitId: ids.divA ?? "", siteId: ids.site1 ?? "", name: "Operation A8", costCenter: "0092" });
+    expect(!denied.ok && denied.error.code).toBe("forbidden");
+  });
+
+  it("shows an operation-scoped analyst only its operation and its site", async () => {
     const userId = await createAnalyst("operation.analyst@example.test");
-    await scopeToOperation(userId, ids.opA1 ?? "");
+    await scopeTo(userId, "operation", ids.opA1 ?? "");
     const actor = await signInActor("operation.analyst@example.test");
     const o = c.organization;
     expect(must(await o.listOperations.execute({ actor })).map((op) => op.id)).toEqual([ids.opA1]);
-    expect(names(must(await o.listSites.execute({ actor })))).toEqual(["Site 1", "Site Two"]);
+    expect(names(must(await o.listSites.execute({ actor })))).toEqual(["Site 1"]);
     expect(must(await o.listBusinessUnits.execute({ actor }))).toEqual([]);
     const denied = await o.createSite.execute({ actor, name: "Not Allowed" });
     expect(denied.ok).toBe(false);
@@ -158,20 +195,22 @@ describe("organization flow through the container as parkline_app", () => {
     expect(seen).toEqual([
       "organization.business_unit.create:business_unit",
       "organization.business_unit.create:business_unit",
-      "organization.operation.create:operation",
-      "organization.operation.create:operation",
-      "organization.operation.create:operation",
       "organization.site.create:site",
       "organization.site.create:site",
       "organization.site.create:site",
-      "organization.link:operation_site",
-      "organization.link:operation_site",
-      "organization.link:operation_site",
+      "organization.operation.create:operation",
+      "organization.operation.create:operation",
+      "organization.operation.create:operation",
       "organization.rename:site",
       "organization.rename:business_unit",
       "organization.rename:operation",
       "organization.operation.create:operation",
+      "organization.operation.create:operation",
     ]);
+    expect(seen).not.toContain("organization.link:operation_site");
+    const created = await owner<{ after: { costCenter: string; siteId: string } }[]>`
+      select after from audit_log where action = 'organization.operation.create' order by id limit 1`;
+    expect(created[0]?.after).toMatchObject({ costCenter: "0001", siteId: ids.site1 });
   });
 
   it("rolls the business change back when the audit write fails (create and rename)", async () => {
@@ -228,15 +267,6 @@ describe("organization flow through the container as parkline_app", () => {
     expect(outcomes.sort()).toEqual([conflict, "ok"].sort());
   };
 
-  it("two concurrent identical links give one ok and one typed conflict, over several rounds", async () => {
-    const o = c.organization;
-    for (let round = 0; round < 8; round += 1) {
-      const siteId = must(await o.createSite.execute({ actor: adminActor, name: `Link Race Site ${String(round)}` })).id;
-      const link = { actor: adminActor, operationId: ids.opA1 ?? "", siteId };
-      expectOneWinner(await Promise.allSettled([o.linkOperationSite.execute(link), o.linkOperationSite.execute(link)]), "already_linked");
-    }
-  });
-
   it("two concurrent creates of the same name give one ok and one typed conflict, over several rounds", async () => {
     const o = c.organization;
     for (let round = 0; round < 8; round += 1) {
@@ -252,13 +282,35 @@ describe("organization flow through the container as parkline_app", () => {
       ]);
       expectOneWinner(unit);
       const operation = await Promise.allSettled([
-        o.createOperation.execute({ actor: adminActor, businessUnitId: ids.divA ?? "", name: `Racing Op ${key}` }),
-        o.createOperation.execute({ actor: adminActor, businessUnitId: ids.divA ?? "", name: `racing  op ${key}` }),
+        createOp(ids.divA ?? "", ids.site1 ?? "", `Racing Op ${key}`, `20${String(round)}0`),
+        createOp(ids.divA ?? "", ids.site2 ?? "", `racing  op ${key}`, `20${String(round)}1`),
       ]);
       expectOneWinner(operation);
     }
     const rows = await owner`select 1 from sites where name_key like 'racing site %'`;
     expect(rows).toHaveLength(8);
+    const operations = await owner`select 1 from operations where name_key like 'racing op %'`;
+    expect(operations).toHaveLength(8);
+  });
+
+  it("two concurrent creates with the same cost center give one ok and one typed conflict, over several rounds", async () => {
+    for (let round = 0; round < 8; round += 1) {
+      const code = `40${String(round)}0`;
+      expectOneWinner(
+        await Promise.allSettled([
+          createOp(ids.divA ?? "", ids.site1 ?? "", `Code Race A ${String(round)}`, code),
+          createOp(ids.divB ?? "", ids.site3 ?? "", `Code Race B ${String(round)}`, ` ${code} `),
+        ]),
+        "cost_center_taken",
+      );
+      const rows = await owner`select 1 from operations where cost_center = ${code}`;
+      expect(rows).toHaveLength(1);
+    }
+  });
+
+  it("a create that breaks both unique indexes at once still answers a typed conflict", async () => {
+    const result = await createOp(ids.divA ?? "", ids.site1 ?? "", "Operation A1", "0001");
+    expect(!result.ok && ["name_taken", "cost_center_taken"].includes(result.error.code)).toBe(true);
   });
 
   it("two concurrent renames into the same name give one ok and one typed conflict, over several rounds", async () => {

@@ -1,11 +1,12 @@
 import type { TransactionSql } from "postgres";
 import type {
   BusinessUnitRepository,
+  OperationAdd,
   OperationRepository,
-  OperationSiteRepository,
   SiteRepository,
 } from "../application/ports/repositories";
-import type { BusinessUnit, Operation, OperationSite, Site } from "../domain/entities";
+import type { BusinessUnit, Operation, Site } from "../domain/entities";
+import { nameKey } from "../domain/name";
 import { compareByName } from "./row-order";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -14,10 +15,15 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isUuid = (value: string): boolean => UUID.test(value);
 
 type NamedRow = { id: string; tenant_id: string; name: string };
-type OperationRow = NamedRow & { business_unit_id: string };
+type OperationRow = NamedRow & { business_unit_id: string; site_id: string; cost_center: string };
 
 const toNamed = (row: NamedRow): BusinessUnit => ({ id: row.id, tenantId: row.tenant_id, name: row.name });
-const toOperation = (row: OperationRow): Operation => ({ ...toNamed(row), businessUnitId: row.business_unit_id });
+const toOperation = (row: OperationRow): Operation => ({
+  ...toNamed(row),
+  businessUnitId: row.business_unit_id,
+  siteId: row.site_id,
+  costCenter: row.cost_center,
+});
 
 const UNIQUE_VIOLATION = "23505";
 
@@ -84,26 +90,48 @@ export class PostgresOperationRepository implements OperationRepository {
   async findById(tenantId: string, id: string): Promise<Operation | null> {
     if (!isUuid(tenantId) || !isUuid(id)) return null;
     const rows = await this.sql<OperationRow[]>`
-      select id, tenant_id, business_unit_id, name from operations where tenant_id = ${tenantId} and id = ${id}`;
+      select id, tenant_id, business_unit_id, site_id, name, cost_center
+      from operations where tenant_id = ${tenantId} and id = ${id}`;
     return rows[0] ? toOperation(rows[0]) : null;
   }
 
   async findByName(tenantId: string, businessUnitId: string, key: string): Promise<Operation | null> {
     if (!isUuid(tenantId) || !isUuid(businessUnitId)) return null;
     const rows = await this.sql<OperationRow[]>`
-      select id, tenant_id, business_unit_id, name from operations
+      select id, tenant_id, business_unit_id, site_id, name, cost_center from operations
       where tenant_id = ${tenantId} and business_unit_id = ${businessUnitId}
         and name_key = organization_name_key(${key})`;
     return rows[0] ? toOperation(rows[0]) : null;
   }
 
-  async add(operation: Operation): Promise<boolean> {
+  async findByCostCenter(tenantId: string, costCenter: string): Promise<Operation | null> {
+    if (!isUuid(tenantId)) return null;
+    const rows = await this.sql<OperationRow[]>`
+      select id, tenant_id, business_unit_id, site_id, name, cost_center
+      from operations where tenant_id = ${tenantId} and cost_center = ${costCenter}`;
+    return rows[0] ? toOperation(rows[0]) : null;
+  }
+
+  /**
+   * "on conflict do nothing" swallows a violation of either unique index (name per division,
+   * cost center per tenant); a follow-up lookup tells which one took the row. The lookup is a
+   * new statement, so it sees the concurrent writer's committed row.
+   */
+  async add(operation: Operation): Promise<OperationAdd> {
     const rows = await this.sql`
-      insert into operations (id, tenant_id, business_unit_id, name)
-      values (${operation.id}, ${operation.tenantId}, ${operation.businessUnitId}, ${operation.name})
-      on conflict (tenant_id, business_unit_id, name_key) do nothing
+      insert into operations (id, tenant_id, business_unit_id, site_id, name, cost_center)
+      values (${operation.id}, ${operation.tenantId}, ${operation.businessUnitId}, ${operation.siteId},
+              ${operation.name}, ${operation.costCenter})
+      on conflict do nothing
       returning id`;
-    return rows.length === 1;
+    return rows.length === 1 ? "added" : this.whyRejected(operation);
+  }
+
+  private async whyRejected(operation: Operation): Promise<Exclude<OperationAdd, "added">> {
+    const sameName = await this.findByName(operation.tenantId, operation.businessUnitId, nameKey(operation.name));
+    if (sameName !== null) return "name_taken";
+    if ((await this.findByCostCenter(operation.tenantId, operation.costCenter)) !== null) return "cost_center_taken";
+    throw new Error("operation insert skipped without a name or cost center conflict");
   }
 
   rename(tenantId: string, id: string, name: string): Promise<boolean> {
@@ -113,7 +141,8 @@ export class PostgresOperationRepository implements OperationRepository {
   async listByTenant(tenantId: string): Promise<readonly Operation[]> {
     if (!isUuid(tenantId)) return [];
     const rows = await this.sql<OperationRow[]>`
-      select id, tenant_id, business_unit_id, name from operations where tenant_id = ${tenantId}`;
+      select id, tenant_id, business_unit_id, site_id, name, cost_center
+      from operations where tenant_id = ${tenantId}`;
     return rows.map(toOperation).sort(compareByName);
   }
 }
@@ -152,42 +181,5 @@ export class PostgresSiteRepository implements SiteRepository {
     if (!isUuid(tenantId)) return [];
     const rows = await this.sql<NamedRow[]>`select id, tenant_id, name from sites where tenant_id = ${tenantId}`;
     return rows.map(toNamed).sort(compareByName);
-  }
-}
-
-type LinkRow = { tenant_id: string; operation_id: string; site_id: string };
-
-const toLink = (row: LinkRow): OperationSite => ({
-  tenantId: row.tenant_id,
-  operationId: row.operation_id,
-  siteId: row.site_id,
-});
-
-export class PostgresOperationSiteRepository implements OperationSiteRepository {
-  constructor(private readonly sql: TransactionSql) {}
-
-  async find(tenantId: string, operationId: string, siteId: string): Promise<OperationSite | null> {
-    if (!isUuid(tenantId) || !isUuid(operationId) || !isUuid(siteId)) return null;
-    const rows = await this.sql<LinkRow[]>`
-      select tenant_id, operation_id, site_id from operation_sites
-      where tenant_id = ${tenantId} and operation_id = ${operationId} and site_id = ${siteId}`;
-    return rows[0] ? toLink(rows[0]) : null;
-  }
-
-  async add(link: OperationSite): Promise<boolean> {
-    const rows = await this.sql`
-      insert into operation_sites (tenant_id, operation_id, site_id)
-      values (${link.tenantId}, ${link.operationId}, ${link.siteId})
-      on conflict (tenant_id, operation_id, site_id) do nothing
-      returning operation_id`;
-    return rows.length === 1;
-  }
-
-  async listByTenant(tenantId: string): Promise<readonly OperationSite[]> {
-    if (!isUuid(tenantId)) return [];
-    const rows = await this.sql<LinkRow[]>`
-      select tenant_id, operation_id, site_id from operation_sites
-      where tenant_id = ${tenantId} order by created_at, operation_id, site_id`;
-    return rows.map(toLink);
   }
 }

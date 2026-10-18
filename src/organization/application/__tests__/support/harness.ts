@@ -8,7 +8,6 @@ import type { OrganizationDeps } from "../../deps";
 import { CreateBusinessUnit } from "../../use-cases/create-business-unit";
 import { CreateOperation } from "../../use-cases/create-operation";
 import { CreateSite } from "../../use-cases/create-site";
-import { LinkOperationSite } from "../../use-cases/link-operation-site";
 import { ListBusinessUnits } from "../../use-cases/list-business-units";
 import { ListOperations } from "../../use-cases/list-operations";
 import { ListSites } from "../../use-cases/list-sites";
@@ -45,7 +44,6 @@ export const createHarness = () => {
     renameBusinessUnit: new RenameBusinessUnit(deps),
     renameOperation: new RenameOperation(deps),
     renameSite: new RenameSite(deps),
-    link: new LinkOperationSite(deps),
     listBusinessUnits: new ListBusinessUnits(deps),
     listOperations: new ListOperations(deps),
     listSites: new ListSites(deps),
@@ -57,24 +55,22 @@ export const createHarness = () => {
     return result.value;
   };
 
-  /** Tenant A: bu-n {Mina 1, Mina 2}, bu-s {Planta}; sites Taller (Mina 1), Patio (Mina 2 and Planta), Lote (unlinked). */
+  /**
+   * Tenant A: Norte {Mina 1 at Taller (0001), Mina 2 at Patio (0002)}, Sur {Planta at Patio (0003)};
+   * Lote has no operation. Mina 2 and Planta share the site Patio.
+   */
   const seedTenantA = async () => {
     const north = orThrow(await useCases.createBusinessUnit.execute({ actor: admin, name: "Norte" }));
     const south = orThrow(await useCases.createBusinessUnit.execute({ actor: admin, name: "Sur" }));
-    const op = async (businessUnitId: string, name: string) =>
-      orThrow(await useCases.createOperation.execute({ actor: admin, businessUnitId, name }));
-    const mina1 = await op(north.id, "Mina 1");
-    const mina2 = await op(north.id, "Mina 2");
-    const planta = await op(south.id, "Planta");
     const site = async (name: string) => orThrow(await useCases.createSite.execute({ actor: admin, name }));
     const taller = await site("Taller");
     const patio = await site("Patio");
     const lote = await site("Lote");
-    const link = async (operationId: string, siteId: string) =>
-      orThrow(await useCases.link.execute({ actor: admin, operationId, siteId }));
-    await link(mina1.id, taller.id);
-    await link(mina2.id, patio.id);
-    await link(planta.id, patio.id);
+    const op = async (businessUnitId: string, siteId: string, name: string, costCenter: string) =>
+      orThrow(await useCases.createOperation.execute({ actor: admin, businessUnitId, siteId, name, costCenter }));
+    const mina1 = await op(north.id, taller.id, "Mina 1", "0001");
+    const mina2 = await op(north.id, patio.id, "Mina 2", "0002");
+    const planta = await op(south.id, patio.id, "Planta", "0003");
     return { north, south, mina1, mina2, planta, taller, patio, lote };
   };
 

@@ -1,10 +1,10 @@
 import type {
   BusinessUnitRepository,
+  OperationAdd,
   OperationRepository,
-  OperationSiteRepository,
   SiteRepository,
 } from "../application/ports/repositories";
-import type { BusinessUnit, Operation, OperationSite, Site } from "../domain/entities";
+import type { BusinessUnit, Operation, Site } from "../domain/entities";
 import { nameKey } from "../domain/name";
 import { compareByName } from "./row-order";
 
@@ -13,14 +13,12 @@ export type OrganizationState = {
   businessUnits: BusinessUnit[];
   operations: Operation[];
   sites: Site[];
-  links: OperationSite[];
 };
 
 export const emptyState = (): OrganizationState => ({
   businessUnits: [],
   operations: [],
   sites: [],
-  links: [],
 });
 
 type Row = { readonly id: string; readonly tenantId: string; readonly name: string };
@@ -100,8 +98,21 @@ export class InMemoryOperationRepository implements OperationRepository {
     return Promise.resolve(found ?? null);
   }
 
-  add(operation: Operation): Promise<boolean> {
-    return Promise.resolve(insertRow(this.state.operations, operation));
+  findByCostCenter(tenantId: string, costCenter: string): Promise<Operation | null> {
+    const found = this.state.operations.find((o) => o.tenantId === tenantId && o.costCenter === costCenter);
+    return Promise.resolve(found ?? null);
+  }
+
+  /** Mirrors the two unique indexes: name per division first, then cost center per tenant. */
+  add(operation: Operation): Promise<OperationAdd> {
+    const rows = this.state.operations;
+    if (rows.some((existing) => existing.id === operation.id)) throw new Error("unique violation on id");
+    if (collides(rows, operation)) return Promise.resolve("name_taken");
+    if (rows.some((o) => o.tenantId === operation.tenantId && o.costCenter === operation.costCenter)) {
+      return Promise.resolve("cost_center_taken");
+    }
+    rows.push(operation);
+    return Promise.resolve("added");
   }
 
   rename(tenantId: string, id: string, name: string): Promise<boolean> {
@@ -135,28 +146,5 @@ export class InMemorySiteRepository implements SiteRepository {
 
   listByTenant(tenantId: string): Promise<readonly Site[]> {
     return Promise.resolve(sorted(this.state.sites, tenantId));
-  }
-}
-
-export class InMemoryOperationSiteRepository implements OperationSiteRepository {
-  constructor(private readonly state: OrganizationState) {}
-
-  find(tenantId: string, operationId: string, siteId: string): Promise<OperationSite | null> {
-    const found = this.state.links.find(
-      (l) => l.tenantId === tenantId && l.operationId === operationId && l.siteId === siteId,
-    );
-    return Promise.resolve(found ?? null);
-  }
-
-  add(link: OperationSite): Promise<boolean> {
-    const taken = this.state.links.some(
-      (l) => l.tenantId === link.tenantId && l.operationId === link.operationId && l.siteId === link.siteId,
-    );
-    if (!taken) this.state.links.push(link);
-    return Promise.resolve(!taken);
-  }
-
-  listByTenant(tenantId: string): Promise<readonly OperationSite[]> {
-    return Promise.resolve(this.state.links.filter((l) => l.tenantId === tenantId));
   }
 }

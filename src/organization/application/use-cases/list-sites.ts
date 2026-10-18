@@ -19,8 +19,7 @@ export class ListSites {
       this.deps.unitOfWork.run(async (tx) => {
         const sites = await tx.sites.listByTenant(actor.tenantId);
         const operations = await tx.operations.listByTenant(actor.tenantId);
-        const links = await tx.links.listByTenant(actor.tenantId);
-        return ok(visibleSites(sites, operations, links, canRead));
+        return ok(visibleSites(sites, operations, canRead));
       }),
     );
   }

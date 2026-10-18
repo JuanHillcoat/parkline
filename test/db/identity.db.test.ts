@@ -59,12 +59,19 @@ async function addSite(tenantId: string): Promise<string> {
   return rows[0]?.id ?? "";
 }
 
+let nextCostCenter = 0;
+
 async function addOperation(tenantId: string): Promise<string> {
   const unit = await sql<{ id: string }[]>`
     insert into business_units (tenant_id, name) values (${tenantId}, ${`Unit ${randomBytes(4).toString("hex")}`}) returning id`;
+  const site = await addSite(tenantId);
+  // The cost center is unique per tenant: a counter shared by the whole file keeps it so.
+  nextCostCenter += 1;
+  const costCenter = String(nextCostCenter).padStart(4, "0");
   const rows = await sql<{ id: string }[]>`
-    insert into operations (tenant_id, business_unit_id, name)
-    values (${tenantId}, ${unit[0]?.id ?? ""}, ${`Operation ${randomBytes(4).toString("hex")}`}) returning id`;
+    insert into operations (tenant_id, business_unit_id, site_id, name, cost_center)
+    values (${tenantId}, ${unit[0]?.id ?? ""}, ${site}, ${`Operation ${randomBytes(4).toString("hex")}`}, ${costCenter})
+    returning id`;
   return rows[0]?.id ?? "";
 }
 

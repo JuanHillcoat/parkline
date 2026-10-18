@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { UnitOfWork } from "../../../shared/domain/ports/unit-of-work";
-import { AlreadyLinkedError, NameTakenError } from "../../domain/errors";
-import { LinkOperationSite } from "../use-cases/link-operation-site";
+import { CostCenterTakenError, NameTakenError } from "../../domain/errors";
 import type { OrganizationDeps } from "../deps";
 import type { OrganizationTx } from "../ports/organization-tx";
 import { CreateBusinessUnit } from "../use-cases/create-business-unit";
@@ -14,7 +13,10 @@ import { createHarness, type Harness } from "./support/harness";
 
 /** A repository whose name lookup always misses: the pre-check lost a race to a concurrent writer. */
 const blind = <T extends object>(repository: T): T =>
-  Object.assign(Object.create(repository) as T, { findByName: () => Promise.resolve(null) });
+  Object.assign(Object.create(repository) as T, {
+    findByName: () => Promise.resolve(null),
+    findByCostCenter: () => Promise.resolve(null),
+  });
 
 const racingDeps = (h: Harness): OrganizationDeps => {
   const unitOfWork: UnitOfWork<OrganizationTx> = {
@@ -33,7 +35,7 @@ describe("the name uniqueness race (D7)", () => {
     const deps = racingDeps(h);
     const results = [
       await new CreateBusinessUnit(deps).execute({ actor: h.admin, name: " norte " }),
-      await new CreateOperation(deps).execute({ actor: h.admin, businessUnitId: s.north.id, name: "MINA 1" }),
+      await new CreateOperation(deps).execute({ actor: h.admin, businessUnitId: s.north.id, siteId: s.lote.id, name: "MINA 1", costCenter: "0077" }),
       await new CreateSite(deps).execute({ actor: h.admin, name: "taller" }),
     ];
     for (const result of results) expect(!result.ok && result.error).toBeInstanceOf(NameTakenError);
@@ -51,23 +53,21 @@ describe("the name uniqueness race (D7)", () => {
     for (const result of results) expect(!result.ok && result.error).toBeInstanceOf(NameTakenError);
   });
 
-  it("answers a typed conflict when the primary key rejects a link the pre-check missed", async () => {
+  it("answers cost_center_taken when the unique index rejects a create the pre-check missed", async () => {
     const h = createHarness();
     const s = await h.seedTenantA();
-    const unitOfWork: UnitOfWork<OrganizationTx> = {
-      run: (work) =>
-        h.deps.unitOfWork.run((tx) =>
-          work({ ...tx, links: Object.assign(Object.create(tx.links) as typeof tx.links, { find: () => Promise.resolve(null) }) }),
-        ),
-    };
-    const before = h.auditOf("organization.link").length;
-    const result = await new LinkOperationSite({ ...h.deps, unitOfWork }).execute({
+    const before = h.audit.entries.length;
+    const result = await new CreateOperation(racingDeps(h)).execute({
       actor: h.admin,
-      operationId: s.mina1.id,
-      siteId: s.taller.id,
+      businessUnitId: s.south.id,
+      siteId: s.lote.id,
+      name: "Operation S9",
+      costCenter: "0001",
     });
-    expect(!result.ok && result.error).toBeInstanceOf(AlreadyLinkedError);
-    expect(h.auditOf("organization.link")).toHaveLength(before);
+    expect(!result.ok && result.error).toBeInstanceOf(CostCenterTakenError);
+    expect(!result.ok && result.error.code).toBe("cost_center_taken");
+    expect(h.audit.entries).toHaveLength(before);
+    expect(await h.store.read((tx) => tx.operations.listByTenant("t-a"))).toHaveLength(3);
   });
 
   it("writes no audit entry and keeps the stored data when the create loses", async () => {
