@@ -124,6 +124,8 @@ Documentos adicionales de la empresa: cinco comprobantes de C con sus soportes y
 
 **Fuera de v1: portal de proveedores.** Los documentos de proveedor (comprobantes, OT, presupuestos, declaraciones) los registra la empresa a partir de papel o archivos recibidos. Las declaraciones y comprobantes se importan desde archivo con revisión humana antes de confirmar (sección 7.2). Un portal agregaría identidades externas, alcance por proveedor y superficie de seguridad, sin reducir ningún paso verificado hoy. Se reevalúa en una fase posterior si un proveedor lo exige. [D]
 
+**Usuarios de la v1 y visibilidad de costos [D, confirmado por el usuario]:** la v1 es solo para el sector Flota y Equipos, y todos sus usuarios ven los costos. No se define todavía un permiso de costos separado. La expansión al resto de la empresa queda fuera de la v1 y se registra en el issue #17: jefes y gerentes de operación y gerentes de división verían los costos de su alcance, y un administrativo de la operación cargaría solicitudes de reparación y vería los vencimientos de preventivos sin ver costos.
+
 ---
 
 ## 5. Procesos a digitalizar

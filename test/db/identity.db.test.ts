@@ -42,11 +42,37 @@ async function addAssignment(
   scopeId: string,
   active = true,
 ): Promise<void> {
+  // Since 0005 a non-tenant scope fills the typed column that carries the foreign key.
+  const typed = (type: string) => (scopeType === type ? scopeId : null);
   await sql`
     insert into user_role_assignments
-      (id, tenant_id, user_id, role, scope_type, scope_id, active)
+      (id, tenant_id, user_id, role, scope_type, scope_id, active,
+       scope_business_unit_id, scope_operation_id, scope_site_id)
     values
-      (gen_random_uuid(), ${tenantId}, ${userId}, ${role}, ${scopeType}, ${scopeId}, ${active})`;
+      (gen_random_uuid(), ${tenantId}, ${userId}, ${role}, ${scopeType}, ${scopeId}, ${active},
+       ${typed("business_unit")}, ${typed("operation")}, ${typed("site")})`;
+}
+
+async function addSite(tenantId: string): Promise<string> {
+  const rows = await sql<{ id: string }[]>`
+    insert into sites (tenant_id, name) values (${tenantId}, ${`Site ${randomBytes(4).toString("hex")}`}) returning id`;
+  return rows[0]?.id ?? "";
+}
+
+let nextCostCenter = 0;
+
+async function addOperation(tenantId: string): Promise<string> {
+  const unit = await sql<{ id: string }[]>`
+    insert into business_units (tenant_id, name) values (${tenantId}, ${`Unit ${randomBytes(4).toString("hex")}`}) returning id`;
+  const site = await addSite(tenantId);
+  // The cost center is unique per tenant: a counter shared by the whole file keeps it so.
+  nextCostCenter += 1;
+  const costCenter = String(nextCostCenter).padStart(4, "0");
+  const rows = await sql<{ id: string }[]>`
+    insert into operations (tenant_id, business_unit_id, site_id, name, cost_center)
+    values (${tenantId}, ${unit[0]?.id ?? ""}, ${site}, ${`Operation ${randomBytes(4).toString("hex")}`}, ${costCenter})
+    returning id`;
+  return rows[0]?.id ?? "";
 }
 
 async function addSession(tenantId: string, userId: string, tokenHash: string): Promise<void> {
@@ -117,7 +143,7 @@ describe("user_role_assignments", () => {
     const t = await addTenant("Tenant F");
     const u = await addUser(t, "fer@example.test");
     await addAssignment(t, u, "admin", "tenant", t);
-    await addAssignment(t, u, "supervisor", "site", "site-1");
+    await addAssignment(t, u, "supervisor", "site", await addSite(t));
     const rows = await sql`select count(*)::int as n from user_role_assignments where user_id = ${u}`;
     expect(rows[0]?.n).toBe(2);
   });
@@ -129,7 +155,7 @@ describe("user_role_assignments", () => {
     await expect(addAssignment(a, u, "viewer", "tenant", b)).rejects.toThrow(/check/);
     await expect(addAssignment(a, u, "admin", "tenant", b)).rejects.toThrow(/check/);
     await addAssignment(a, u, "viewer", "tenant", a);
-    await addAssignment(a, u, "viewer", "site", "arbitrary-site-id");
+    await addAssignment(a, u, "viewer", "site", await addSite(a));
     const rows = await sql`select count(*)::int as n from user_role_assignments where user_id = ${u}`;
     expect(rows[0]?.n).toBe(2);
   });
@@ -137,7 +163,7 @@ describe("user_role_assignments", () => {
   it("rejects admin with a non-tenant scope", async () => {
     const t = await addTenant("Tenant G");
     const u = await addUser(t, "gus@example.test");
-    await expect(addAssignment(t, u, "admin", "site", "site-1")).rejects.toThrow(/check/);
+    await expect(addAssignment(t, u, "admin", "site", await addSite(t))).rejects.toThrow(/check/);
   });
 
   it("rejects an invalid role or scope_type", async () => {
@@ -150,12 +176,11 @@ describe("user_role_assignments", () => {
   it("rejects a duplicate active assignment but allows a deactivated duplicate", async () => {
     const t = await addTenant("Tenant I");
     const u = await addUser(t, "ivy@example.test");
-    await addAssignment(t, u, "manager", "operation", "op-1");
-    await expect(addAssignment(t, u, "manager", "operation", "op-1")).rejects.toThrow(
-      /duplicate key/,
-    );
-    await addAssignment(t, u, "manager", "operation", "op-1", false);
-    await addAssignment(t, u, "manager", "operation", "op-1", false);
+    const op = await addOperation(t);
+    await addAssignment(t, u, "manager", "operation", op);
+    await expect(addAssignment(t, u, "manager", "operation", op)).rejects.toThrow(/duplicate key/);
+    await addAssignment(t, u, "manager", "operation", op, false);
+    await addAssignment(t, u, "manager", "operation", op, false);
     const rows = await sql`select count(*)::int as n from user_role_assignments where user_id = ${u}`;
     expect(rows[0]?.n).toBe(3);
   });
@@ -209,8 +234,9 @@ describe("foreign key delete behavior", () => {
       select conname, confdeltype from pg_constraint
       where contype = 'f'
         and conrelid in ('users'::regclass, 'user_role_assignments'::regclass, 'sessions'::regclass)`;
-    expect(rows.length).toBe(3);
-    for (const row of rows) expect(row.confdeltype, row.conname).toBe("a");
+    // 0002 has three foreign keys (no action); 0005 adds three scope keys (restrict).
+    expect(rows.length).toBe(6);
+    for (const row of rows) expect(["a", "r"], row.conname).toContain(row.confdeltype);
   });
 });
 

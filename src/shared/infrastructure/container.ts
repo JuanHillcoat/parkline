@@ -20,6 +20,17 @@ import { DEFAULT_SESSION_POLICY, type SessionPolicy } from "../../identity/domai
 import { CryptoSessionTokenService } from "../../identity/infrastructure/crypto-session-token-service";
 import { createPostgresIdentityTx } from "../../identity/infrastructure/postgres-identity-tx";
 import { ScryptPasswordHasher } from "../../identity/infrastructure/scrypt-password-hasher";
+import type { OrganizationDeps } from "../../organization/application/deps";
+import { CreateBusinessUnit } from "../../organization/application/use-cases/create-business-unit";
+import { CreateOperation } from "../../organization/application/use-cases/create-operation";
+import { CreateSite } from "../../organization/application/use-cases/create-site";
+import { ListBusinessUnits } from "../../organization/application/use-cases/list-business-units";
+import { ListOperations } from "../../organization/application/use-cases/list-operations";
+import { ListSites } from "../../organization/application/use-cases/list-sites";
+import { RenameBusinessUnit } from "../../organization/application/use-cases/rename-business-unit";
+import { RenameOperation } from "../../organization/application/use-cases/rename-operation";
+import { RenameSite } from "../../organization/application/use-cases/rename-site";
+import { createPostgresOrganizationTx } from "../../organization/infrastructure/postgres-organization-tx";
 import type { AccessPolicy } from "../domain/ports/access-policy";
 import type { AuditLog } from "../domain/ports/audit-log";
 import { PostgresAuditLog } from "./postgres-audit-log";
@@ -47,11 +58,35 @@ const identityDeps = (sql: Sql, options: ContainerOptions): IdentityDeps => ({
   policy: options.policy ?? DEFAULT_SESSION_POLICY,
 });
 
+const organizationDeps = (sql: Sql, options: ContainerOptions, accessPolicy: AccessPolicy): OrganizationDeps => ({
+  unitOfWork: new PostgresUnitOfWork(sql, (handle) => {
+    const audit = new PostgresAuditLog(handle);
+    return createPostgresOrganizationTx(handle, options.wrapAudit?.(audit) ?? audit);
+  }),
+  clock: new SystemClock(),
+  ids: new UuidIdGenerator(),
+  accessPolicy,
+});
+
+const organizationUseCases = (deps: OrganizationDeps) => ({
+  createBusinessUnit: new CreateBusinessUnit(deps),
+  createOperation: new CreateOperation(deps),
+  createSite: new CreateSite(deps),
+  renameBusinessUnit: new RenameBusinessUnit(deps),
+  renameOperation: new RenameOperation(deps),
+  renameSite: new RenameSite(deps),
+  listBusinessUnits: new ListBusinessUnits(deps),
+  listOperations: new ListOperations(deps),
+  listSites: new ListSites(deps),
+});
+
 export const createContainer = (sql: Sql, options: ContainerOptions = {}) => {
   const deps = identityDeps(sql, options);
+  const accessPolicy: AccessPolicy = new IdentityAccessPolicy();
   return {
     /** Cross-module authorization (ADR-0005); modules receive it instead of importing identity. */
-    accessPolicy: new IdentityAccessPolicy() satisfies AccessPolicy,
+    accessPolicy,
+    organization: organizationUseCases(organizationDeps(sql, options, accessPolicy)),
     identity: {
       install: new InstallTenantAdmin(deps),
       signIn: new SignIn(deps),
