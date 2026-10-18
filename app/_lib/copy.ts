@@ -101,6 +101,7 @@ const es = {
       submit: "Crear división",
       nameLabel: "Nombre de la división",
       namePlaceholder: "Nombre de la división",
+      nameHint: "Se guarda en mayúsculas.",
     },
     newOperation: {
       trigger: "Nueva operación",
@@ -109,6 +110,7 @@ const es = {
       submit: "Crear operación",
       nameLabel: "Nombre de la operación",
       namePlaceholder: "Nombre de la operación",
+      nameHint: "Se guarda en mayúsculas.",
       divisionLabel: "División",
       selectDivision: "Seleccione una división",
       siteLabel: "Sitio",
@@ -125,6 +127,7 @@ const es = {
       submit: "Crear sitio",
       nameLabel: "Nombre del sitio",
       namePlaceholder: "Nombre del sitio",
+      nameHint: "Se guarda en mayúsculas.",
     },
     rename: {
       trigger: "Renombrar",
@@ -132,6 +135,7 @@ const es = {
       description: "El cambio queda registrado en la auditoría.",
       submit: "Guardar nombre",
       nameLabel: "Nuevo nombre",
+      nameHint: "Se guarda en mayúsculas.",
     },
     newUser: {
       trigger: "Nuevo usuario",

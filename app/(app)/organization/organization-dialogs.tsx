@@ -11,12 +11,13 @@ import {
 
 type Option = { readonly id: string; readonly name: string };
 
-function NameField(props: { id: string; label: string; placeholder?: string; initial?: string }) {
+function NameField(props: { id: string; label: string; hint: string; placeholder?: string; initial?: string }) {
   return (
     <div className="field">
       <label htmlFor={props.id}>{props.label}</label>
       <input id={props.id} name="name" type="text" required defaultValue={props.initial}
         placeholder={props.placeholder} className="input" autoComplete="off" />
+      <span className="hint">{props.hint}</span>
     </div>
   );
 }
@@ -61,7 +62,7 @@ export function NewDivisionDialog() {
   return (
     <ActionDialog triggerLabel={t.trigger} triggerClassName="btn btn-primary" title={t.title}
       description={t.description} submitLabel={t.submit} action={createDivisionAction}>
-      <NameField id="new-division-name" label={t.nameLabel} placeholder={t.namePlaceholder} />
+      <NameField id="new-division-name" label={t.nameLabel} hint={t.nameHint} placeholder={t.namePlaceholder} />
     </ActionDialog>
   );
 }
@@ -73,7 +74,7 @@ export function NewOperationDialog({ divisions, sites }: NewOperationProps) {
   return (
     <ActionDialog triggerLabel={t.trigger} triggerClassName="btn" title={t.title}
       description={t.description} submitLabel={t.submit} action={createOperationAction}>
-      <NameField id="new-operation-name" label={t.nameLabel} placeholder={t.namePlaceholder} />
+      <NameField id="new-operation-name" label={t.nameLabel} hint={t.nameHint} placeholder={t.namePlaceholder} />
       <SelectField id="new-operation-division" name="businessUnitId" label={t.divisionLabel}
         prompt={t.selectDivision} options={divisions} />
       <SelectField id="new-operation-site" name="siteId" label={t.siteLabel} prompt={t.selectSite}
@@ -88,7 +89,7 @@ export function NewSiteDialog() {
   return (
     <ActionDialog triggerLabel={t.trigger} triggerClassName="btn" title={t.title}
       description={t.description} submitLabel={t.submit} action={createSiteAction}>
-      <NameField id="new-site-name" label={t.nameLabel} placeholder={t.namePlaceholder} />
+      <NameField id="new-site-name" label={t.nameLabel} hint={t.nameHint} placeholder={t.namePlaceholder} />
     </ActionDialog>
   );
 }
@@ -107,7 +108,7 @@ export function RenameDialog({ kind, target }: { kind: RenameKind; target: Optio
     <ActionDialog triggerLabel={t.trigger} triggerClassName="btn btn-link" title={t.title(target.name)}
       description={t.description} submitLabel={t.submit} action={RENAME_ACTIONS[kind]}>
       <input type="hidden" name="id" value={target.id} />
-      <NameField id={`rename-${kind}-${target.id}`} label={t.nameLabel} initial={target.name} />
+      <NameField id={`rename-${kind}-${target.id}`} label={t.nameLabel} hint={t.nameHint} initial={target.name} />
     </ActionDialog>
   );
 }

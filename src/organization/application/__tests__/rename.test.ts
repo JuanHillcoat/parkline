@@ -8,14 +8,14 @@ describe("rename use cases", () => {
     const h = createHarness();
     const s = await h.seedTenantA();
     const renamed = h.orThrow(await h.renameBusinessUnit.execute({ actor: h.admin, id: s.north.id, name: " Norte Grande " }));
-    expect(renamed).toEqual({ ...s.north, name: "Norte Grande" });
+    expect(renamed).toEqual({ ...s.north, name: "NORTE GRANDE" });
     expect(h.auditOf("organization.rename").at(-1)).toMatchObject({
       entityType: "business_unit",
       entityId: s.north.id,
       businessUnitId: s.north.id,
       actorRole: "admin",
-      before: { name: "Norte" },
-      after: { name: "Norte Grande" },
+      before: { name: "NORTE" },
+      after: { name: "NORTE GRANDE" },
     });
   });
 
@@ -27,13 +27,23 @@ describe("rename use cases", () => {
     const entries = h.auditOf("organization.rename");
     expect(entries.map((e) => e.entityType)).toEqual(["operation", "site"]);
     expect(entries[0]).toMatchObject({ operationId: s.mina1.id, businessUnitId: s.north.id });
-    expect(entries[1]).toMatchObject({ siteId: s.taller.id, after: { name: "Taller Central" } });
+    expect(entries[1]).toMatchObject({ siteId: s.taller.id, after: { name: "TALLER CENTRAL" } });
   });
 
-  it("allows changing only the case of the same name", async () => {
+  it("rejects renaming into an accent or case variant of a sibling name", async () => {
     const h = createHarness();
     const s = await h.seedTenantA();
-    const result = await h.renameSite.execute({ actor: h.admin, id: s.taller.id, name: "TALLER" });
+    h.orThrow(await h.renameSite.execute({ actor: h.admin, id: s.taller.id, name: "Bahía Blanca" }));
+    const clash = await h.renameSite.execute({ actor: h.admin, id: s.lote.id, name: "bahia blanca" });
+    expect(!clash.ok && clash.error.code).toBe("name_taken");
+    const own = await h.renameSite.execute({ actor: h.admin, id: s.taller.id, name: "BAHIA BLANCA" });
+    expect(own.ok && own.value.name).toBe("BAHIA BLANCA");
+  });
+
+  it("stores a lowercase rename uppercase and allows re-saving the same name", async () => {
+    const h = createHarness();
+    const s = await h.seedTenantA();
+    const result = await h.renameSite.execute({ actor: h.admin, id: s.taller.id, name: "taller" });
     expect(result.ok && result.value.name).toBe("TALLER");
   });
 
@@ -91,6 +101,6 @@ describe("rename use cases", () => {
     h.audit.failNextRecord(new Error("audit down"));
     await expect(h.renameOperation.execute({ actor: h.admin, id: s.mina1.id, name: "Otra" })).rejects.toThrow("audit down");
     const stored = await h.store.read((tx) => tx.operations.findById("t-a", s.mina1.id));
-    expect(stored?.name).toBe("Mina 1");
+    expect(stored?.name).toBe("MINA 1");
   });
 });

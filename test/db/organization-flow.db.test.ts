@@ -141,11 +141,15 @@ describe("organization flow through the container as parkline_app", () => {
     await createAnalyst("tenant.analyst@example.test");
     const actor = await signInActor("tenant.analyst@example.test");
     const o = c.organization;
-    expect(names(must(await o.listBusinessUnits.execute({ actor })))).toEqual(["Division A", "Division Bravo"]);
-    // Two operations share the key "operation a1" (one per division); their tie order is by id.
-    const operations = names(must(await o.listOperations.execute({ actor }))).map((name) => name.toLowerCase());
-    expect(operations).toEqual(["operation a1", "operation a1", "operation a2", "operation bravo 1"]);
-    expect(names(must(await o.listSites.execute({ actor })))).toEqual(["Site 1", "Site 3", "Site Two"]);
+    expect(names(must(await o.listBusinessUnits.execute({ actor })))).toEqual(["DIVISION A", "DIVISION BRAVO"]);
+    // Two operations share the name "OPERATION A1" (one per division); their tie order is by id.
+    expect(names(must(await o.listOperations.execute({ actor })))).toEqual([
+      "OPERATION A1",
+      "OPERATION A1",
+      "OPERATION A2",
+      "OPERATION BRAVO 1",
+    ]);
+    expect(names(must(await o.listSites.execute({ actor })))).toEqual(["SITE 1", "SITE 3", "SITE TWO"]);
   });
 
   it("shows a division-scoped analyst its division, its operations and their sites", async () => {
@@ -153,9 +157,9 @@ describe("organization flow through the container as parkline_app", () => {
     await scopeTo(userId, "business_unit", ids.divA ?? "");
     const actor = await signInActor("division.analyst@example.test");
     const o = c.organization;
-    expect(names(must(await o.listBusinessUnits.execute({ actor })))).toEqual(["Division A"]);
-    expect(names(must(await o.listOperations.execute({ actor })))).toEqual(["Operation A1", "Operation A2"]);
-    expect(names(must(await o.listSites.execute({ actor })))).toEqual(["Site 1", "Site Two"]);
+    expect(names(must(await o.listBusinessUnits.execute({ actor })))).toEqual(["DIVISION A"]);
+    expect(names(must(await o.listOperations.execute({ actor })))).toEqual(["OPERATION A1", "OPERATION A2"]);
+    expect(names(must(await o.listSites.execute({ actor })))).toEqual(["SITE 1", "SITE TWO"]);
     expect((await o.createSite.execute({ actor, name: "Not Allowed" })).ok).toBe(false);
     const own = await o.createOperation.execute({ actor, businessUnitId: ids.divA ?? "", siteId: ids.site3 ?? "", name: "Operation A9", costCenter: "0090" });
     expect(own.ok).toBe(true);
@@ -169,9 +173,8 @@ describe("organization flow through the container as parkline_app", () => {
     const actor = await signInActor("site.analyst@example.test");
     const o = c.organization;
     expect(must(await o.listBusinessUnits.execute({ actor }))).toEqual([]);
-    const operations = names(must(await o.listOperations.execute({ actor }))).map((name) => name.toLowerCase());
-    expect(operations).toEqual(["operation a1", "operation a1"]);
-    expect(names(must(await o.listSites.execute({ actor })))).toEqual(["Site 1"]);
+    expect(names(must(await o.listOperations.execute({ actor })))).toEqual(["OPERATION A1", "OPERATION A1"]);
+    expect(names(must(await o.listSites.execute({ actor })))).toEqual(["SITE 1"]);
     const denied = await o.createOperation.execute({ actor, businessUnitId: ids.divA ?? "", siteId: ids.site1 ?? "", name: "Operation A8", costCenter: "0092" });
     expect(!denied.ok && denied.error.code).toBe("forbidden");
   });
@@ -182,7 +185,7 @@ describe("organization flow through the container as parkline_app", () => {
     const actor = await signInActor("operation.analyst@example.test");
     const o = c.organization;
     expect(must(await o.listOperations.execute({ actor })).map((op) => op.id)).toEqual([ids.opA1]);
-    expect(names(must(await o.listSites.execute({ actor })))).toEqual(["Site 1"]);
+    expect(names(must(await o.listSites.execute({ actor })))).toEqual(["SITE 1"]);
     expect(must(await o.listBusinessUnits.execute({ actor }))).toEqual([]);
     const denied = await o.createSite.execute({ actor, name: "Not Allowed" });
     expect(denied.ok).toBe(false);
@@ -226,7 +229,45 @@ describe("organization flow through the container as parkline_app", () => {
     );
     expect(await count("business_units")).toBe(before);
     const site = await owner<{ name: string }[]>`select name from sites where id = ${ids.site1 ?? ""}`;
-    expect(site[0]?.name).toBe("Site 1");
+    expect(site[0]?.name).toBe("SITE 1");
+  });
+
+  it("stores names uppercase with their accents and treats accent and case variants as the same name", async () => {
+    const o = c.organization;
+    const unit = must(await o.createBusinessUnit.execute({ actor: adminActor, name: "  bahía   blanca " }));
+    const site = must(await o.createSite.execute({ actor: adminActor, name: "Bahía Blanca" }));
+    const operation = must(await createOp(unit.id, site.id, "bahía blanca", "0710"));
+    expect([unit.name, site.name, operation.name]).toEqual(["BAHÍA BLANCA", "BAHÍA BLANCA", "BAHÍA BLANCA"]);
+    const stored = await owner<{ name: string; name_key: string }[]>`
+      select name, name_key from sites where id = ${site.id}`;
+    expect(stored[0]).toEqual({ name: "BAHÍA BLANCA", name_key: "BAHIA BLANCA" });
+    for (const variant of ["BAHIA BLANCA", "Bahia  Blanca", "bahía blanca"]) {
+      const dupUnit = await o.createBusinessUnit.execute({ actor: adminActor, name: variant });
+      const dupSite = await o.createSite.execute({ actor: adminActor, name: variant });
+      const dupOp = await createOp(unit.id, site.id, variant, "0711");
+      expect(!dupUnit.ok && dupUnit.error.code, variant).toBe("name_taken");
+      expect(!dupSite.ok && dupSite.error.code, variant).toBe("name_taken");
+      expect(!dupOp.ok && dupOp.error.code, variant).toBe("name_taken");
+    }
+    const otherUnit = must(await o.createBusinessUnit.execute({ actor: adminActor, name: "Otra division" }));
+    expect((await createOp(otherUnit.id, site.id, "BAHIA BLANCA", "0712")).ok).toBe(true);
+    const tilde = await Promise.all([
+      o.createSite.execute({ actor: adminActor, name: "Núñez" }),
+      o.createSite.execute({ actor: adminActor, name: "Nunez" }),
+    ]);
+    expect(tilde.every((result) => result.ok)).toBe(true);
+  });
+
+  it("two concurrent creates of accent variants of one name give one ok and one typed conflict", async () => {
+    const o = c.organization;
+    for (let round = 0; round < 8; round += 1) {
+      const outcome = await Promise.allSettled([
+        o.createSite.execute({ actor: adminActor, name: `Camión ${String(round)}` }),
+        o.createSite.execute({ actor: adminActor, name: `CAMION  ${String(round)}` }),
+      ]);
+      const codes = outcome.map((a) => (a.status === "rejected" ? "rejected" : a.value.ok ? "ok" : a.value.error.code));
+      expect(codes.sort()).toEqual(["name_taken", "ok"]);
+    }
   });
 
   it("identity adapter fills the typed scope column, reads the scope back unchanged and refuses missing targets", async () => {
@@ -287,9 +328,9 @@ describe("organization flow through the container as parkline_app", () => {
       ]);
       expectOneWinner(operation);
     }
-    const rows = await owner`select 1 from sites where name_key like 'racing site %'`;
+    const rows = await owner`select 1 from sites where name_key like 'RACING SITE %'`;
     expect(rows).toHaveLength(8);
-    const operations = await owner`select 1 from operations where name_key like 'racing op %'`;
+    const operations = await owner`select 1 from operations where name_key like 'RACING OP %'`;
     expect(operations).toHaveLength(8);
   });
 

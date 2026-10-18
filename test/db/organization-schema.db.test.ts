@@ -1,8 +1,9 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { copyFileSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import postgres, { type Sql } from "postgres";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { migrate } from "../../scripts/migrate";
 import { nameKey } from "../../src/organization/domain/name";
 
@@ -72,8 +73,9 @@ const failure = (run: PromiseLike<unknown>): Promise<PgError | null> =>
   );
 
 describe("organization schema after migrating", () => {
-  it("applies 0005_organization.sql and the three tables start empty (no seed)", () => {
+  it("applies 0005 and 0006 (organization names) and the three tables start empty (no seed)", () => {
     expect(applied).toContain("0005_organization.sql");
+    expect(applied.at(-1)).toBe("0006_organization_names.sql");
     expect(emptyAfterMigrating).toEqual({ business_units: 0, operations: 0, sites: 0 });
   });
 
@@ -224,12 +226,15 @@ describe("cost center (D7)", () => {
 });
 
 describe("migration file hygiene", () => {
-  it("holds only printable ASCII and line feeds: no raw control or invisible characters", () => {
-    const text = readFileSync(resolve(MIGRATIONS_DIR, "0005_organization.sql"), "utf8");
-    // Carriage returns are tolerated only as part of CRLF line endings.
-    const stripped = text.replace(/\r\n/g, "\n");
-    expect(stripped.match(/[^\x20-\x7E\n]/g) ?? []).toEqual([]);
-  });
+  it.each(["0005_organization.sql", "0006_organization_names.sql"])(
+    "%s holds only printable ASCII and line feeds: no raw control or invisible characters",
+    (file) => {
+      const text = readFileSync(resolve(MIGRATIONS_DIR, file), "utf8");
+      // Carriage returns are tolerated only as part of CRLF line endings.
+      const stripped = text.replace(/\r\n/g, "\n");
+      expect(stripped.match(/[^\x20-\x7E\n]/g) ?? []).toEqual([]);
+    },
+  );
 });
 
 describe("name key drift against nameKey() in TypeScript", () => {
@@ -259,6 +264,22 @@ describe("name key drift against nameKey() in TypeScript", () => {
     "vertical\vtab",
     "all\t\n\r\f\v   mixed",
     "no\u00A0break\u2028line\u2029para\uFEFFbom\u3000ideo",
+    // Accents on every vowel, in both cases, with every folded diacritic.
+    "\u00E1\u00E0\u00E2\u00E4 \u00E9\u00E8\u00EA\u00EB \u00ED\u00EC\u00EE\u00EF \u00F3\u00F2\u00F4\u00F6 \u00FA\u00F9\u00FB\u00FC",
+    "\u00C1\u00C0\u00C2\u00C4 \u00C9\u00C8\u00CA\u00CB \u00CD\u00CC\u00CE\u00CF \u00D3\u00D2\u00D4\u00D6 \u00DA\u00D9\u00DB\u00DC",
+    "Bah\u00EDa   Blanca",
+    "BAHIA BLANCA",
+    "bah\u00CDa\tblanca",
+    // N with tilde and C with cedilla are different letters: never folded.
+    "N\u00FA\u00F1ez",
+    "NU\u00D1EZ",
+    "NUNEZ",
+    "\u00C7a\u00E7a",
+    "caca",
+    "\t\u00D1and\u00FA \u00C9XITO\n",
+    // Characters with no rule must not crash and must agree.
+    "caf\u00E9 \u00FF\u0153",
+    "\u00E3\u00F5 \u00E5 \u00E6 \u00F8",
   ];
 
   it("produces exactly the TypeScript key for awkward names (stored column and function)", async () => {
@@ -279,12 +300,113 @@ describe("name key drift against nameKey() in TypeScript", () => {
       ["Ñu", "ñu"],
       ["x y", "x y"],
       ["z　", "Z"],
+      ["Bahía Blanca", "BAHIA  BLANCA"],
+      ["ÁÉÍÓÚ", "aeiou"],
+      ["üëïöä", "UEIOA"],
     ];
     for (const [first, second] of pairs) {
       await addSite(t, first);
       expect(nameKey(first)).toBe(nameKey(second));
       expect((await failure(addSite(t, second)))?.code, second).toBe("23505");
     }
+  });
+});
+
+describe("accent- and case-insensitive names (D7)", () => {
+  const BAHIA = "Bahía Blanca";
+  const variants = ["BAHIA BLANCA", "bahia blanca", "BAHÍA  BLANCA", " bahía\tblanca "];
+
+  it("keeps N with tilde and C with cedilla apart from N and C", async () => {
+    const t = await addTenant("Tenant NT");
+    await addSite(t, "Núñez");
+    await addSite(t, "Nunez");
+    await addSite(t, "Çaça");
+    await addSite(t, "Caca");
+    expect((await failure(addSite(t, "NUÑEZ")))?.code).toBe("23505");
+  });
+
+  it("rejects accent and case variants of a division name per tenant, allows them in another tenant", async () => {
+    const [a, b] = [await addTenant("Tenant AC1"), await addTenant("Tenant AC2")] as const;
+    await addUnit(a, BAHIA);
+    for (const name of variants) expect((await failure(addUnit(a, name)))?.code, name).toBe("23505");
+    await addUnit(b, "BAHIA BLANCA");
+  });
+
+  it("rejects accent and case variants of a site name per tenant, allows them in another tenant", async () => {
+    const [a, b] = [await addTenant("Tenant AC3"), await addTenant("Tenant AC4")] as const;
+    await addSite(a, BAHIA);
+    for (const name of variants) expect((await failure(addSite(a, name)))?.code, name).toBe("23505");
+    await addSite(b, "bahia blanca");
+  });
+
+  it("rejects accent and case variants of an operation name per division, allows them in another division", async () => {
+    const t = await addTenant("Tenant AC5");
+    const [u1, u2] = [await addUnit(t, "Division 1"), await addUnit(t, "Division 2")] as const;
+    await addOperation(t, u1, BAHIA);
+    for (const name of variants) expect((await failure(addOperation(t, u1, name)))?.code, name).toBe("23505");
+    await addOperation(t, u2, "BAHIA BLANCA");
+  });
+
+  it("rejects renaming into an accent variant of a sibling", async () => {
+    const t = await addTenant("Tenant AC6");
+    await addSite(t, BAHIA);
+    const other = await addSite(t, "Other");
+    expect((await failure(sql`update sites set name = 'BAHIA BLANCA' where id = ${other}`))?.code).toBe("23505");
+  });
+});
+
+describe("migration 0006 on a database that already has names", () => {
+  let dir = "";
+  let name = "";
+  let old: Sql;
+
+  const prepare = async (): Promise<void> => {
+    dir = mkdtempSync(join(tmpdir(), "parkline-mig-"));
+    for (const file of readdirSync(MIGRATIONS_DIR).filter((f) => f < "0006")) {
+      copyFileSync(resolve(MIGRATIONS_DIR, file), join(dir, file));
+    }
+    name = `parkline_test_${randomBytes(6).toString("hex")}`;
+    await admin.unsafe(`create database ${name}`);
+    const url = new URL(adminUrl);
+    url.pathname = `/${name}`;
+    old = postgres(url.toString(), { max: 1, onnotice: () => undefined });
+    await migrate(old, dir);
+  };
+
+  afterEach(async () => {
+    await old.end();
+    await admin.unsafe(`drop database if exists ${name}`);
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("normalizes stored names to uppercase with collapsed whitespace and rebuilds the keys", async () => {
+    await prepare();
+    const [t] = await old<{ id: string }[]>`insert into tenants (id, name) values (gen_random_uuid(), 'Legacy') returning id`;
+    const tenant = t?.id ?? "";
+    const [u] = await old<{ id: string }[]>`insert into business_units (tenant_id, name) values (${tenant}, '  Zona   Norte ') returning id`;
+    const [s] = await old<{ id: string }[]>`insert into sites (tenant_id, name) values (${tenant}, ${"bahía  blanca"}) returning id`;
+    await old`insert into operations (tenant_id, business_unit_id, site_id, name, cost_center)
+      values (${tenant}, ${u?.id ?? ""}, ${s?.id ?? ""}, ${"Camino\tviejo"}, '0001')`;
+    await migrate(old, MIGRATIONS_DIR);
+    const rows = await old<{ n: string; k: string }[]>`
+      select name as n, name_key as k from business_units
+      union all select name, name_key from sites
+      union all select name, name_key from operations order by 1`;
+    expect(rows).toEqual([
+      { n: "BAHÍA BLANCA", k: "BAHIA BLANCA" },
+      { n: "CAMINO VIEJO", k: "CAMINO VIEJO" },
+      { n: "ZONA NORTE", k: "ZONA NORTE" },
+    ]);
+  });
+
+  it("fails, rolling back, when normalization would create duplicate names", async () => {
+    await prepare();
+    const [t] = await old<{ id: string }[]>`insert into tenants (id, name) values (gen_random_uuid(), 'Legacy') returning id`;
+    const tenant = t?.id ?? "";
+    await old`insert into sites (tenant_id, name) values (${tenant}, ${"Bahía"}), (${tenant}, ${"BAHIA"})`;
+    await expect(migrate(old, MIGRATIONS_DIR)).rejects.toThrow();
+    const applied = await old`select 1 from schema_migrations where name like '0006%'`;
+    expect(applied).toHaveLength(0);
   });
 });
 
