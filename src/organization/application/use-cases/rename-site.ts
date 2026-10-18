@@ -5,7 +5,7 @@ import type { Site } from "../../domain/entities";
 import { nameKey, parseName } from "../../domain/name";
 import { recordAudit } from "../audit";
 import type { OrganizationDeps } from "../deps";
-import { auditActor, requireFreeName, whenActive } from "../guards";
+import { auditActor, nameTaken, requireFreeName, whenActive } from "../guards";
 import type { OrganizationTx } from "../ports/organization-tx";
 
 export type RenameSiteInput = {
@@ -32,7 +32,7 @@ export class RenameSite {
     if (!name.ok) return name;
     const free = requireFreeName(await tx.sites.findByName(actor.tenantId, nameKey(name.value)), name.value, id);
     if (!free.ok) return free;
-    await tx.sites.rename(actor.tenantId, id, name.value);
+    if (!(await tx.sites.rename(actor.tenantId, id, name.value))) return nameTaken(name.value);
     await this.audit(tx, actor, role.value, site, name.value);
     return ok({ ...site, name: name.value });
   }

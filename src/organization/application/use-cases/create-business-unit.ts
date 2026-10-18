@@ -5,7 +5,7 @@ import { createBusinessUnit, type BusinessUnit } from "../../domain/entities";
 import { nameKey } from "../../domain/name";
 import { recordAudit } from "../audit";
 import type { OrganizationDeps } from "../deps";
-import { auditActor, requireFreeName, whenActive } from "../guards";
+import { auditActor, nameTaken, requireFreeName, whenActive } from "../guards";
 import type { OrganizationTx } from "../ports/organization-tx";
 
 export type CreateBusinessUnitInput = {
@@ -29,7 +29,7 @@ export class CreateBusinessUnit {
     if (!unit.ok) return unit;
     const free = requireFreeName(await tx.businessUnits.findByName(actor.tenantId, nameKey(unit.value.name)), unit.value.name);
     if (!free.ok) return free;
-    await tx.businessUnits.add(unit.value);
+    if (!(await tx.businessUnits.add(unit.value))) return nameTaken(unit.value.name);
     await this.audit(tx, actor, role.value, unit.value);
     return ok(unit.value);
   }

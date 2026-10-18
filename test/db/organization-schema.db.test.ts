@@ -1,4 +1,5 @@
 import { randomBytes, randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import postgres, { type Sql } from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -149,6 +150,15 @@ describe("name uniqueness (D7)", () => {
   });
 });
 
+describe("migration file hygiene", () => {
+  it("holds only printable ASCII and line feeds: no raw control or invisible characters", () => {
+    const text = readFileSync(resolve(MIGRATIONS_DIR, "0005_organization.sql"), "utf8");
+    // Carriage returns are tolerated only as part of CRLF line endings.
+    const stripped = text.replace(/\r\n/g, "\n");
+    expect(stripped.match(/[^\x20-\x7E\n]/g) ?? []).toEqual([]);
+  });
+});
+
 describe("name key drift against nameKey() in TypeScript", () => {
   const awkward = [
     "  Padded  ",
@@ -169,6 +179,13 @@ describe("name key drift against nameKey() in TypeScript", () => {
     "vertical\u000Btab\u000Cform feed",
     "naïve café résumé",
     "  \t MIXED   \t Everything\n ",
+    "tab\there",
+    "new\nline",
+    "carriage\rreturn",
+    "form\ffeed",
+    "vertical\vtab",
+    "all\t\n\r\f\v   mixed",
+    "no\u00A0break\u2028line\u2029para\uFEFFbom\u3000ideo",
   ];
 
   it("produces exactly the TypeScript key for awkward names (stored column and function)", async () => {
@@ -177,7 +194,8 @@ describe("name key drift against nameKey() in TypeScript", () => {
       const rows = await sql<{ name_key: string; fn: string }[]>`
         insert into business_units (tenant_id, name) values (${t}, ${name})
         returning name_key, organization_name_key(${name}) as fn`;
-      expect(rows[0]?.name_key, JSON.stringify(name)).toBe(nameKey(name));      expect(rows[0]?.fn, JSON.stringify(name)).toBe(nameKey(name));
+      expect(rows[0]?.name_key, JSON.stringify(name)).toBe(nameKey(name));
+      expect(rows[0]?.fn, JSON.stringify(name)).toBe(nameKey(name));
     }
   });
 

@@ -5,7 +5,7 @@ import type { Operation } from "../../domain/entities";
 import { nameKey, parseName } from "../../domain/name";
 import { recordAudit } from "../audit";
 import type { OrganizationDeps } from "../deps";
-import { auditActor, requireFreeName, whenActive } from "../guards";
+import { auditActor, nameTaken, requireFreeName, whenActive } from "../guards";
 import type { OrganizationTx } from "../ports/organization-tx";
 
 export type RenameOperationInput = {
@@ -34,7 +34,7 @@ export class RenameOperation {
     const same = await tx.operations.findByName(actor.tenantId, operation.businessUnitId, nameKey(name.value));
     const free = requireFreeName(same, name.value, id);
     if (!free.ok) return free;
-    await tx.operations.rename(actor.tenantId, id, name.value);
+    if (!(await tx.operations.rename(actor.tenantId, id, name.value))) return nameTaken(name.value);
     await this.audit(tx, actor, role.value, operation, name.value);
     return ok({ ...operation, name: name.value });
   }

@@ -216,14 +216,51 @@ describe("organization flow through the container as parkline_app", () => {
     expect((missing as { code?: string }).code).toBe("23503");
   });
 
-  it("two concurrent creates of the same name leave exactly one row", async () => {
-    const attempts = await Promise.allSettled([
-      c.organization.createSite.execute({ actor: adminActor, name: "Racing Site" }),
-      c.organization.createSite.execute({ actor: adminActor, name: "racing  site" }),
-    ]);
-    const created = attempts.filter((a) => a.status === "fulfilled" && a.value.ok);
-    expect(created).toHaveLength(1);
-    const rows = await owner`select 1 from sites where name_key = 'racing site'`;
-    expect(rows).toHaveLength(1);
+  /** Both attempts must resolve to a Result: exactly one ok and one typed `name_taken`, never a rejection. */
+  const expectOneWinner = (attempts: PromiseSettledResult<Result<unknown, { code: string }>>[]): void => {
+    const outcomes = attempts.map((attempt) => {
+      if (attempt.status === "rejected") return `rejected: ${JSON.stringify(attempt.reason)}`;
+      return attempt.value.ok ? "ok" : attempt.value.error.code;
+    });
+    expect(outcomes.sort()).toEqual(["name_taken", "ok"]);
+  };
+
+  it("two concurrent creates of the same name give one ok and one typed conflict, over several rounds", async () => {
+    const o = c.organization;
+    for (let round = 0; round < 8; round += 1) {
+      const key = `racing ${String(round)}`;
+      const site = await Promise.allSettled([
+        o.createSite.execute({ actor: adminActor, name: `Racing Site ${String(round)}` }),
+        o.createSite.execute({ actor: adminActor, name: `racing  site ${String(round)}` }),
+      ]);
+      expectOneWinner(site);
+      const unit = await Promise.allSettled([
+        o.createBusinessUnit.execute({ actor: adminActor, name: `Racing Unit ${key}` }),
+        o.createBusinessUnit.execute({ actor: adminActor, name: `racing  unit ${key}` }),
+      ]);
+      expectOneWinner(unit);
+      const operation = await Promise.allSettled([
+        o.createOperation.execute({ actor: adminActor, businessUnitId: ids.divA ?? "", name: `Racing Op ${key}` }),
+        o.createOperation.execute({ actor: adminActor, businessUnitId: ids.divA ?? "", name: `racing  op ${key}` }),
+      ]);
+      expectOneWinner(operation);
+    }
+    const rows = await owner`select 1 from sites where name_key like 'racing site %'`;
+    expect(rows).toHaveLength(8);
+  });
+
+  it("two concurrent renames into the same name give one ok and one typed conflict, over several rounds", async () => {
+    const o = c.organization;
+    for (let round = 0; round < 8; round += 1) {
+      const a = must(await o.createSite.execute({ actor: adminActor, name: `Rename Source A ${String(round)}` })).id;
+      const b = must(await o.createSite.execute({ actor: adminActor, name: `Rename Source B ${String(round)}` })).id;
+      const target = `Rename Target ${String(round)}`;
+      expectOneWinner(
+        await Promise.allSettled([
+          o.renameSite.execute({ actor: adminActor, id: a, name: target }),
+          o.renameSite.execute({ actor: adminActor, id: b, name: target.toUpperCase() }),
+        ]),
+      );
+    }
   });
 });

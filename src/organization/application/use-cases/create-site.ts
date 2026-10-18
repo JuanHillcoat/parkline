@@ -5,7 +5,7 @@ import { createSite, type Site } from "../../domain/entities";
 import { nameKey } from "../../domain/name";
 import { recordAudit } from "../audit";
 import type { OrganizationDeps } from "../deps";
-import { auditActor, requireFreeName, whenActive } from "../guards";
+import { auditActor, nameTaken, requireFreeName, whenActive } from "../guards";
 import type { OrganizationTx } from "../ports/organization-tx";
 
 export type CreateSiteInput = {
@@ -29,7 +29,7 @@ export class CreateSite {
     if (!site.ok) return site;
     const free = requireFreeName(await tx.sites.findByName(actor.tenantId, nameKey(site.value.name)), site.value.name);
     if (!free.ok) return free;
-    await tx.sites.add(site.value);
+    if (!(await tx.sites.add(site.value))) return nameTaken(site.value.name);
     await this.audit(tx, actor, role.value, site.value);
     return ok(site.value);
   }

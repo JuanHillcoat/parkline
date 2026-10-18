@@ -8,7 +8,8 @@
 -- one space, the ends are trimmed and the result is lower case. It must produce
 -- the same key as nameKey() in src/organization/domain/name.ts, which is
 -- name.trim().replace(/\s+/gu, " ").toLowerCase(). The character class is the
--- ECMAScript \s set spelled out (not locale-dependent, unlike [[:space:]]):
+-- ECMAScript \s set spelled out with \uXXXX escapes (not locale-dependent, unlike
+-- [[:space:]]; no raw control or invisible character stays in this file):
 -- tab, LF, VT, FF, CR, space, U+00A0, U+1680, U+2000-U+200A, U+2028, U+2029,
 -- U+202F, U+205F, U+3000, U+FEFF. Known unavoidable differences, both only for
 -- exotic capitals: lower() follows the database locale, so a few characters
@@ -20,7 +21,7 @@ language sql immutable strict parallel safe
 as $$
   select lower(btrim(regexp_replace(
     name,
-    '[\u0009-\u000D    -     　﻿]+',
+    '[\u0009-\u000D\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]+',
     ' ',
     'g'
   ), ' '))

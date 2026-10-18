@@ -5,7 +5,7 @@ import type { BusinessUnit } from "../../domain/entities";
 import { nameKey, parseName } from "../../domain/name";
 import { recordAudit } from "../audit";
 import type { OrganizationDeps } from "../deps";
-import { auditActor, requireFreeName, whenActive } from "../guards";
+import { auditActor, nameTaken, requireFreeName, whenActive } from "../guards";
 import type { OrganizationTx } from "../ports/organization-tx";
 
 export type RenameBusinessUnitInput = {
@@ -32,7 +32,7 @@ export class RenameBusinessUnit {
     if (!name.ok) return name;
     const free = requireFreeName(await tx.businessUnits.findByName(actor.tenantId, nameKey(name.value)), name.value, id);
     if (!free.ok) return free;
-    await tx.businessUnits.rename(actor.tenantId, id, name.value);
+    if (!(await tx.businessUnits.rename(actor.tenantId, id, name.value))) return nameTaken(name.value);
     await this.audit(tx, actor, role.value, unit, name.value);
     return ok({ ...unit, name: name.value });
   }

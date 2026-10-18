@@ -29,8 +29,11 @@ export const requireFreeName = (
   found: { readonly id: string } | null,
   name: string,
   selfId?: string,
-): Result<void, DomainError> =>
-  found !== null && found.id !== selfId ? err(new NameTakenError(`"${name}" is already in use`)) : ok(undefined);
+): Result<void, DomainError> => (found !== null && found.id !== selfId ? nameTaken(name) : ok(undefined));
+
+/** The same conflict, when the repository reports that the unique name index rejected the write. */
+export const nameTaken = (name: string): Result<never, DomainError> =>
+  err(new NameTakenError(`"${name}" is already in use`));
 
 type ActorFields = Pick<AuditFields, "actorId" | "actorKind" | "actorRole" | "tenantId">;
 

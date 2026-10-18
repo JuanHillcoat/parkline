@@ -33,14 +33,32 @@ const sorted = <T extends Row>(rows: readonly T[], tenantId: string): readonly T
 const byId = <T extends Row>(rows: readonly T[], tenantId: string, id: string): T | null =>
   rows.find((row) => row.tenantId === tenantId && row.id === id) ?? null;
 
-const renameRow = (rows: Row[], tenantId: string, id: string, name: string): void => {
-  const index = rows.findIndex((row) => row.tenantId === tenantId && row.id === id);
-  if (index < 0) throw new Error(`rename of a missing row ${id}`);
-  rows[index] = { ...(rows[index] as Row), name };
+type Owned = Row & { readonly businessUnitId?: string };
+
+/** The unique name index: the same tenant, the same owner (operations only) and the same name key. */
+const collides = (rows: readonly Owned[], candidate: Owned, ignoreId?: string): boolean =>
+  rows.some(
+    (row) =>
+      row.id !== ignoreId &&
+      row.tenantId === candidate.tenantId &&
+      row.businessUnitId === candidate.businessUnitId &&
+      nameKey(row.name) === nameKey(candidate.name),
+  );
+
+const insertRow = <T extends Owned>(rows: T[], row: T): boolean => {
+  if (rows.some((existing) => existing.id === row.id)) throw new Error("unique violation on id");
+  if (collides(rows, row)) return false;
+  rows.push(row);
+  return true;
 };
 
-const duplicateId = (rows: readonly Row[], id: string): void => {
-  if (rows.some((row) => row.id === id)) throw new Error("unique violation on id");
+const renameRow = (rows: Owned[], tenantId: string, id: string, name: string): boolean => {
+  const index = rows.findIndex((row) => row.tenantId === tenantId && row.id === id);
+  if (index < 0) throw new Error(`rename of a missing row ${id}`);
+  const current = rows[index] as Owned;
+  if (collides(rows, { ...current, name }, id)) return false;
+  rows[index] = { ...current, name };
+  return true;
 };
 
 export class InMemoryBusinessUnitRepository implements BusinessUnitRepository {
@@ -55,15 +73,12 @@ export class InMemoryBusinessUnitRepository implements BusinessUnitRepository {
     return Promise.resolve(found ?? null);
   }
 
-  add(unit: BusinessUnit): Promise<void> {
-    duplicateId(this.state.businessUnits, unit.id);
-    this.state.businessUnits.push(unit);
-    return Promise.resolve();
+  add(unit: BusinessUnit): Promise<boolean> {
+    return Promise.resolve(insertRow(this.state.businessUnits, unit));
   }
 
-  rename(tenantId: string, id: string, name: string): Promise<void> {
-    renameRow(this.state.businessUnits, tenantId, id, name);
-    return Promise.resolve();
+  rename(tenantId: string, id: string, name: string): Promise<boolean> {
+    return Promise.resolve(renameRow(this.state.businessUnits, tenantId, id, name));
   }
 
   listByTenant(tenantId: string): Promise<readonly BusinessUnit[]> {
@@ -85,15 +100,12 @@ export class InMemoryOperationRepository implements OperationRepository {
     return Promise.resolve(found ?? null);
   }
 
-  add(operation: Operation): Promise<void> {
-    duplicateId(this.state.operations, operation.id);
-    this.state.operations.push(operation);
-    return Promise.resolve();
+  add(operation: Operation): Promise<boolean> {
+    return Promise.resolve(insertRow(this.state.operations, operation));
   }
 
-  rename(tenantId: string, id: string, name: string): Promise<void> {
-    renameRow(this.state.operations, tenantId, id, name);
-    return Promise.resolve();
+  rename(tenantId: string, id: string, name: string): Promise<boolean> {
+    return Promise.resolve(renameRow(this.state.operations, tenantId, id, name));
   }
 
   listByTenant(tenantId: string): Promise<readonly Operation[]> {
@@ -113,15 +125,12 @@ export class InMemorySiteRepository implements SiteRepository {
     return Promise.resolve(found ?? null);
   }
 
-  add(site: Site): Promise<void> {
-    duplicateId(this.state.sites, site.id);
-    this.state.sites.push(site);
-    return Promise.resolve();
+  add(site: Site): Promise<boolean> {
+    return Promise.resolve(insertRow(this.state.sites, site));
   }
 
-  rename(tenantId: string, id: string, name: string): Promise<void> {
-    renameRow(this.state.sites, tenantId, id, name);
-    return Promise.resolve();
+  rename(tenantId: string, id: string, name: string): Promise<boolean> {
+    return Promise.resolve(renameRow(this.state.sites, tenantId, id, name));
   }
 
   listByTenant(tenantId: string): Promise<readonly Site[]> {
