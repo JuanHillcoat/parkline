@@ -1,8 +1,8 @@
 # P0-04 Organization catalogs
 
-- Branch: `feat/p0-04-organization`
+- Branches: `feat/p0-04-organization` (shared port, merged), `feat/p0-04-organization-core` (domain, use cases, adapters, migrations) and `feat/p0-04-organization-web` (page, docs)
 - Source of truth: `docs/00-analisis-inicial.md` (sections 4, 7.1, 7.2 "Operación-sitio" and "Turnos de la operación", 7.3, 8.6, phase 0 in 12.2)
-- Status: in progress
+- Status: in review
 
 ## Objective
 
@@ -45,7 +45,7 @@ Per-task heuristic: about 400 authored changed lines, advisory only. One writer 
 - [x] T2 `organization` domain and use cases with in-memory fakes: entities, name and cost center rules, visibility functions, create/rename use cases (an operation is created with its single site and cost center), list use cases filtered by scope. Strict TDD.
 - [x] T3 Migration `0005` and Postgres adapters: tables (`business_units`, `sites`, `operations` with `site_id` and `cost_center`), scope foreign keys on `user_role_assignments`, grants, identity insert path fills the typed scope column; DB tests including tenant isolation, scope integrity and restricted-role grants.
 - [x] T4 Web: `/organization` page (lists and create dialogs, Spanish copy in `app/_lib/copy.ts`), sidebar entry, routes call use cases only. Extended on 2026-10-18 with the per-row "Editar" dialog (D9).
-- [ ] T5 Docs: ADR-0005 completion, README, AGENTS, CHANGELOG.
+- [x] T5 Docs: ADR-0006 (organization model), README, AGENTS, CHANGELOG; the ADR-0004 pointer already existed.
 
 ## Acceptance criteria
 
@@ -97,6 +97,8 @@ Forecast above 400 authored lines. One slice per pull request would be the clean
 
 - 2026-10-18 Review of the uppercase names and the edit of operations (base `f8d9d8e`, HIGH risk because of the sensitive-action trigger and permission changes, 34 files, 1,325 lines): consent granted, four lenses (risk, resilience, readability, reliability) run in parallel, APPROVED and acknowledged with eight advisory findings. Fixed in the follow-up commit (RED observed for the first two): the mandatory reason had no length bound (now 500 characters after trimming, typed `reason_too_long`; `errorMessage` now looks up validation errors by code before field, so the new code shows its own message); `rejectedBy` treated any unique violation without `cost_center` in its name as a name conflict (now `operationConflictOf` maps the two known constraints and rethrows any other 23505, proven with a temporary unrelated unique index in an ephemeral database); the target-site tenant boundary of `UpdateOperation` is covered by unit and DB tests (no RED, behavior already existed); the accent map strings are exported and an alignment test fails if they drift (mutation check done); the edit dialog uses the instructional select prompts; migration `0006` documents that it takes ACCESS EXCLUSIVE locks and rewrites rows, acceptable only while the tables are small. Left open in issue #16: existence is checked before authorization in `UpdateOperation` (and its target lookups). GREEN (parent re-run): `pnpm test` 425, `pnpm test:db` 150, lint and typecheck clean; the writer also reported `pnpm build` clean.
 
+- 2026-10-18 T5 docs done (route: one delegated writer, documentation only, not committed). Files: `docs/adr/0006-organization-model.md` (new), `README.md` (status, organization screen, ADR links), `AGENTS.md` (current state), `CHANGELOG.md` (P0-04 entries and known limitations), this document. `docs/adr/0004-audit-hardening.md` already carried the pointer to `organization.operation.update`, so it was left alone. Claims were checked against migrations 0005 to 0007 and the organization code.
+
 ## Next step
 
-Push the core branch (updates PR 2) and open the web PR; then T5 docs (README, AGENTS, CHANGELOG).
+Open the web PR and review it; the maintainer decides push and merge.
