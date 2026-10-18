@@ -118,6 +118,6 @@ describe("migration runner", () => {
     const applied = await migrate(sql, MIGRATIONS_DIR);
     expect(applied).toEqual([]);
     const rows = await sql`select count(*)::int as n from schema_migrations`;
-    expect(rows[0]?.n).toBe(5);
+    expect(rows[0]?.n).toBe(7);
   });
 });

@@ -14,6 +14,7 @@ import { ListSites } from "../../use-cases/list-sites";
 import { RenameBusinessUnit } from "../../use-cases/rename-business-unit";
 import { RenameOperation } from "../../use-cases/rename-operation";
 import { RenameSite } from "../../use-cases/rename-site";
+import { UpdateOperation } from "../../use-cases/update-operation";
 
 export const START = new Date("2026-01-01T09:00:00Z");
 
@@ -44,6 +45,7 @@ export const createHarness = () => {
     renameBusinessUnit: new RenameBusinessUnit(deps),
     renameOperation: new RenameOperation(deps),
     renameSite: new RenameSite(deps),
+    updateOperation: new UpdateOperation(deps),
     listBusinessUnits: new ListBusinessUnits(deps),
     listOperations: new ListOperations(deps),
     listSites: new ListSites(deps),

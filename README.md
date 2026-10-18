@@ -4,7 +4,9 @@ Parkline is a portfolio project: a web application for fleet and equipment manag
 
 **The application starts empty.** No suppliers, equipment, contracts, rates or readings are created by the system. You create data through the interface. Test datasets are synthetic and are loaded only by specific tests, into an ephemeral database.
 
-Status: early development. The skeleton (`p0-01`) and identity (`p0-02`: sign-in, sessions, roles by scope, users page) are in place. There are no business features yet and the application is not deployed.
+Status: early development. The skeleton (`p0-01`), identity (`p0-02`: sign-in, sessions, roles by scope, users page), audit hardening (`p0-03`) and the organization catalogs (`p0-04`) are in place. Equipment, contracts and billing do not exist yet and the application is not deployed.
+
+**Organization screen (`/organization`).** It holds the company structure: divisions, operations and sites. An operation belongs to one division, has exactly one site and a four-digit cost center that is unique in the tenant. Names are stored in uppercase and compared ignoring case and accents. Users see only the part of the structure their role scopes cover. An administrator or fleet analyst with tenant-wide access creates and renames rows, and edits an operation (name, division, site, cost center) with a mandatory reason that is audited. There is no delete or deactivation yet. See [ADR-0006](docs/adr/0006-organization-model.md).
 
 ## Requirements
 
@@ -102,6 +104,6 @@ Import rules between these layers are described in [`src/README.md`](src/README.
 ## Documentation
 
 - [`docs/00-analisis-inicial.md`](docs/00-analisis-inicial.md): initial analysis (Spanish). Scope, business rules, architecture, audit, stack and phases.
-- [`docs/adr/`](docs/adr/): architecture decisions, including [ADR-0003](docs/adr/0003-identity-and-sessions.md) (identity, sessions and install) and [ADR-0004](docs/adr/0004-audit-hardening.md) (audit hardening).
+- [`docs/adr/`](docs/adr/): architecture decisions, including [ADR-0003](docs/adr/0003-identity-and-sessions.md) (identity, sessions and install), [ADR-0004](docs/adr/0004-audit-hardening.md) (audit hardening), [ADR-0005](docs/adr/0005-cross-module-authorization.md) (cross-module authorization) and [ADR-0006](docs/adr/0006-organization-model.md) (organization model).
 - [`AGENTS.md`](AGENTS.md): project conventions for contributors and agents.
 - [`CHANGELOG.md`](CHANGELOG.md): notable changes.

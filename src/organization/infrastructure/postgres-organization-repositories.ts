@@ -3,6 +3,7 @@ import type {
   BusinessUnitRepository,
   OperationAdd,
   OperationRepository,
+  OperationUpdate,
   SiteRepository,
 } from "../application/ports/repositories";
 import type { BusinessUnit, Operation, Site } from "../domain/entities";
@@ -45,6 +46,25 @@ const renamed = async (
     if ((error as { code?: string }).code === UNIQUE_VIOLATION) return false;
     throw error;
   }
+};
+
+/** The unique constraints of `operations` the application reports as typed conflicts (migrations 0005 and 0006). */
+const NAME_CONSTRAINT = "operations_tenant_id_business_unit_id_name_key_key";
+const COST_CENTER_CONSTRAINT = "operations_tenant_id_cost_center_key";
+
+/** The typed conflict of a known unique constraint of `operations`, or null for any other one. */
+export const operationConflictOf = (constraint: string | undefined): Exclude<OperationUpdate, "updated"> | null => {
+  if (constraint === NAME_CONSTRAINT) return "name_taken";
+  return constraint === COST_CENTER_CONSTRAINT ? "cost_center_taken" : null;
+};
+
+/** Translates a known unique violation into the typed result; any other error, even a 23505, is rethrown. */
+const rejectedBy = (error: unknown): Exclude<OperationUpdate, "updated"> => {
+  const { code, constraint_name: constraint } = error as { code?: string; constraint_name?: string };
+  if (code !== UNIQUE_VIOLATION) throw error;
+  const conflict = operationConflictOf(constraint);
+  if (conflict === null) throw error;
+  return conflict;
 };
 
 export class PostgresBusinessUnitRepository implements BusinessUnitRepository {
@@ -136,6 +156,27 @@ export class PostgresOperationRepository implements OperationRepository {
 
   rename(tenantId: string, id: string, name: string): Promise<boolean> {
     return renamed(this.sql, id, (s) => s`update operations set name = ${name} where tenant_id = ${tenantId} and id = ${id}`);
+  }
+
+  /**
+   * The UPDATE runs in a savepoint so a unique violation (a concurrent writer took the name in
+   * the target division or the cost center) rolls back only the statement and becomes a value.
+   * The constraint name tells which index rejected it; foreign keys and anything else still throw.
+   */
+  async update(operation: Operation): Promise<OperationUpdate> {
+    try {
+      const result = await this.sql.savepoint(
+        async (scope) => await scope`
+          update operations
+          set business_unit_id = ${operation.businessUnitId}, site_id = ${operation.siteId},
+              name = ${operation.name}, cost_center = ${operation.costCenter}
+          where tenant_id = ${operation.tenantId} and id = ${operation.id}`,
+      );
+      if (result.count !== 1) throw new Error(`update of a missing row ${operation.id}`);
+      return "updated";
+    } catch (error) {
+      return rejectedBy(error);
+    }
   }
 
   async listByTenant(tenantId: string): Promise<readonly Operation[]> {

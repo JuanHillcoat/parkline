@@ -7,6 +7,8 @@ import { toActor } from "../../src/identity/application/actor-mapper";
 import { createRoleAssignment } from "../../src/identity/domain/role-assignment";
 import { ScryptPasswordHasher } from "../../src/identity/infrastructure/scrypt-password-hasher";
 import { PostgresRoleAssignmentRepository } from "../../src/identity/infrastructure/postgres-role-assignment-repository";
+import type { UpdateOperationInput } from "../../src/organization/application/use-cases/update-operation";
+import type { Operation } from "../../src/organization/domain/entities";
 import type { Actor } from "../../src/shared/domain/ports/access-policy";
 import type { AuditLog } from "../../src/shared/domain/ports/audit-log";
 import type { Result } from "../../src/shared/domain/result";
@@ -141,11 +143,15 @@ describe("organization flow through the container as parkline_app", () => {
     await createAnalyst("tenant.analyst@example.test");
     const actor = await signInActor("tenant.analyst@example.test");
     const o = c.organization;
-    expect(names(must(await o.listBusinessUnits.execute({ actor })))).toEqual(["Division A", "Division Bravo"]);
-    // Two operations share the key "operation a1" (one per division); their tie order is by id.
-    const operations = names(must(await o.listOperations.execute({ actor }))).map((name) => name.toLowerCase());
-    expect(operations).toEqual(["operation a1", "operation a1", "operation a2", "operation bravo 1"]);
-    expect(names(must(await o.listSites.execute({ actor })))).toEqual(["Site 1", "Site 3", "Site Two"]);
+    expect(names(must(await o.listBusinessUnits.execute({ actor })))).toEqual(["DIVISION A", "DIVISION BRAVO"]);
+    // Two operations share the name "OPERATION A1" (one per division); their tie order is by id.
+    expect(names(must(await o.listOperations.execute({ actor })))).toEqual([
+      "OPERATION A1",
+      "OPERATION A1",
+      "OPERATION A2",
+      "OPERATION BRAVO 1",
+    ]);
+    expect(names(must(await o.listSites.execute({ actor })))).toEqual(["SITE 1", "SITE 3", "SITE TWO"]);
   });
 
   it("shows a division-scoped analyst its division, its operations and their sites", async () => {
@@ -153,9 +159,9 @@ describe("organization flow through the container as parkline_app", () => {
     await scopeTo(userId, "business_unit", ids.divA ?? "");
     const actor = await signInActor("division.analyst@example.test");
     const o = c.organization;
-    expect(names(must(await o.listBusinessUnits.execute({ actor })))).toEqual(["Division A"]);
-    expect(names(must(await o.listOperations.execute({ actor })))).toEqual(["Operation A1", "Operation A2"]);
-    expect(names(must(await o.listSites.execute({ actor })))).toEqual(["Site 1", "Site Two"]);
+    expect(names(must(await o.listBusinessUnits.execute({ actor })))).toEqual(["DIVISION A"]);
+    expect(names(must(await o.listOperations.execute({ actor })))).toEqual(["OPERATION A1", "OPERATION A2"]);
+    expect(names(must(await o.listSites.execute({ actor })))).toEqual(["SITE 1", "SITE TWO"]);
     expect((await o.createSite.execute({ actor, name: "Not Allowed" })).ok).toBe(false);
     const own = await o.createOperation.execute({ actor, businessUnitId: ids.divA ?? "", siteId: ids.site3 ?? "", name: "Operation A9", costCenter: "0090" });
     expect(own.ok).toBe(true);
@@ -169,9 +175,8 @@ describe("organization flow through the container as parkline_app", () => {
     const actor = await signInActor("site.analyst@example.test");
     const o = c.organization;
     expect(must(await o.listBusinessUnits.execute({ actor }))).toEqual([]);
-    const operations = names(must(await o.listOperations.execute({ actor }))).map((name) => name.toLowerCase());
-    expect(operations).toEqual(["operation a1", "operation a1"]);
-    expect(names(must(await o.listSites.execute({ actor })))).toEqual(["Site 1"]);
+    expect(names(must(await o.listOperations.execute({ actor })))).toEqual(["OPERATION A1", "OPERATION A1"]);
+    expect(names(must(await o.listSites.execute({ actor })))).toEqual(["SITE 1"]);
     const denied = await o.createOperation.execute({ actor, businessUnitId: ids.divA ?? "", siteId: ids.site1 ?? "", name: "Operation A8", costCenter: "0092" });
     expect(!denied.ok && denied.error.code).toBe("forbidden");
   });
@@ -182,7 +187,7 @@ describe("organization flow through the container as parkline_app", () => {
     const actor = await signInActor("operation.analyst@example.test");
     const o = c.organization;
     expect(must(await o.listOperations.execute({ actor })).map((op) => op.id)).toEqual([ids.opA1]);
-    expect(names(must(await o.listSites.execute({ actor })))).toEqual(["Site 1"]);
+    expect(names(must(await o.listSites.execute({ actor })))).toEqual(["SITE 1"]);
     expect(must(await o.listBusinessUnits.execute({ actor }))).toEqual([]);
     const denied = await o.createSite.execute({ actor, name: "Not Allowed" });
     expect(denied.ok).toBe(false);
@@ -226,7 +231,45 @@ describe("organization flow through the container as parkline_app", () => {
     );
     expect(await count("business_units")).toBe(before);
     const site = await owner<{ name: string }[]>`select name from sites where id = ${ids.site1 ?? ""}`;
-    expect(site[0]?.name).toBe("Site 1");
+    expect(site[0]?.name).toBe("SITE 1");
+  });
+
+  it("stores names uppercase with their accents and treats accent and case variants as the same name", async () => {
+    const o = c.organization;
+    const unit = must(await o.createBusinessUnit.execute({ actor: adminActor, name: "  bahía   blanca " }));
+    const site = must(await o.createSite.execute({ actor: adminActor, name: "Bahía Blanca" }));
+    const operation = must(await createOp(unit.id, site.id, "bahía blanca", "0710"));
+    expect([unit.name, site.name, operation.name]).toEqual(["BAHÍA BLANCA", "BAHÍA BLANCA", "BAHÍA BLANCA"]);
+    const stored = await owner<{ name: string; name_key: string }[]>`
+      select name, name_key from sites where id = ${site.id}`;
+    expect(stored[0]).toEqual({ name: "BAHÍA BLANCA", name_key: "BAHIA BLANCA" });
+    for (const variant of ["BAHIA BLANCA", "Bahia  Blanca", "bahía blanca"]) {
+      const dupUnit = await o.createBusinessUnit.execute({ actor: adminActor, name: variant });
+      const dupSite = await o.createSite.execute({ actor: adminActor, name: variant });
+      const dupOp = await createOp(unit.id, site.id, variant, "0711");
+      expect(!dupUnit.ok && dupUnit.error.code, variant).toBe("name_taken");
+      expect(!dupSite.ok && dupSite.error.code, variant).toBe("name_taken");
+      expect(!dupOp.ok && dupOp.error.code, variant).toBe("name_taken");
+    }
+    const otherUnit = must(await o.createBusinessUnit.execute({ actor: adminActor, name: "Otra division" }));
+    expect((await createOp(otherUnit.id, site.id, "BAHIA BLANCA", "0712")).ok).toBe(true);
+    const tilde = await Promise.all([
+      o.createSite.execute({ actor: adminActor, name: "Núñez" }),
+      o.createSite.execute({ actor: adminActor, name: "Nunez" }),
+    ]);
+    expect(tilde.every((result) => result.ok)).toBe(true);
+  });
+
+  it("two concurrent creates of accent variants of one name give one ok and one typed conflict", async () => {
+    const o = c.organization;
+    for (let round = 0; round < 8; round += 1) {
+      const outcome = await Promise.allSettled([
+        o.createSite.execute({ actor: adminActor, name: `Camión ${String(round)}` }),
+        o.createSite.execute({ actor: adminActor, name: `CAMION  ${String(round)}` }),
+      ]);
+      const codes = outcome.map((a) => (a.status === "rejected" ? "rejected" : a.value.ok ? "ok" : a.value.error.code));
+      expect(codes.sort()).toEqual(["name_taken", "ok"]);
+    }
   });
 
   it("identity adapter fills the typed scope column, reads the scope back unchanged and refuses missing targets", async () => {
@@ -287,9 +330,9 @@ describe("organization flow through the container as parkline_app", () => {
       ]);
       expectOneWinner(operation);
     }
-    const rows = await owner`select 1 from sites where name_key like 'racing site %'`;
+    const rows = await owner`select 1 from sites where name_key like 'RACING SITE %'`;
     expect(rows).toHaveLength(8);
-    const operations = await owner`select 1 from operations where name_key like 'racing op %'`;
+    const operations = await owner`select 1 from operations where name_key like 'RACING OP %'`;
     expect(operations).toHaveLength(8);
   });
 
@@ -325,6 +368,182 @@ describe("organization flow through the container as parkline_app", () => {
           o.renameSite.execute({ actor: adminActor, id: b, name: target.toUpperCase() }),
         ]),
       );
+    }
+  });
+
+  const edit = (actor: Actor, op: Operation, overrides: Partial<UpdateOperationInput> = {}) =>
+    c.organization.updateOperation.execute({
+      actor,
+      operationId: op.id,
+      name: op.name,
+      businessUnitId: op.businessUnitId,
+      siteId: op.siteId,
+      costCenter: op.costCenter,
+      reason: "Synthetic edit reason",
+      ...overrides,
+    });
+
+  type EditAudit = { reason: string; before: Record<string, string>; after: Record<string, string>; role: string };
+  const editAudits = (operationId: string) =>
+    owner<EditAudit[]>`
+      select reason, before, after, role from audit_log
+      where action = 'organization.operation.update' and entity_id = ${operationId} order by id`;
+
+  it("edits an operation as parkline_app: the row changes and the audit holds the reason and both value sets", async () => {
+    const o = c.organization;
+    const unit = must(await o.createBusinessUnit.execute({ actor: adminActor, name: "Edit Division" }));
+    const other = must(await o.createBusinessUnit.execute({ actor: adminActor, name: "Edit Division Two" }));
+    const siteA = must(await o.createSite.execute({ actor: adminActor, name: "Edit Site A" }));
+    const siteB = must(await o.createSite.execute({ actor: adminActor, name: "Edit Site B" }));
+    const op = must(await createOp(unit.id, siteA.id, "Edit Operation", "0801"));
+    const changed = must(
+      await edit(adminActor, op, { name: " edit  operación ", businessUnitId: other.id, siteId: siteB.id, costCenter: "0802", reason: "  Moved by contract  " }),
+    );
+    expect(changed).toMatchObject({ name: "EDIT OPERACIÓN", businessUnitId: other.id, siteId: siteB.id, costCenter: "0802" });
+    const stored = await owner<{ name: string; business_unit_id: string; site_id: string; cost_center: string }[]>`
+      select name, business_unit_id, site_id, cost_center from operations where id = ${op.id}`;
+    expect(stored[0]).toEqual({ name: "EDIT OPERACIÓN", business_unit_id: other.id, site_id: siteB.id, cost_center: "0802" });
+    const audits = await editAudits(op.id);
+    expect(audits).toHaveLength(1);
+    expect(audits[0]).toMatchObject({
+      reason: "Moved by contract",
+      role: "admin",
+      before: { name: "EDIT OPERATION", businessUnitId: unit.id, siteId: siteA.id, costCenter: "0801" },
+      after: { name: "EDIT OPERACIÓN", businessUnitId: other.id, siteId: siteB.id, costCenter: "0802" },
+    });
+  });
+
+  it("answers typed errors for a missing reason, no changes, conflicts and unknown targets without writing", async () => {
+    const o = c.organization;
+    const unit = must(await o.createBusinessUnit.execute({ actor: adminActor, name: "Edit Errors Division" }));
+    const site = must(await o.createSite.execute({ actor: adminActor, name: "Edit Errors Site" }));
+    const a = must(await createOp(unit.id, site.id, "Edit Errors A", "0811"));
+    const b = must(await createOp(unit.id, site.id, "Edit Errors B", "0812"));
+    const code = async (result: ReturnType<typeof edit>) => {
+      const r = await result;
+      return r.ok ? "ok" : r.error.code;
+    };
+    expect(await code(edit(adminActor, a, { name: "Other", reason: " " }))).toBe("reason_required");
+    expect(await code(edit(adminActor, a))).toBe("no_changes");
+    expect(await code(edit(adminActor, a, { name: "edit errors b" }))).toBe("name_taken");
+    expect(await code(edit(adminActor, a, { costCenter: b.costCenter }))).toBe("cost_center_taken");
+    expect(await code(edit(adminActor, a, { costCenter: "9" }))).toBe("invalid_cost_center");
+    expect(await code(edit(adminActor, a, { siteId: "00000000-0000-4000-8000-000000000000" }))).toBe("not_found");
+    expect(await code(edit(adminActor, a, { businessUnitId: "not-a-uuid" }))).toBe("not_found");
+    expect(await editAudits(a.id)).toHaveLength(0);
+  });
+
+  it("returns not found for a target site of another tenant and for a missing site, writing nothing", async () => {
+    const unit = must(await c.organization.createBusinessUnit.execute({ actor: adminActor, name: "Edit Site Boundary" }));
+    const site = must(await c.organization.createSite.execute({ actor: adminActor, name: "Edit Site Boundary Own" }));
+    const op = must(await createOp(unit.id, site.id, "Edit Site Boundary Op", "0841"));
+    const [tenant] = await owner<{ id: string }[]>`insert into tenants (id, name) values (gen_random_uuid(), 'Other Tenant') returning id`;
+    const [foreign] = await owner<{ id: string }[]>`
+      insert into sites (id, tenant_id, name) values (gen_random_uuid(), ${tenant?.id ?? ""}, 'Foreign Site') returning id`;
+    for (const siteId of [foreign?.id ?? "", "00000000-0000-4000-8000-000000000000"]) {
+      const result = await edit(adminActor, op, { siteId });
+      expect(!result.ok && result.error.code).toBe("not_found");
+    }
+    const stored = await owner<{ site_id: string }[]>`select site_id from operations where id = ${op.id}`;
+    expect(stored[0]?.site_id).toBe(site.id);
+    expect(await editAudits(op.id)).toHaveLength(0);
+  });
+
+  it("rethrows a unique violation of an unrelated constraint instead of reporting a name conflict", async () => {
+    const o = c.organization;
+    const unit = must(await o.createBusinessUnit.execute({ actor: adminActor, name: "Edit Unrelated Unique" }));
+    const siteA = must(await o.createSite.execute({ actor: adminActor, name: "Edit Unrelated Site A" }));
+    const siteB = must(await o.createSite.execute({ actor: adminActor, name: "Edit Unrelated Site B" }));
+    const a = must(await createOp(unit.id, siteA.id, "Edit Unrelated A", "0851"));
+    const b = must(await createOp(unit.id, siteB.id, "Edit Unrelated B", "0852"));
+    await owner.unsafe(
+      `create unique index tmp_unrelated_site_once on operations (tenant_id, site_id) where business_unit_id = '${unit.id}'`,
+    );
+    try {
+      await expect(edit(adminActor, b, { siteId: a.siteId })).rejects.toThrow(/tmp_unrelated_site_once/);
+    } finally {
+      await owner.unsafe("drop index tmp_unrelated_site_once");
+    }
+    const stored = await owner<{ site_id: string }[]>`select site_id from operations where id = ${b.id}`;
+    expect(stored[0]?.site_id).toBe(siteB.id);
+    expect(await editAudits(b.id)).toHaveLength(0);
+  });
+
+  it("limits a division-scoped analyst to its own division and refuses operation- and site-scoped ones", async () => {
+    const o = c.organization;
+    const mine = must(await o.createBusinessUnit.execute({ actor: adminActor, name: "Edit Scoped Division" }));
+    const site = must(await o.createSite.execute({ actor: adminActor, name: "Edit Scoped Site" }));
+    const op = must(await createOp(mine.id, site.id, "Edit Scoped Operation", "0821"));
+    const divisionActor = async (email: string, type: "business_unit" | "operation" | "site", id: string) => {
+      await scopeTo(await createAnalyst(email), type, id);
+      return signInActor(email);
+    };
+    const inScope = await divisionActor("edit.division@example.test", "business_unit", mine.id);
+    expect((await edit(inScope, op, { name: "Edit Scoped Renamed", reason: "Scoped edit" })).ok).toBe(true);
+    const out = await edit(inScope, op, { businessUnitId: ids.divA ?? "" });
+    expect(!out.ok && out.error.code).toBe("forbidden");
+    for (const [email, type, id] of [
+      ["edit.operation@example.test", "operation", op.id],
+      ["edit.site@example.test", "site", site.id],
+    ] as const) {
+      const denied = await edit(await divisionActor(email, type, id), op, { name: "Not Allowed" });
+      expect(!denied.ok && denied.error.code, email).toBe("forbidden");
+    }
+    const audits = await editAudits(op.id);
+    expect(audits).toHaveLength(1);
+    expect(audits[0]?.role).toBe("fleet_analyst");
+  });
+
+  it("rolls the edit back when the audit write fails", async () => {
+    const o = c.organization;
+    const unit = must(await o.createBusinessUnit.execute({ actor: adminActor, name: "Edit Rollback Division" }));
+    const site = must(await o.createSite.execute({ actor: adminActor, name: "Edit Rollback Site" }));
+    const op = must(await createOp(unit.id, site.id, "Edit Rollback Operation", "0831"));
+    const failing: AuditLog = { record: () => Promise.reject(new Error("audit unavailable")) };
+    const broken = createContainer(app, { hasher, wrapAudit: () => failing });
+    await expect(
+      broken.organization.updateOperation.execute({
+        actor: adminActor,
+        operationId: op.id,
+        name: "Never Persisted",
+        businessUnitId: unit.id,
+        siteId: site.id,
+        costCenter: "0832",
+        reason: "Should roll back",
+      }),
+    ).rejects.toThrow(/audit unavailable/);
+    const stored = await owner<{ name: string; cost_center: string }[]>`select name, cost_center from operations where id = ${op.id}`;
+    expect(stored[0]).toEqual({ name: "EDIT ROLLBACK OPERATION", cost_center: "0831" });
+  });
+
+  it("two concurrent edits into the same name give one ok and one typed conflict, over several rounds", async () => {
+    const o = c.organization;
+    const unit = must(await o.createBusinessUnit.execute({ actor: adminActor, name: "Edit Race Names" }));
+    const site = must(await o.createSite.execute({ actor: adminActor, name: "Edit Race Names Site" }));
+    for (let round = 0; round < 8; round += 1) {
+      const a = must(await createOp(unit.id, site.id, `Race Name A ${String(round)}`, `8${String(round)}01`));
+      const b = must(await createOp(unit.id, site.id, `Race Name B ${String(round)}`, `8${String(round)}02`));
+      const target = `Race Name Target ${String(round)}`;
+      expectOneWinner(await Promise.allSettled([edit(adminActor, a, { name: target }), edit(adminActor, b, { name: target.toLowerCase() })]));
+      const rows = await owner`select 1 from operations where name_key = ${target.toUpperCase()} and business_unit_id = ${unit.id}`;
+      expect(rows).toHaveLength(1);
+    }
+  });
+
+  it("two concurrent edits into the same cost center give one ok and one typed conflict, over several rounds", async () => {
+    const o = c.organization;
+    const unit = must(await o.createBusinessUnit.execute({ actor: adminActor, name: "Edit Race Codes" }));
+    const site = must(await o.createSite.execute({ actor: adminActor, name: "Edit Race Codes Site" }));
+    for (let round = 0; round < 8; round += 1) {
+      const a = must(await createOp(unit.id, site.id, `Race Code A ${String(round)}`, `7${String(round)}01`));
+      const b = must(await createOp(unit.id, site.id, `Race Code B ${String(round)}`, `7${String(round)}02`));
+      const target = `7${String(round)}99`;
+      expectOneWinner(
+        await Promise.allSettled([edit(adminActor, a, { costCenter: target }), edit(adminActor, b, { costCenter: ` ${target} ` })]),
+        "cost_center_taken",
+      );
+      const rows = await owner`select 1 from operations where cost_center = ${target}`;
+      expect(rows).toHaveLength(1);
     }
   });
 });

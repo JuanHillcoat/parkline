@@ -30,6 +30,7 @@ import { ListSites } from "../../organization/application/use-cases/list-sites";
 import { RenameBusinessUnit } from "../../organization/application/use-cases/rename-business-unit";
 import { RenameOperation } from "../../organization/application/use-cases/rename-operation";
 import { RenameSite } from "../../organization/application/use-cases/rename-site";
+import { UpdateOperation } from "../../organization/application/use-cases/update-operation";
 import { createPostgresOrganizationTx } from "../../organization/infrastructure/postgres-organization-tx";
 import type { AccessPolicy } from "../domain/ports/access-policy";
 import type { AuditLog } from "../domain/ports/audit-log";
@@ -75,6 +76,7 @@ const organizationUseCases = (deps: OrganizationDeps) => ({
   renameBusinessUnit: new RenameBusinessUnit(deps),
   renameOperation: new RenameOperation(deps),
   renameSite: new RenameSite(deps),
+  updateOperation: new UpdateOperation(deps),
   listBusinessUnits: new ListBusinessUnits(deps),
   listOperations: new ListOperations(deps),
   listSites: new ListSites(deps),

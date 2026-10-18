@@ -10,6 +10,7 @@ export const SENSITIVE_AUDIT_ACTIONS: readonly string[] = [
   "role.revoke",
   "role.change",
   "user.deactivate",
+  "organization.operation.update",
 ];
 
 export const requiresReason = (action: string): boolean => SENSITIVE_AUDIT_ACTIONS.includes(action);

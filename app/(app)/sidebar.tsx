@@ -1,4 +1,5 @@
 import { requirePermission, type ActorContext } from "../../src/identity/application/actor-context";
+import { canReadCatalog } from "../_lib/catalog-access";
 import { copy } from "../_lib/copy";
 import { ROLE_LABELS } from "../_lib/messages";
 import { signOutAction } from "./actions";
@@ -30,17 +31,23 @@ function Account({ actor }: { actor: ActorContext }) {
   );
 }
 
-function Administration() {
+type AdministrationProps = { readonly users: boolean; readonly organization: boolean };
+
+function Administration({ users, organization }: AdministrationProps) {
   return (
     <>
       <p className="nav-heading">{copy.nav.administration}</p>
-      <ul className="nav"><li><NavLink href="/users">{copy.nav.users}</NavLink></li></ul>
+      <ul className="nav">
+        {users && <li><NavLink href="/users">{copy.nav.users}</NavLink></li>}
+        {organization && <li><NavLink href="/organization">{copy.nav.organization}</NavLink></li>}
+      </ul>
     </>
   );
 }
 
 export function Sidebar({ actor }: { actor: ActorContext }) {
   const canReadUsers = requirePermission(actor, "user.read").ok;
+  const canReadOrganization = canReadCatalog(actor);
   return (
     <aside className="sidebar">
       <p className="brand">{copy.common.productName}</p>
@@ -49,7 +56,9 @@ export function Sidebar({ actor }: { actor: ActorContext }) {
           <li><NavLink href="/">{copy.nav.home}</NavLink></li>
           {COMING_SOON.map((label) => <SoonItem key={label} label={label} />)}
         </ul>
-        {canReadUsers && <Administration />}
+        {(canReadUsers || canReadOrganization) && (
+          <Administration users={canReadUsers} organization={canReadOrganization} />
+        )}
       </nav>
       <Account actor={actor} />
     </aside>

@@ -21,8 +21,15 @@ All notable changes to this project are documented in this file. The format foll
 - ADR 0003 (identity, sessions and install) and the `TRUST_FORWARDED_HOST` setting in `.env.example` (`p0-02`, T7).
 - Sign-in throttling (issue 5): backoff per attempted email and per client address, counted in the new `sign_in_attempts` table (migration `0003`, hashed subjects only), a `auth.sign_in_locked` audit entry per lock and a Spanish message with the wait in minutes. The per-address limit needs `TRUST_FORWARDED_HOST=true`.
 - Audit hardening (`p0-03`, ADR 0004): the restricted group role `parkline_app` (migration `0004`) with `INSERT` and `SELECT` only on `audit_log`; a closed list of sensitive audit actions that require a non-blank reason, enforced in the `AuditLog` adapters and by a database trigger; `MIGRATE_DATABASE_URL` for migrations; `pnpm db:create-app-login` to create the application login from `APP_DB_PASSWORD`; the CI `database` job migrates as the owner and creates the restricted login.
+- Shared authorization port (`p0-04`, ADR 0005): `Actor`, `AccessPolicy` and `ForbiddenError` in the shared kernel, implemented by `identity`, so modules authorize without importing each other.
+- Organization module (`p0-04`, ADR 0006): divisions, operations and sites with use cases to create, rename, list and edit, in-memory and Postgres adapters, and scope-filtered reads through the `AccessPolicy`. An operation has exactly one site and a cost center of four digits, unique per tenant.
+- Migration `0005_organization.sql`: `business_units`, `sites` and `operations`, typed scope columns with real foreign keys on `user_role_assignments`, and `SELECT`, `INSERT`, `UPDATE` only for `parkline_app` (explicit revoke of `DELETE` and `TRUNCATE`). No seed data.
+- Migration `0006_organization_names.sql`: names are stored in uppercase and compared ignoring case and accents (the letters N with tilde and C with cedilla stay distinct), with the same key in TypeScript and SQL. Typed `name_taken` and `cost_center_taken` conflicts, also under concurrency.
+- Migration `0007_organization_edit.sql`: `organization.operation.update` joins the sensitive audit actions, so editing the name, division, site or cost center of an operation requires a reason (non-blank, at most 500 characters).
+- Web: `/organization` page in Spanish with a card per division, a sites table, create and rename dialogs, and an edit dialog per operation with a mandatory reason; sidebar entry for users who can read the catalog.
 
 ### Known limitations
 
 - Without `TRUST_FORWARDED_HOST=true`, sign-in is throttled per email only (issue 5; see ADR 0003).
 - The audit guarantees protect against the application, not against the database owner or a superuser, and there is no hash chain (see ADR 0004).
+- Organization: no delete or deactivation yet; existence is checked before authorization in some use cases (issue 16); the operation shift profile is deferred (issue 15); v1 serves only the Fleet and Equipment sector, expansion is issue 17; the screen is to be redesigned (issue 19). Migration `0006` locks tables and rewrites rows, acceptable while they are small (see ADR 0006).

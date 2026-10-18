@@ -9,7 +9,7 @@ describe("CreateBusinessUnit", () => {
   it("creates the unit and audits it in the same unit of work", async () => {
     const h = createHarness();
     const unit = h.orThrow(await h.createBusinessUnit.execute({ actor: h.admin, name: "  Norte " }));
-    expect(unit).toEqual({ id: "id-1", tenantId: "t-a", name: "Norte" });
+    expect(unit).toEqual({ id: "id-1", tenantId: "t-a", name: "NORTE" });
     expect(await h.store.read((tx) => tx.businessUnits.listByTenant("t-a"))).toEqual([unit]);
     expect(h.auditOf("organization.business_unit.create")).toEqual([
       expect.objectContaining({
@@ -19,9 +19,23 @@ describe("CreateBusinessUnit", () => {
         entityId: unit.id,
         tenantId: "t-a",
         businessUnitId: unit.id,
-        after: { name: "Norte" },
+        after: { name: "NORTE" },
       }),
     ]);
+  });
+
+  it("stores the name uppercase with its accents and rejects an accent or case variant", async () => {
+    const h = createHarness();
+    const unit = h.orThrow(await h.createBusinessUnit.execute({ actor: h.admin, name: "bahía  blanca" }));
+    expect(unit.name).toBe("BAHÍA BLANCA");
+    for (const name of ["BAHIA BLANCA", "Bahia Blanca", "bahía blanca"]) {
+      const result = await h.createBusinessUnit.execute({ actor: h.admin, name });
+      expect(!result.ok && result.error.code, name).toBe("name_taken");
+    }
+    const distinct = await h.createBusinessUnit.execute({ actor: h.admin, name: "Núñez" });
+    expect(distinct.ok).toBe(true);
+    const tilde = await h.createBusinessUnit.execute({ actor: h.admin, name: "Nunez" });
+    expect(tilde.ok).toBe(true);
   });
 
   it("lets a tenant-scoped fleet analyst create and records its role", async () => {
@@ -94,7 +108,7 @@ describe("CreateOperation", () => {
       tenantId: "t-a",
       businessUnitId: unit.id,
       siteId: site.id,
-      name: "Mina 1",
+      name: "MINA 1",
       costCenter: "0050",
     });
     expect(h.auditOf("organization.operation.create")).toEqual([
@@ -104,7 +118,7 @@ describe("CreateOperation", () => {
         businessUnitId: unit.id,
         operationId: op.id,
         siteId: site.id,
-        after: { name: "Mina 1", businessUnitId: unit.id, siteId: site.id, costCenter: "0050" },
+        after: { name: "MINA 1", businessUnitId: unit.id, siteId: site.id, costCenter: "0050" },
       }),
     ]);
   });
@@ -192,6 +206,23 @@ describe("CreateOperation", () => {
     expect(!dup.ok && dup.error.code).toBe("cost_center_taken");
   });
 
+  it("rejects an accent variant inside the division and allows it in another division", async () => {
+    const h = createHarness();
+    const s = await h.seedTenantA();
+    const first = h.orThrow(await h.createOperation.execute({ actor: h.admin, ...base(s), name: "Bahía", costCenter: "0090" }));
+    expect(first.name).toBe("BAHÍA");
+    const dup = await h.createOperation.execute({ actor: h.admin, ...base(s), name: "bahia", costCenter: "0091" });
+    expect(!dup.ok && dup.error.code).toBe("name_taken");
+    const other = await h.createOperation.execute({
+      actor: h.admin,
+      ...base(s),
+      businessUnitId: s.south.id,
+      name: "BAHIA",
+      costCenter: "0092",
+    });
+    expect(other.ok).toBe(true);
+  });
+
   it("lets two tenants reuse the same cost center", async () => {
     const h = createHarness();
     const s = await h.seedTenantA();
@@ -229,10 +260,18 @@ describe("CreateSite", () => {
   it("creates the site and audits it", async () => {
     const h = createHarness();
     const site = h.orThrow(await h.createSite.execute({ actor: tenantActor("fleet_analyst"), name: "Taller" }));
-    expect(site).toEqual({ id: "id-1", tenantId: "t-a", name: "Taller" });
+    expect(site).toEqual({ id: "id-1", tenantId: "t-a", name: "TALLER" });
     expect(h.auditOf("organization.site.create")).toEqual([
-      expect.objectContaining({ entityType: "site", entityId: site.id, siteId: site.id, after: { name: "Taller" } }),
+      expect.objectContaining({ entityType: "site", entityId: site.id, siteId: site.id, after: { name: "TALLER" } }),
     ]);
+  });
+
+  it("rejects an accent or case variant of an existing site name", async () => {
+    const h = createHarness();
+    const first = h.orThrow(await h.createSite.execute({ actor: h.admin, name: "Bahía Blanca" }));
+    expect(first.name).toBe("BAHÍA BLANCA");
+    const dup = await h.createSite.execute({ actor: h.admin, name: "BAHIA  BLANCA" });
+    expect(!dup.ok && dup.error.code).toBe("name_taken");
   });
 
   it("denies a viewer and a site-scoped analyst", async () => {

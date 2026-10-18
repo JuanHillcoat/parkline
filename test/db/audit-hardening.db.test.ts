@@ -147,6 +147,30 @@ describe("sensitive-action reason trigger (owner connection)", () => {
     });
   });
 
+  it("lists exactly SENSITIVE_AUDIT_ACTIONS in the trigger function (no drift in either direction)", async () => {
+    await withDb(async (owner) => {
+      const rows = await owner<{ src: string }[]>`select prosrc as src from pg_proc where proname = 'audit_log_require_reason'`;
+      expect(rows).toHaveLength(1);
+      const list = /new\.action in \(([^)]*)\)/.exec(rows[0]?.src ?? "")?.[1] ?? "";
+      const inSql = [...list.matchAll(/'([^']+)'/g)].map((m) => m[1]);
+      expect(inSql).toEqual([...SENSITIVE_AUDIT_ACTIONS]);
+    });
+  });
+
+  it("organization.operation.update needs a visible reason: null, empty, blank and invisible-only are refused", async () => {
+    await withDb(async (owner) => {
+      const action = "organization.operation.update";
+      for (const reason of [null, "", "  ", String.fromCharCode(0x200b, 0xa0, 0xfeff), String.fromCharCode(0x3000, 0x2060)]) {
+        const error = await insertAudit(owner, { action, reason }).then(() => null, asPgError);
+        expect(error?.code, JSON.stringify(reason)).toBe("23514");
+        expect(error?.message).toBe(`audit action "${action}" requires a non-blank reason`);
+      }
+      await insertAudit(owner, { action, reason: "Correccion de centro de costo" });
+      const rows = await owner`select count(*)::int as n from audit_log`;
+      expect(rows[0]?.n).toBe(1);
+    });
+  });
+
   it("accepts a reason with a visible character among invisible ones", async () => {
     await withDb(async (owner) => {
       const reasons = ["\u200B\u00A0x\uFEFF", "\u200E", " ok "];

@@ -9,7 +9,8 @@ These conventions apply to every change, human or agent.
 - The application starts empty. There is no seed data: no suppliers, equipment, contracts, rates or readings are created by migrations or code.
 - The first tenant and administrator are created only by the explicit `pnpm install:admin` command (see `docs/adr/0003-identity-and-sessions.md`). It is not a seed: it runs once, on request, and never accepts the password as a flag.
 - The application should connect as a member of the restricted group role `parkline_app` (`INSERT` and `SELECT` only on `audit_log`; migration `0004`, ADR-0004). Migrations and `pnpm db:create-app-login` run as the owner (`MIGRATE_DATABASE_URL`, falling back to `DATABASE_URL`). Sensitive audit actions (`SENSITIVE_AUDIT_ACTIONS`) require a non-blank reason, enforced in the `AuditLog` adapters and by a database trigger.
-- Identity (sign-in, sessions, roles by scope) exists. Only the `tenant` scope is assignable until the catalog migration (P0-04).
+- Identity (sign-in, sessions, roles by scope) exists. Only the `tenant` scope is assignable from the UI; the database already enforces real foreign keys for division, operation and site scopes (`user_role_assignments.scope_*_id`, migration `0005`).
+- Organization catalogs exist (`src/organization`, page `/organization`): divisions, operations and sites. An operation has exactly one site and a four-digit cost center unique per tenant; names are stored in uppercase and compared ignoring case and accents. There is no delete or deactivation; an operation is edited with a mandatory reason (`organization.operation.update`, in `SENSITIVE_AUDIT_ACTIONS` and the trigger, migration `0007`). Modules reach authorization through the `AccessPolicy` port of the shared kernel (ADR-0005). Model in ADR-0006.
 - Test datasets are synthetic fixtures. They are loaded only by specific tests, into an ephemeral Postgres database.
 
 ## Architecture and import boundaries
