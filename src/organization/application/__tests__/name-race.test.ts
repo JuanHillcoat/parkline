@@ -9,6 +9,7 @@ import { CreateSite } from "../use-cases/create-site";
 import { RenameBusinessUnit } from "../use-cases/rename-business-unit";
 import { RenameOperation } from "../use-cases/rename-operation";
 import { RenameSite } from "../use-cases/rename-site";
+import { UpdateOperation } from "../use-cases/update-operation";
 import { createHarness, type Harness } from "./support/harness";
 
 /** A repository whose name lookup always misses: the pre-check lost a race to a concurrent writer. */
@@ -68,6 +69,29 @@ describe("the name uniqueness race (D7)", () => {
     expect(!result.ok && result.error.code).toBe("cost_center_taken");
     expect(h.audit.entries).toHaveLength(before);
     expect(await h.store.read((tx) => tx.operations.listByTenant("t-a"))).toHaveLength(3);
+  });
+
+  it("answers a typed conflict when the unique index rejects an update the pre-check missed", async () => {
+    const h = createHarness();
+    const s = await h.seedTenantA();
+    const before = h.audit.entries.length;
+    const edit = (overrides: object) =>
+      new UpdateOperation(racingDeps(h)).execute({
+        actor: h.admin,
+        operationId: s.mina2.id,
+        name: s.mina2.name,
+        businessUnitId: s.mina2.businessUnitId,
+        siteId: s.mina2.siteId,
+        costCenter: s.mina2.costCenter,
+        reason: "Race",
+        ...overrides,
+      });
+    const name = await edit({ name: "mina 1" });
+    const code = await edit({ costCenter: "0001" });
+    expect(!name.ok && name.error).toBeInstanceOf(NameTakenError);
+    expect(!code.ok && code.error).toBeInstanceOf(CostCenterTakenError);
+    expect(h.audit.entries).toHaveLength(before);
+    expect(await h.store.read((tx) => tx.operations.findById("t-a", s.mina2.id))).toEqual(s.mina2);
   });
 
   it("writes no audit entry and keeps the stored data when the create loses", async () => {

@@ -1,5 +1,6 @@
 import { ActionDialog, type DialogAction } from "../../_components/action-dialog";
 import { copy } from "../../_lib/copy";
+import type { OperationRow } from "../../_lib/organization-view";
 import {
   createDivisionAction,
   createOperationAction,
@@ -7,6 +8,7 @@ import {
   renameDivisionAction,
   renameOperationAction,
   renameSiteAction,
+  updateOperationAction,
 } from "./actions";
 
 type Option = { readonly id: string; readonly name: string };
@@ -29,13 +31,14 @@ type SelectProps = {
   readonly prompt: string;
   readonly options: readonly Option[];
   readonly hint?: string;
+  readonly initial?: string;
 };
 
 function SelectField(props: SelectProps) {
   return (
     <div className="field">
       <label htmlFor={props.id}>{props.label}</label>
-      <select id={props.id} name={props.name} required defaultValue="" className="input">
+      <select id={props.id} name={props.name} required defaultValue={props.initial ?? ""} className="input">
         <option value="" disabled>{props.prompt}</option>
         {props.options.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
       </select>
@@ -44,15 +47,26 @@ function SelectField(props: SelectProps) {
   );
 }
 
-function CostCenterField() {
+function CostCenterField({ id, initial }: { id: string; initial?: string }) {
   const t = copy.dialogs.newOperation;
   return (
     <div className="field">
-      <label htmlFor="new-operation-cost-center">{t.costCenterLabel}</label>
-      <input id="new-operation-cost-center" name="costCenter" type="text" required inputMode="numeric"
+      <label htmlFor={id}>{t.costCenterLabel}</label>
+      <input id={id} name="costCenter" type="text" required inputMode="numeric"
         maxLength={4} pattern="[0-9]{4}" placeholder={t.costCenterPlaceholder} className="input"
-        autoComplete="off" />
+        autoComplete="off" defaultValue={initial} />
       <span className="hint">{t.costCenterHint}</span>
+    </div>
+  );
+}
+
+function ReasonField({ id }: { id: string }) {
+  return (
+    <div className="field">
+      <label htmlFor={id}>{copy.common.reason}</label>
+      <textarea id={id} name="reason" required rows={3} placeholder={copy.dialogs.editOperation.reasonPlaceholder}
+        className="input" />
+      <span className="hint">{copy.common.reasonHint}</span>
     </div>
   );
 }
@@ -79,7 +93,30 @@ export function NewOperationDialog({ divisions, sites }: NewOperationProps) {
         prompt={t.selectDivision} options={divisions} />
       <SelectField id="new-operation-site" name="siteId" label={t.siteLabel} prompt={t.selectSite}
         options={sites} hint={t.siteHint} />
-      <CostCenterField />
+      <CostCenterField id="new-operation-cost-center" />
+    </ActionDialog>
+  );
+}
+
+export type EditOptions = { readonly divisions: readonly Option[]; readonly sites: readonly Option[] };
+
+type EditOperationProps = { readonly target: OperationRow; readonly options: EditOptions };
+
+/** Edits every field of an operation. The reason is mandatory and the change is audited (ADR-0004). */
+export function EditOperationDialog({ target, options }: EditOperationProps) {
+  const t = copy.dialogs.editOperation;
+  const key = `edit-operation-${target.id}`;
+  return (
+    <ActionDialog triggerLabel={t.trigger} triggerClassName="btn btn-link" title={t.title(target.name)}
+      description={t.description} submitLabel={t.submit} action={updateOperationAction}>
+      <input type="hidden" name="id" value={target.id} />
+      <NameField id={`${key}-name`} label={t.nameLabel} hint={t.nameHint} initial={target.name} />
+      <SelectField id={`${key}-division`} name="businessUnitId" label={t.divisionLabel}
+        prompt={t.divisionLabel} options={options.divisions} initial={target.businessUnitId} />
+      <SelectField id={`${key}-site`} name="siteId" label={t.siteLabel} prompt={t.siteLabel}
+        options={options.sites} initial={target.siteId} />
+      <CostCenterField id={`${key}-cost-center`} initial={target.costCenter} />
+      <ReasonField id={`${key}-reason`} />
     </ActionDialog>
   );
 }

@@ -2,6 +2,7 @@ import type {
   BusinessUnitRepository,
   OperationAdd,
   OperationRepository,
+  OperationUpdate,
   SiteRepository,
 } from "../application/ports/repositories";
 import type { BusinessUnit, Operation, Site } from "../domain/entities";
@@ -117,6 +118,20 @@ export class InMemoryOperationRepository implements OperationRepository {
 
   rename(tenantId: string, id: string, name: string): Promise<boolean> {
     return Promise.resolve(renameRow(this.state.operations, tenantId, id, name));
+  }
+
+  /** Mirrors the same two unique indexes, ignoring the row being updated. */
+  update(operation: Operation): Promise<OperationUpdate> {
+    const rows = this.state.operations;
+    const index = rows.findIndex((o) => o.tenantId === operation.tenantId && o.id === operation.id);
+    if (index < 0) throw new Error(`update of a missing row ${operation.id}`);
+    if (collides(rows, operation, operation.id)) return Promise.resolve("name_taken");
+    const sameCode = rows.some(
+      (o) => o.id !== operation.id && o.tenantId === operation.tenantId && o.costCenter === operation.costCenter,
+    );
+    if (sameCode) return Promise.resolve("cost_center_taken");
+    rows[index] = operation;
+    return Promise.resolve("updated");
   }
 
   listByTenant(tenantId: string): Promise<readonly Operation[]> {

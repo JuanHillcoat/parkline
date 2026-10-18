@@ -73,9 +73,10 @@ const failure = (run: PromiseLike<unknown>): Promise<PgError | null> =>
   );
 
 describe("organization schema after migrating", () => {
-  it("applies 0005 and 0006 (organization names) and the three tables start empty (no seed)", () => {
+  it("applies 0005, 0006 (organization names) and 0007 (organization edit) and the three tables start empty (no seed)", () => {
     expect(applied).toContain("0005_organization.sql");
-    expect(applied.at(-1)).toBe("0006_organization_names.sql");
+    expect(applied).toContain("0006_organization_names.sql");
+    expect(applied.at(-1)).toBe("0007_organization_edit.sql");
     expect(emptyAfterMigrating).toEqual({ business_units: 0, operations: 0, sites: 0 });
   });
 
@@ -226,7 +227,7 @@ describe("cost center (D7)", () => {
 });
 
 describe("migration file hygiene", () => {
-  it.each(["0005_organization.sql", "0006_organization_names.sql"])(
+  it.each(["0005_organization.sql", "0006_organization_names.sql", "0007_organization_edit.sql"])(
     "%s holds only printable ASCII and line feeds: no raw control or invisible characters",
     (file) => {
       const text = readFileSync(resolve(MIGRATIONS_DIR, file), "utf8");

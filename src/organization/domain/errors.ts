@@ -16,6 +16,24 @@ export class InvalidCostCenterError extends ValidationError {
   }
 }
 
+/** A sensitive organization change was submitted without a usable reason (ADR-0004). */
+export class ReasonRequiredError extends ValidationError {
+  readonly code: string = "reason_required";
+
+  constructor() {
+    super("A reason is required for this change", "reason");
+  }
+}
+
+/** An edit whose values all equal the stored ones: nothing is written or audited. */
+export class NoChangesError extends ValidationError {
+  readonly code: string = "no_changes";
+
+  constructor() {
+    super("The submitted values are the current ones");
+  }
+}
+
 /** Another entity with the same normalized name exists under the same owner (D7). */
 export class NameTakenError extends ConflictError {
   readonly code: string = "name_taken";

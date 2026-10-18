@@ -137,6 +137,20 @@ const es = {
       nameLabel: "Nuevo nombre",
       nameHint: "Se guarda en mayúsculas.",
     },
+    editOperation: {
+      trigger: "Editar",
+      title: (name: string): string => `Editar ${name}`,
+      description:
+        "Cambiar la división, el sitio o el centro de costo afecta quién ve la operación y la conciliación contable. El cambio queda registrado en la auditoría con los valores anteriores y el motivo.",
+      submit: "Guardar cambios",
+      nameLabel: "Nombre de la operación",
+      nameHint: "Se guarda en mayúsculas.",
+      divisionLabel: "División",
+      siteLabel: "Sitio",
+      costCenterLabel: "Centro de costo",
+      costCenterHint: "4 dígitos",
+      reasonPlaceholder: "¿Por qué se modifica esta operación?",
+    },
     newUser: {
       trigger: "Nuevo usuario",
       title: "Nuevo usuario",
@@ -190,6 +204,7 @@ const es = {
       name_taken: "Ya existe un registro con ese nombre en este lugar. Elige otro nombre.",
       cost_center_taken: "Ese centro de costo ya lo usa otra operación. Elige otro.",
       invalid_cost_center: "El centro de costo debe tener exactamente 4 dígitos, por ejemplo 0050.",
+      no_changes: "No hay cambios que guardar. Modifica al menos un dato.",
       invalid_role: "Elige un rol válido.",
       unauthenticated: "Tu sesión terminó. Inicia sesión de nuevo.",
     },

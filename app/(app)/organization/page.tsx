@@ -75,7 +75,10 @@ function Structure({ data, canWrite }: { data: Data; canWrite: boolean }) {
       <h2 className="section-title">{t.divisionsTitle}</h2>
       {groups.length === 0
         ? <Empty text={t.emptyDivisions} />
-        : groups.map((group) => <DivisionCard key={group.id ?? "hidden"} group={group} canWrite={canWrite} />)}
+        : groups.map((group) => (
+            <DivisionCard key={group.id ?? "hidden"} group={group} canWrite={canWrite}
+              options={{ divisions: data.units, sites: data.sites }} />
+          ))}
       <h2 className="section-title">{t.sitesTitle}</h2>
       {rows.length === 0 ? <Empty text={t.emptySites} /> : <SitesTable rows={rows} canWrite={canWrite} />}
     </>

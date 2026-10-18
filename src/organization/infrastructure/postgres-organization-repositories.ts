@@ -3,6 +3,7 @@ import type {
   BusinessUnitRepository,
   OperationAdd,
   OperationRepository,
+  OperationUpdate,
   SiteRepository,
 } from "../application/ports/repositories";
 import type { BusinessUnit, Operation, Site } from "../domain/entities";
@@ -45,6 +46,13 @@ const renamed = async (
     if ((error as { code?: string }).code === UNIQUE_VIOLATION) return false;
     throw error;
   }
+};
+
+/** Translates a unique violation into the typed result; any other error is rethrown. */
+const rejectedBy = (error: unknown): Exclude<OperationUpdate, "updated"> => {
+  const { code, constraint_name: constraint } = error as { code?: string; constraint_name?: string };
+  if (code !== UNIQUE_VIOLATION) throw error;
+  return constraint?.includes("cost_center") === true ? "cost_center_taken" : "name_taken";
 };
 
 export class PostgresBusinessUnitRepository implements BusinessUnitRepository {
@@ -136,6 +144,27 @@ export class PostgresOperationRepository implements OperationRepository {
 
   rename(tenantId: string, id: string, name: string): Promise<boolean> {
     return renamed(this.sql, id, (s) => s`update operations set name = ${name} where tenant_id = ${tenantId} and id = ${id}`);
+  }
+
+  /**
+   * The UPDATE runs in a savepoint so a unique violation (a concurrent writer took the name in
+   * the target division or the cost center) rolls back only the statement and becomes a value.
+   * The constraint name tells which index rejected it; foreign keys and anything else still throw.
+   */
+  async update(operation: Operation): Promise<OperationUpdate> {
+    try {
+      const result = await this.sql.savepoint(
+        async (scope) => await scope`
+          update operations
+          set business_unit_id = ${operation.businessUnitId}, site_id = ${operation.siteId},
+              name = ${operation.name}, cost_center = ${operation.costCenter}
+          where tenant_id = ${operation.tenantId} and id = ${operation.id}`,
+      );
+      if (result.count !== 1) throw new Error(`update of a missing row ${operation.id}`);
+      return "updated";
+    } catch (error) {
+      return rejectedBy(error);
+    }
   }
 
   async listByTenant(tenantId: string): Promise<readonly Operation[]> {

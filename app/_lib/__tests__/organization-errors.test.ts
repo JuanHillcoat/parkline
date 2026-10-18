@@ -6,6 +6,8 @@ import {
   InvalidCostCenterError,
   InvalidNameError,
   NameTakenError,
+  NoChangesError,
+  ReasonRequiredError,
 } from "../../../src/organization/domain/errors";
 import { copy } from "../copy";
 import { GENERIC_ERROR, errorMessage } from "../messages";
@@ -17,6 +19,8 @@ const cases = [
   ["invalid_name", new InvalidNameError("operations_name_key")],
   ["not_found", new NotFoundError("Operation", "operations_name_key")],
   ["forbidden", new ForbiddenError("operations_name_key")],
+  ["reason_required", new ReasonRequiredError()],
+  ["no_changes", new NoChangesError()],
 ] as const;
 
 describe("errorMessage for the organization codes", () => {

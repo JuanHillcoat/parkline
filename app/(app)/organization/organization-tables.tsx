@@ -1,16 +1,29 @@
 import { copy } from "../../_lib/copy";
 import type { DivisionGroup, OperationRow, SiteRow } from "../../_lib/organization-view";
-import { RenameDialog } from "./organization-dialogs";
+import { EditOperationDialog, RenameDialog, type EditOptions } from "./organization-dialogs";
 
 const t = copy.organization;
 
-function OperationLine({ row, canWrite }: { row: OperationRow; canWrite: boolean }) {
+type WriteAccess = { readonly canWrite: boolean; readonly options: EditOptions };
+
+function OperationActions({ row, canWrite, options }: WriteAccess & { row: OperationRow }) {
+  if (!canWrite) return null;
+  return (
+    <>
+      <EditOperationDialog target={row} options={options} />
+      <RenameDialog kind="operation" target={row} />
+    </>
+  );
+}
+
+function OperationLine(props: WriteAccess & { row: OperationRow }) {
+  const { row } = props;
   return (
     <tr>
       <td className="cell-code">{row.costCenter}</td>
       <th scope="row">{row.name}</th>
       <td>{row.siteName ?? <span className="cell-sub">{t.noSite}</span>}</td>
-      <td className="cell-actions">{canWrite && <RenameDialog kind="operation" target={row} />}</td>
+      <td className="cell-actions"><OperationActions {...props} /></td>
     </tr>
   );
 }
@@ -29,14 +42,16 @@ function OperationsHead() {
   );
 }
 
-function OperationsTable({ group, canWrite }: { group: DivisionGroup; canWrite: boolean }) {
+function OperationsTable({ group, canWrite, options }: WriteAccess & { group: DivisionGroup }) {
   return (
     <div className="table-wrap">
       <table className="table">
         <caption className="visually-hidden">{t.divisionsCaption(group.name ?? t.otherDivision)}</caption>
         <OperationsHead />
         <tbody>
-          {group.operations.map((row) => <OperationLine key={row.id} row={row} canWrite={canWrite} />)}
+          {group.operations.map((row) => (
+            <OperationLine key={row.id} row={row} canWrite={canWrite} options={options} />
+          ))}
         </tbody>
       </table>
     </div>
@@ -55,13 +70,13 @@ function GroupHeader({ group, canWrite }: { group: DivisionGroup; canWrite: bool
   );
 }
 
-export function DivisionCard({ group, canWrite }: { group: DivisionGroup; canWrite: boolean }) {
+export function DivisionCard({ group, canWrite, options }: WriteAccess & { group: DivisionGroup }) {
   return (
     <section className="card group-card">
       <GroupHeader group={group} canWrite={canWrite} />
       {group.operations.length === 0
         ? <p className="cell-sub">{t.noOperations}</p>
-        : <OperationsTable group={group} canWrite={canWrite} />}
+        : <OperationsTable group={group} canWrite={canWrite} options={options} />}
     </section>
   );
 }

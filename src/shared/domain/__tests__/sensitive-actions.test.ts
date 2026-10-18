@@ -14,6 +14,7 @@ describe("SENSITIVE_AUDIT_ACTIONS", () => {
       "role.revoke",
       "role.change",
       "user.deactivate",
+      "organization.operation.update",
     ]);
   });
 });

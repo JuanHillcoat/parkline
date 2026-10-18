@@ -5,6 +5,7 @@ export type OperationRow = {
   readonly id: string;
   readonly name: string;
   readonly businessUnitId: string;
+  readonly siteId: string;
   readonly costCenter: string;
   readonly siteName: string | null;
 };
@@ -31,6 +32,7 @@ const toRow = (operation: Operation, siteNames: ReadonlyMap<string, string>): Op
   id: operation.id,
   name: operation.name,
   businessUnitId: operation.businessUnitId,
+  siteId: operation.siteId,
   costCenter: operation.costCenter,
   siteName: siteNames.get(operation.siteId) ?? null,
 });

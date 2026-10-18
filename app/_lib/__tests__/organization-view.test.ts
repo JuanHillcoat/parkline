@@ -66,7 +66,7 @@ describe("buildDivisionGroups", () => {
         id: null,
         name: null,
         operations: [
-          { id: "o1", name: "Mine 1", businessUnitId: "u1", costCenter: "0050", siteName: "Depot" },
+          { id: "o1", name: "Mine 1", businessUnitId: "u1", siteId: "s2", costCenter: "0050", siteName: "Depot" },
         ],
       },
     ]);

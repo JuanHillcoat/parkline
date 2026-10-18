@@ -7,6 +7,8 @@ import { toActor } from "../../src/identity/application/actor-mapper";
 import { createRoleAssignment } from "../../src/identity/domain/role-assignment";
 import { ScryptPasswordHasher } from "../../src/identity/infrastructure/scrypt-password-hasher";
 import { PostgresRoleAssignmentRepository } from "../../src/identity/infrastructure/postgres-role-assignment-repository";
+import type { UpdateOperationInput } from "../../src/organization/application/use-cases/update-operation";
+import type { Operation } from "../../src/organization/domain/entities";
 import type { Actor } from "../../src/shared/domain/ports/access-policy";
 import type { AuditLog } from "../../src/shared/domain/ports/audit-log";
 import type { Result } from "../../src/shared/domain/result";
@@ -366,6 +368,146 @@ describe("organization flow through the container as parkline_app", () => {
           o.renameSite.execute({ actor: adminActor, id: b, name: target.toUpperCase() }),
         ]),
       );
+    }
+  });
+
+  const edit = (actor: Actor, op: Operation, overrides: Partial<UpdateOperationInput> = {}) =>
+    c.organization.updateOperation.execute({
+      actor,
+      operationId: op.id,
+      name: op.name,
+      businessUnitId: op.businessUnitId,
+      siteId: op.siteId,
+      costCenter: op.costCenter,
+      reason: "Synthetic edit reason",
+      ...overrides,
+    });
+
+  type EditAudit = { reason: string; before: Record<string, string>; after: Record<string, string>; role: string };
+  const editAudits = (operationId: string) =>
+    owner<EditAudit[]>`
+      select reason, before, after, role from audit_log
+      where action = 'organization.operation.update' and entity_id = ${operationId} order by id`;
+
+  it("edits an operation as parkline_app: the row changes and the audit holds the reason and both value sets", async () => {
+    const o = c.organization;
+    const unit = must(await o.createBusinessUnit.execute({ actor: adminActor, name: "Edit Division" }));
+    const other = must(await o.createBusinessUnit.execute({ actor: adminActor, name: "Edit Division Two" }));
+    const siteA = must(await o.createSite.execute({ actor: adminActor, name: "Edit Site A" }));
+    const siteB = must(await o.createSite.execute({ actor: adminActor, name: "Edit Site B" }));
+    const op = must(await createOp(unit.id, siteA.id, "Edit Operation", "0801"));
+    const changed = must(
+      await edit(adminActor, op, { name: " edit  operación ", businessUnitId: other.id, siteId: siteB.id, costCenter: "0802", reason: "  Moved by contract  " }),
+    );
+    expect(changed).toMatchObject({ name: "EDIT OPERACIÓN", businessUnitId: other.id, siteId: siteB.id, costCenter: "0802" });
+    const stored = await owner<{ name: string; business_unit_id: string; site_id: string; cost_center: string }[]>`
+      select name, business_unit_id, site_id, cost_center from operations where id = ${op.id}`;
+    expect(stored[0]).toEqual({ name: "EDIT OPERACIÓN", business_unit_id: other.id, site_id: siteB.id, cost_center: "0802" });
+    const audits = await editAudits(op.id);
+    expect(audits).toHaveLength(1);
+    expect(audits[0]).toMatchObject({
+      reason: "Moved by contract",
+      role: "admin",
+      before: { name: "EDIT OPERATION", businessUnitId: unit.id, siteId: siteA.id, costCenter: "0801" },
+      after: { name: "EDIT OPERACIÓN", businessUnitId: other.id, siteId: siteB.id, costCenter: "0802" },
+    });
+  });
+
+  it("answers typed errors for a missing reason, no changes, conflicts and unknown targets without writing", async () => {
+    const o = c.organization;
+    const unit = must(await o.createBusinessUnit.execute({ actor: adminActor, name: "Edit Errors Division" }));
+    const site = must(await o.createSite.execute({ actor: adminActor, name: "Edit Errors Site" }));
+    const a = must(await createOp(unit.id, site.id, "Edit Errors A", "0811"));
+    const b = must(await createOp(unit.id, site.id, "Edit Errors B", "0812"));
+    const code = async (result: ReturnType<typeof edit>) => {
+      const r = await result;
+      return r.ok ? "ok" : r.error.code;
+    };
+    expect(await code(edit(adminActor, a, { name: "Other", reason: " " }))).toBe("reason_required");
+    expect(await code(edit(adminActor, a))).toBe("no_changes");
+    expect(await code(edit(adminActor, a, { name: "edit errors b" }))).toBe("name_taken");
+    expect(await code(edit(adminActor, a, { costCenter: b.costCenter }))).toBe("cost_center_taken");
+    expect(await code(edit(adminActor, a, { costCenter: "9" }))).toBe("invalid_cost_center");
+    expect(await code(edit(adminActor, a, { siteId: "00000000-0000-4000-8000-000000000000" }))).toBe("not_found");
+    expect(await code(edit(adminActor, a, { businessUnitId: "not-a-uuid" }))).toBe("not_found");
+    expect(await editAudits(a.id)).toHaveLength(0);
+  });
+
+  it("limits a division-scoped analyst to its own division and refuses operation- and site-scoped ones", async () => {
+    const o = c.organization;
+    const mine = must(await o.createBusinessUnit.execute({ actor: adminActor, name: "Edit Scoped Division" }));
+    const site = must(await o.createSite.execute({ actor: adminActor, name: "Edit Scoped Site" }));
+    const op = must(await createOp(mine.id, site.id, "Edit Scoped Operation", "0821"));
+    const divisionActor = async (email: string, type: "business_unit" | "operation" | "site", id: string) => {
+      await scopeTo(await createAnalyst(email), type, id);
+      return signInActor(email);
+    };
+    const inScope = await divisionActor("edit.division@example.test", "business_unit", mine.id);
+    expect((await edit(inScope, op, { name: "Edit Scoped Renamed", reason: "Scoped edit" })).ok).toBe(true);
+    const out = await edit(inScope, op, { businessUnitId: ids.divA ?? "" });
+    expect(!out.ok && out.error.code).toBe("forbidden");
+    for (const [email, type, id] of [
+      ["edit.operation@example.test", "operation", op.id],
+      ["edit.site@example.test", "site", site.id],
+    ] as const) {
+      const denied = await edit(await divisionActor(email, type, id), op, { name: "Not Allowed" });
+      expect(!denied.ok && denied.error.code, email).toBe("forbidden");
+    }
+    const audits = await editAudits(op.id);
+    expect(audits).toHaveLength(1);
+    expect(audits[0]?.role).toBe("fleet_analyst");
+  });
+
+  it("rolls the edit back when the audit write fails", async () => {
+    const o = c.organization;
+    const unit = must(await o.createBusinessUnit.execute({ actor: adminActor, name: "Edit Rollback Division" }));
+    const site = must(await o.createSite.execute({ actor: adminActor, name: "Edit Rollback Site" }));
+    const op = must(await createOp(unit.id, site.id, "Edit Rollback Operation", "0831"));
+    const failing: AuditLog = { record: () => Promise.reject(new Error("audit unavailable")) };
+    const broken = createContainer(app, { hasher, wrapAudit: () => failing });
+    await expect(
+      broken.organization.updateOperation.execute({
+        actor: adminActor,
+        operationId: op.id,
+        name: "Never Persisted",
+        businessUnitId: unit.id,
+        siteId: site.id,
+        costCenter: "0832",
+        reason: "Should roll back",
+      }),
+    ).rejects.toThrow(/audit unavailable/);
+    const stored = await owner<{ name: string; cost_center: string }[]>`select name, cost_center from operations where id = ${op.id}`;
+    expect(stored[0]).toEqual({ name: "EDIT ROLLBACK OPERATION", cost_center: "0831" });
+  });
+
+  it("two concurrent edits into the same name give one ok and one typed conflict, over several rounds", async () => {
+    const o = c.organization;
+    const unit = must(await o.createBusinessUnit.execute({ actor: adminActor, name: "Edit Race Names" }));
+    const site = must(await o.createSite.execute({ actor: adminActor, name: "Edit Race Names Site" }));
+    for (let round = 0; round < 8; round += 1) {
+      const a = must(await createOp(unit.id, site.id, `Race Name A ${String(round)}`, `8${String(round)}01`));
+      const b = must(await createOp(unit.id, site.id, `Race Name B ${String(round)}`, `8${String(round)}02`));
+      const target = `Race Name Target ${String(round)}`;
+      expectOneWinner(await Promise.allSettled([edit(adminActor, a, { name: target }), edit(adminActor, b, { name: target.toLowerCase() })]));
+      const rows = await owner`select 1 from operations where name_key = ${target.toUpperCase()} and business_unit_id = ${unit.id}`;
+      expect(rows).toHaveLength(1);
+    }
+  });
+
+  it("two concurrent edits into the same cost center give one ok and one typed conflict, over several rounds", async () => {
+    const o = c.organization;
+    const unit = must(await o.createBusinessUnit.execute({ actor: adminActor, name: "Edit Race Codes" }));
+    const site = must(await o.createSite.execute({ actor: adminActor, name: "Edit Race Codes Site" }));
+    for (let round = 0; round < 8; round += 1) {
+      const a = must(await createOp(unit.id, site.id, `Race Code A ${String(round)}`, `7${String(round)}01`));
+      const b = must(await createOp(unit.id, site.id, `Race Code B ${String(round)}`, `7${String(round)}02`));
+      const target = `7${String(round)}99`;
+      expectOneWinner(
+        await Promise.allSettled([edit(adminActor, a, { costCenter: target }), edit(adminActor, b, { costCenter: ` ${target} ` })]),
+        "cost_center_taken",
+      );
+      const rows = await owner`select 1 from operations where cost_center = ${target}`;
+      expect(rows).toHaveLength(1);
     }
   });
 });

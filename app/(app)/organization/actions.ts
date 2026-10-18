@@ -44,6 +44,20 @@ export async function renameOperationAction(_previous: ActionState, form: FormDa
   );
 }
 
+export async function updateOperationAction(_previous: ActionState, form: FormData): Promise<ActionState> {
+  return runMutation(PATH, (actor) =>
+    organization().updateOperation.execute({
+      actor: toActor(actor),
+      operationId: field(form, "id"),
+      name: field(form, "name"),
+      businessUnitId: field(form, "businessUnitId"),
+      siteId: field(form, "siteId"),
+      costCenter: field(form, "costCenter"),
+      reason: field(form, "reason"),
+    }),
+  );
+}
+
 export async function renameSiteAction(_previous: ActionState, form: FormData): Promise<ActionState> {
   return runMutation(PATH, (actor) =>
     organization().renameSite.execute({ actor: toActor(actor), id: field(form, "id"), name: field(form, "name") }),
