@@ -433,6 +433,42 @@ describe("organization flow through the container as parkline_app", () => {
     expect(await editAudits(a.id)).toHaveLength(0);
   });
 
+  it("returns not found for a target site of another tenant and for a missing site, writing nothing", async () => {
+    const unit = must(await c.organization.createBusinessUnit.execute({ actor: adminActor, name: "Edit Site Boundary" }));
+    const site = must(await c.organization.createSite.execute({ actor: adminActor, name: "Edit Site Boundary Own" }));
+    const op = must(await createOp(unit.id, site.id, "Edit Site Boundary Op", "0841"));
+    const [tenant] = await owner<{ id: string }[]>`insert into tenants (id, name) values (gen_random_uuid(), 'Other Tenant') returning id`;
+    const [foreign] = await owner<{ id: string }[]>`
+      insert into sites (id, tenant_id, name) values (gen_random_uuid(), ${tenant?.id ?? ""}, 'Foreign Site') returning id`;
+    for (const siteId of [foreign?.id ?? "", "00000000-0000-4000-8000-000000000000"]) {
+      const result = await edit(adminActor, op, { siteId });
+      expect(!result.ok && result.error.code).toBe("not_found");
+    }
+    const stored = await owner<{ site_id: string }[]>`select site_id from operations where id = ${op.id}`;
+    expect(stored[0]?.site_id).toBe(site.id);
+    expect(await editAudits(op.id)).toHaveLength(0);
+  });
+
+  it("rethrows a unique violation of an unrelated constraint instead of reporting a name conflict", async () => {
+    const o = c.organization;
+    const unit = must(await o.createBusinessUnit.execute({ actor: adminActor, name: "Edit Unrelated Unique" }));
+    const siteA = must(await o.createSite.execute({ actor: adminActor, name: "Edit Unrelated Site A" }));
+    const siteB = must(await o.createSite.execute({ actor: adminActor, name: "Edit Unrelated Site B" }));
+    const a = must(await createOp(unit.id, siteA.id, "Edit Unrelated A", "0851"));
+    const b = must(await createOp(unit.id, siteB.id, "Edit Unrelated B", "0852"));
+    await owner.unsafe(
+      `create unique index tmp_unrelated_site_once on operations (tenant_id, site_id) where business_unit_id = '${unit.id}'`,
+    );
+    try {
+      await expect(edit(adminActor, b, { siteId: a.siteId })).rejects.toThrow(/tmp_unrelated_site_once/);
+    } finally {
+      await owner.unsafe("drop index tmp_unrelated_site_once");
+    }
+    const stored = await owner<{ site_id: string }[]>`select site_id from operations where id = ${b.id}`;
+    expect(stored[0]?.site_id).toBe(siteB.id);
+    expect(await editAudits(b.id)).toHaveLength(0);
+  });
+
   it("limits a division-scoped analyst to its own division and refuses operation- and site-scoped ones", async () => {
     const o = c.organization;
     const mine = must(await o.createBusinessUnit.execute({ actor: adminActor, name: "Edit Scoped Division" }));

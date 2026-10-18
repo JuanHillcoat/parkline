@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { InvalidNameError } from "../errors";
-import { MAX_NAME_LENGTH, nameKey, normalizeName, parseName } from "../name";
+import { ACCENTED, MAX_NAME_LENGTH, PLAIN, nameKey, normalizeName, parseName } from "../name";
 
 describe("normalizeName", () => {
   it("trims, collapses inner whitespace and uppercases", () => {
@@ -81,5 +81,24 @@ describe("nameKey", () => {
 
   it("does not crash on characters without a special rule", () => {
     expect(() => nameKey("Straße")).not.toThrow();
+  });
+});
+
+describe("the accent fold map", () => {
+  const expected: Readonly<Record<string, string>> = {
+    "Á": "A", "À": "A", "Â": "A", "Ä": "A",
+    "É": "E", "È": "E", "Ê": "E", "Ë": "E",
+    "Í": "I", "Ì": "I", "Î": "I", "Ï": "I",
+    "Ó": "O", "Ò": "O", "Ô": "O", "Ö": "O",
+    "Ú": "U", "Ù": "U", "Û": "U", "Ü": "U",
+  };
+
+  it("keeps the two parallel strings aligned: same length, each accented letter over its plain one", () => {
+    expect(ACCENTED).toHaveLength(PLAIN.length);
+    expect(ACCENTED).toHaveLength(Object.keys(expected).length);
+    for (let index = 0; index < ACCENTED.length; index += 1) {
+      const letter = ACCENTED.charAt(index);
+      expect(PLAIN.charAt(index), `position ${String(index)}`).toBe(expected[letter]);
+    }
   });
 });

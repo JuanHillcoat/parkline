@@ -25,7 +25,7 @@ const BY_FIELD: Readonly<Record<string, string>> = copy.errors.byField;
 export const errorMessage = (error: DomainError): string => {
   if (error instanceof TooManyAttemptsError) return throttledMessage(error.retryAfterSeconds);
   if (error instanceof ValidationError && error.field !== undefined) {
-    return BY_FIELD[error.field] ?? copy.errors.checkForm;
+    return BY_CODE[error.code] ?? BY_FIELD[error.field] ?? copy.errors.checkForm;
   }
   return BY_CODE[error.code] ?? GENERIC_ERROR;
 };

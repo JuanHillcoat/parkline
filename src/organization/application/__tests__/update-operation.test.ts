@@ -8,8 +8,9 @@ import {
   NameTakenError,
   NoChangesError,
   ReasonRequiredError,
+  ReasonTooLongError,
 } from "../../domain/errors";
-import type { UpdateOperationInput } from "../use-cases/update-operation";
+import { MAX_REASON_LENGTH, type UpdateOperationInput } from "../use-cases/update-operation";
 import { actorWith, createHarness, grant, type Harness } from "./support/harness";
 
 type Seed = Awaited<ReturnType<Harness["seedTenantA"]>>;
@@ -106,6 +107,21 @@ describe("UpdateOperation: validation", () => {
     },
   );
 
+  it("bounds the trimmed reason: the maximum is accepted, one more is rejected without writing or auditing", async () => {
+    const { h, s, stored } = await setup();
+    expect(MAX_REASON_LENGTH).toBe(500);
+    const padded = (length: number) => ` ${"r".repeat(length)} `;
+    const long = await h.updateOperation.execute(editOf(h, s.mina1, { name: "Otro", reason: padded(MAX_REASON_LENGTH + 1) }));
+    expect(!long.ok && long.error).toBeInstanceOf(ReasonTooLongError);
+    expect(!long.ok && long.error.code).toBe("reason_too_long");
+    expect(!long.ok && long.error).toMatchObject({ field: "reason" });
+    expect((await stored(s.mina1.id))?.name).toBe("MINA 1");
+    expect(h.auditOf("organization.operation.update")).toHaveLength(0);
+    const exact = await h.updateOperation.execute(editOf(h, s.mina1, { name: "Otro", reason: padded(MAX_REASON_LENGTH) }));
+    expect(exact.ok).toBe(true);
+    expect(h.auditOf("organization.operation.update").at(-1)?.reason).toBe("r".repeat(MAX_REASON_LENGTH));
+  });
+
   it("rejects an invalid name and an invalid cost center", async () => {
     const { h, s } = await setup();
     const name = await h.updateOperation.execute(editOf(h, s.mina1, { name: "  " }));
@@ -126,6 +142,18 @@ describe("UpdateOperation: validation", () => {
     const other = h.orThrow(await h.createBusinessUnit.execute({ actor: h.adminB, name: "Norte" }));
     const foreign = await h.updateOperation.execute(editOf(h, s.mina1, { businessUnitId: other.id }));
     expect(!foreign.ok && foreign.error).toBeInstanceOf(NotFoundError);
+  });
+
+  it("returns not found, writing nothing, for a target site of another tenant and for a missing site", async () => {
+    const { h, s, stored } = await setup();
+    const otherSite = h.orThrow(await h.createSite.execute({ actor: h.adminB, name: "Sitio Ajeno" }));
+    for (const siteId of [otherSite.id, "missing"]) {
+      const result = await h.updateOperation.execute(editOf(h, s.mina1, { siteId }));
+      expect(!result.ok && result.error).toBeInstanceOf(NotFoundError);
+      expect(!result.ok && result.error.code).toBe("not_found");
+    }
+    expect(await stored(s.mina1.id)).toEqual(s.mina1);
+    expect(h.auditOf("organization.operation.update")).toHaveLength(0);
   });
 });
 

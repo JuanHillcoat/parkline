@@ -48,11 +48,23 @@ const renamed = async (
   }
 };
 
-/** Translates a unique violation into the typed result; any other error is rethrown. */
+/** The unique constraints of `operations` the application reports as typed conflicts (migrations 0005 and 0006). */
+const NAME_CONSTRAINT = "operations_tenant_id_business_unit_id_name_key_key";
+const COST_CENTER_CONSTRAINT = "operations_tenant_id_cost_center_key";
+
+/** The typed conflict of a known unique constraint of `operations`, or null for any other one. */
+export const operationConflictOf = (constraint: string | undefined): Exclude<OperationUpdate, "updated"> | null => {
+  if (constraint === NAME_CONSTRAINT) return "name_taken";
+  return constraint === COST_CENTER_CONSTRAINT ? "cost_center_taken" : null;
+};
+
+/** Translates a known unique violation into the typed result; any other error, even a 23505, is rethrown. */
 const rejectedBy = (error: unknown): Exclude<OperationUpdate, "updated"> => {
   const { code, constraint_name: constraint } = error as { code?: string; constraint_name?: string };
   if (code !== UNIQUE_VIOLATION) throw error;
-  return constraint?.includes("cost_center") === true ? "cost_center_taken" : "name_taken";
+  const conflict = operationConflictOf(constraint);
+  if (conflict === null) throw error;
+  return conflict;
 };
 
 export class PostgresBusinessUnitRepository implements BusinessUnitRepository {

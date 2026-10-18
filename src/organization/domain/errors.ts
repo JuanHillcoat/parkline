@@ -25,6 +25,15 @@ export class ReasonRequiredError extends ValidationError {
   }
 }
 
+/** The reason of a sensitive organization change exceeds the maximum length once trimmed. */
+export class ReasonTooLongError extends ValidationError {
+  readonly code: string = "reason_too_long";
+
+  constructor() {
+    super("The reason is too long", "reason");
+  }
+}
+
 /** An edit whose values all equal the stored ones: nothing is written or audited. */
 export class NoChangesError extends ValidationError {
   readonly code: string = "no_changes";

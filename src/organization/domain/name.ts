@@ -10,8 +10,9 @@ export const MAX_NAME_LENGTH = 120;
  *   N with tilde and C with cedilla are different letters and are NOT folded.
  * Only these twenty uppercase letters are folded; anything else is left as is.
  */
-const ACCENTED = "ÁÀÂÄÉÈÊËÍÌÎÏÓÒÔÖÚÙÛÜ";
-const PLAIN = "AAAAEEEEIIIIOOOOUUUU";
+/** The two parallel strings are exported only so a test can prove they stay aligned. */
+export const ACCENTED = "ÁÀÂÄÉÈÊËÍÌÎÏÓÒÔÖÚÙÛÜ";
+export const PLAIN = "AAAAEEEEIIIIOOOOUUUU";
 const ACCENTED_LETTER = new RegExp(`[${ACCENTED}]`, "gu");
 
 /** Trims, collapses inner whitespace runs to one space and uppercases (locale independent). Accents are kept. */

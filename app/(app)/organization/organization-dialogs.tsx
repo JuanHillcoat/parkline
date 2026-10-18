@@ -112,8 +112,8 @@ export function EditOperationDialog({ target, options }: EditOperationProps) {
       <input type="hidden" name="id" value={target.id} />
       <NameField id={`${key}-name`} label={t.nameLabel} hint={t.nameHint} initial={target.name} />
       <SelectField id={`${key}-division`} name="businessUnitId" label={t.divisionLabel}
-        prompt={t.divisionLabel} options={options.divisions} initial={target.businessUnitId} />
-      <SelectField id={`${key}-site`} name="siteId" label={t.siteLabel} prompt={t.siteLabel}
+        prompt={t.selectDivision} options={options.divisions} initial={target.businessUnitId} />
+      <SelectField id={`${key}-site`} name="siteId" label={t.siteLabel} prompt={t.selectSite}
         options={options.sites} initial={target.siteId} />
       <CostCenterField id={`${key}-cost-center`} initial={target.costCenter} />
       <ReasonField id={`${key}-reason`} />

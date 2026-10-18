@@ -20,6 +20,9 @@
 -- nothing to resolve in a new database. The normalization of existing rows is
 -- a data repair, not a business mutation, so it writes no audit entry.
 -- Grants are untouched.
+-- It takes ACCESS EXCLUSIVE locks and rewrites rows, which is acceptable only
+-- while the tables are small; a larger deployment should run it in a
+-- maintenance window.
 
 -- 1. Remove the generated columns together with the constraints over them.
 alter table operations     drop column name_key;

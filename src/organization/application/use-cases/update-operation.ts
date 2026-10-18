@@ -4,7 +4,7 @@ import { err, ok, type Result } from "../../../shared/domain/result";
 import { hasReason } from "../../../shared/domain/sensitive-actions";
 import { parseCostCenter } from "../../domain/cost-center";
 import type { Operation } from "../../domain/entities";
-import { NoChangesError, ReasonRequiredError } from "../../domain/errors";
+import { NoChangesError, ReasonRequiredError, ReasonTooLongError } from "../../domain/errors";
 import { nameKey, parseName } from "../../domain/name";
 import { recordAudit } from "../audit";
 import type { OrganizationDeps } from "../deps";
@@ -31,6 +31,9 @@ type Plan = {
   readonly next: Operation;
   readonly reason: string;
 };
+
+/** The longest reason accepted for an edit, counted after trimming. */
+export const MAX_REASON_LENGTH = 500;
 
 type Valid = { readonly name: string; readonly costCenter: string; readonly reason: string };
 
@@ -86,11 +89,13 @@ export class UpdateOperation {
 
   private validate(input: UpdateOperationInput): Result<Valid, DomainError> {
     if (!hasReason(input.reason)) return err(new ReasonRequiredError());
+    const reason = input.reason.trim();
+    if (reason.length > MAX_REASON_LENGTH) return err(new ReasonTooLongError());
     const name = parseName(input.name);
     if (!name.ok) return name;
     const costCenter = parseCostCenter(input.costCenter);
     if (!costCenter.ok) return costCenter;
-    return ok({ name: name.value, costCenter: costCenter.value, reason: input.reason.trim() });
+    return ok({ name: name.value, costCenter: costCenter.value, reason });
   }
 
   /** The target division and site must exist in the tenant; a different division needs write there too. */

@@ -8,6 +8,7 @@ import {
   NameTakenError,
   NoChangesError,
   ReasonRequiredError,
+  ReasonTooLongError,
 } from "../../../src/organization/domain/errors";
 import { copy } from "../copy";
 import { GENERIC_ERROR, errorMessage } from "../messages";
@@ -21,6 +22,7 @@ const cases = [
   ["forbidden", new ForbiddenError("operations_name_key")],
   ["reason_required", new ReasonRequiredError()],
   ["no_changes", new NoChangesError()],
+  ["reason_too_long", new ReasonTooLongError()],
 ] as const;
 
 describe("errorMessage for the organization codes", () => {
@@ -35,6 +37,11 @@ describe("errorMessage for the organization codes", () => {
   it("uses distinct messages for the two conflicts and the two validations", () => {
     const messages = cases.map(([, error]) => errorMessage(error));
     expect(new Set(messages).size).toBe(messages.length);
+  });
+
+  it("maps reason_too_long to its own message, not the required-reason one", () => {
+    expect(errorMessage(new ReasonTooLongError())).toBe("El motivo es demasiado largo.");
+    expect(errorMessage(new ReasonTooLongError())).not.toBe(errorMessage(new ReasonRequiredError()));
   });
 
   it("keeps the generic not-found text", () => {
