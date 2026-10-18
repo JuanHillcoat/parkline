@@ -217,13 +217,25 @@ describe("organization flow through the container as parkline_app", () => {
   });
 
   /** Both attempts must resolve to a Result: exactly one ok and one typed `name_taken`, never a rejection. */
-  const expectOneWinner = (attempts: PromiseSettledResult<Result<unknown, { code: string }>>[]): void => {
+  const expectOneWinner = (
+    attempts: PromiseSettledResult<Result<unknown, { code: string }>>[],
+    conflict = "name_taken",
+  ): void => {
     const outcomes = attempts.map((attempt) => {
       if (attempt.status === "rejected") return `rejected: ${JSON.stringify(attempt.reason)}`;
       return attempt.value.ok ? "ok" : attempt.value.error.code;
     });
-    expect(outcomes.sort()).toEqual(["name_taken", "ok"]);
+    expect(outcomes.sort()).toEqual([conflict, "ok"].sort());
   };
+
+  it("two concurrent identical links give one ok and one typed conflict, over several rounds", async () => {
+    const o = c.organization;
+    for (let round = 0; round < 8; round += 1) {
+      const siteId = must(await o.createSite.execute({ actor: adminActor, name: `Link Race Site ${String(round)}` })).id;
+      const link = { actor: adminActor, operationId: ids.opA1 ?? "", siteId };
+      expectOneWinner(await Promise.allSettled([o.linkOperationSite.execute(link), o.linkOperationSite.execute(link)]), "already_linked");
+    }
+  });
 
   it("two concurrent creates of the same name give one ok and one typed conflict, over several rounds", async () => {
     const o = c.organization;

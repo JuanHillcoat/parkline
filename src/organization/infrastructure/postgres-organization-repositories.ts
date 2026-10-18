@@ -174,10 +174,13 @@ export class PostgresOperationSiteRepository implements OperationSiteRepository 
     return rows[0] ? toLink(rows[0]) : null;
   }
 
-  async add(link: OperationSite): Promise<void> {
-    await this.sql`
+  async add(link: OperationSite): Promise<boolean> {
+    const rows = await this.sql`
       insert into operation_sites (tenant_id, operation_id, site_id)
-      values (${link.tenantId}, ${link.operationId}, ${link.siteId})`;
+      values (${link.tenantId}, ${link.operationId}, ${link.siteId})
+      on conflict (tenant_id, operation_id, site_id) do nothing
+      returning operation_id`;
+    return rows.length === 1;
   }
 
   async listByTenant(tenantId: string): Promise<readonly OperationSite[]> {

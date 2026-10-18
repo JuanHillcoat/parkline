@@ -33,11 +33,10 @@ export class LinkOperationSite {
     const position = { tenantId: actor.tenantId, businessUnitId: operation.businessUnitId, operationId };
     const role = this.deps.accessPolicy.check(actor, "catalog.write", position);
     if (!role.ok) return role;
-    if ((await tx.links.find(actor.tenantId, operationId, siteId)) !== null) {
-      return err(new AlreadyLinkedError("The operation is already linked to the site"));
-    }
+    const taken = err(new AlreadyLinkedError("The operation is already linked to the site"));
+    if ((await tx.links.find(actor.tenantId, operationId, siteId)) !== null) return taken;
     const link = { tenantId: actor.tenantId, operationId, siteId };
-    await tx.links.add(link);
+    if (!(await tx.links.add(link))) return taken;
     await this.audit(tx, actor, role.value, operation, link);
     return ok(link);
   }

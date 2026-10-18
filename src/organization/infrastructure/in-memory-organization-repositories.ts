@@ -148,9 +148,12 @@ export class InMemoryOperationSiteRepository implements OperationSiteRepository 
     return Promise.resolve(found ?? null);
   }
 
-  add(link: OperationSite): Promise<void> {
-    this.state.links.push(link);
-    return Promise.resolve();
+  add(link: OperationSite): Promise<boolean> {
+    const taken = this.state.links.some(
+      (l) => l.tenantId === link.tenantId && l.operationId === link.operationId && l.siteId === link.siteId,
+    );
+    if (!taken) this.state.links.push(link);
+    return Promise.resolve(!taken);
   }
 
   listByTenant(tenantId: string): Promise<readonly OperationSite[]> {

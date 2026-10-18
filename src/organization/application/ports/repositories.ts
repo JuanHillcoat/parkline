@@ -2,8 +2,8 @@ import type { BusinessUnit, Operation, OperationSite, Site } from "../../domain/
 
 // Every query takes the tenant id: a row of another tenant is never visible.
 // `*ByName` receives the normalized key (`nameKey`) and returns the owner's match.
-// `add` and `rename` return false when the unique name index rejects the write (a
-// concurrent writer took the name first): a conflict is a value, not an exception.
+// `add` and `rename` return false when the unique index rejects the write (a
+// concurrent writer took the name or the link first): a conflict is a value, not an exception.
 
 export interface BusinessUnitRepository {
   findById(tenantId: string, id: string): Promise<BusinessUnit | null>;
@@ -31,6 +31,6 @@ export interface SiteRepository {
 
 export interface OperationSiteRepository {
   find(tenantId: string, operationId: string, siteId: string): Promise<OperationSite | null>;
-  add(link: OperationSite): Promise<void>;
+  add(link: OperationSite): Promise<boolean>;
   listByTenant(tenantId: string): Promise<readonly OperationSite[]>;
 }

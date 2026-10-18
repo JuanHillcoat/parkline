@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { UnitOfWork } from "../../../shared/domain/ports/unit-of-work";
-import { NameTakenError } from "../../domain/errors";
+import { AlreadyLinkedError, NameTakenError } from "../../domain/errors";
+import { LinkOperationSite } from "../use-cases/link-operation-site";
 import type { OrganizationDeps } from "../deps";
 import type { OrganizationTx } from "../ports/organization-tx";
 import { CreateBusinessUnit } from "../use-cases/create-business-unit";
@@ -48,6 +49,25 @@ describe("the name uniqueness race (D7)", () => {
       await new RenameSite(deps).execute({ actor: h.admin, id: s.lote.id, name: "Patio" }),
     ];
     for (const result of results) expect(!result.ok && result.error).toBeInstanceOf(NameTakenError);
+  });
+
+  it("answers a typed conflict when the primary key rejects a link the pre-check missed", async () => {
+    const h = createHarness();
+    const s = await h.seedTenantA();
+    const unitOfWork: UnitOfWork<OrganizationTx> = {
+      run: (work) =>
+        h.deps.unitOfWork.run((tx) =>
+          work({ ...tx, links: Object.assign(Object.create(tx.links) as typeof tx.links, { find: () => Promise.resolve(null) }) }),
+        ),
+    };
+    const before = h.auditOf("organization.link").length;
+    const result = await new LinkOperationSite({ ...h.deps, unitOfWork }).execute({
+      actor: h.admin,
+      operationId: s.mina1.id,
+      siteId: s.taller.id,
+    });
+    expect(!result.ok && result.error).toBeInstanceOf(AlreadyLinkedError);
+    expect(h.auditOf("organization.link")).toHaveLength(before);
   });
 
   it("writes no audit entry and keeps the stored data when the create loses", async () => {
