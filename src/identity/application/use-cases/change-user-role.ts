@@ -2,6 +2,7 @@ import { NotFoundError, type DomainError } from "../../../shared/domain/domain-e
 import { err, ok, type Result } from "../../../shared/domain/result";
 import { parseRole, type Role } from "../../domain/role";
 import { createRoleAssignment, type RoleAssignment } from "../../domain/role-assignment";
+import type { Scope } from "../../domain/scope";
 import type { User } from "../../domain/user";
 import { requirePermission, type ActorContext } from "../actor-context";
 import { recordAudit } from "../audit";
@@ -9,12 +10,15 @@ import type { IdentityDeps } from "../deps";
 import { LastAdminError, RoleUnchangedError, UserInactiveError } from "../errors";
 import { isLastActiveAdmin, requireReason, rolesSnapshot } from "../guards";
 import type { IdentityTx } from "../ports/identity-tx";
+import { resolveScope, scopeNames, type RawScope, type ResolvedScope } from "../scope-rules";
 
 export type ChangeUserRoleInput = {
   readonly actor: ActorContext;
   readonly userId: string;
   /** Raw value from the caller; validated against the role vocabulary. */
   readonly newRole: string;
+  /** Where the role applies; defaults to the whole tenant. */
+  readonly scope?: RawScope;
   readonly reason: string;
 };
 
@@ -23,34 +27,37 @@ type Plan = {
   readonly actorRole: Role;
   readonly userId: string;
   readonly newRole: Role;
+  readonly scope: ResolvedScope;
   readonly reason: string;
 };
 
-/** Replaces the user's tenant-scoped roles with one role, in one transaction (decision D4). */
+const sameScope = (a: Scope, b: Scope): boolean => a.type === b.type && a.id === b.id;
+
+/**
+ * Replaces ALL the user's active roles, whatever their scope, with one role over one scope, in one
+ * transaction (decisions D3 and D4: one role and one scope per user).
+ */
 export class ChangeUserRole {
   constructor(private readonly deps: IdentityDeps) {}
 
-  execute(input: ChangeUserRoleInput): Promise<Result<RoleAssignment, DomainError>> {
-    const plan = this.prepare(input);
-    if (!plan.ok) return Promise.resolve(plan);
-    return this.deps.unitOfWork.run((tx) => this.persist(tx, plan.value));
+  async execute(input: ChangeUserRoleInput): Promise<Result<RoleAssignment, DomainError>> {
+    const checked = this.check(input);
+    if (!checked.ok) return checked;
+    const { actor, actorRole, reason, newRole } = checked.value;
+    const scope = await resolveScope(this.deps, actor.user.tenantId, newRole, input.scope);
+    if (!scope.ok) return scope;
+    const plan: Plan = { actor, actorRole, reason, newRole, scope: scope.value, userId: input.userId.trim() };
+    return this.deps.unitOfWork.run((tx) => this.persist(tx, plan));
   }
 
-  private prepare(input: ChangeUserRoleInput): Result<Plan, DomainError> {
+  private check(input: ChangeUserRoleInput): Result<Omit<Plan, "scope" | "userId">, DomainError> {
     const actorRole = requirePermission(input.actor, "role.assign");
     if (!actorRole.ok) return actorRole;
     const reason = requireReason(input.reason);
     if (!reason.ok) return reason;
     const newRole = parseRole(input.newRole);
     if (!newRole.ok) return newRole;
-    const { actor } = input;
-    return ok({
-      actor,
-      actorRole: actorRole.value,
-      userId: input.userId.trim(),
-      newRole: newRole.value,
-      reason: reason.value,
-    });
+    return ok({ actor: input.actor, actorRole: actorRole.value, newRole: newRole.value, reason: reason.value });
   }
 
   private async persist(tx: IdentityTx, plan: Plan): Promise<Result<RoleAssignment, DomainError>> {
@@ -59,20 +66,22 @@ export class ChangeUserRole {
     if (target === null) return err(new NotFoundError("User", plan.userId));
     if (!target.active) return err(new UserInactiveError());
     const before = await tx.assignments.listActiveByUser(tenantId, target.id);
-    const current = before.filter((a) => a.scope.type === "tenant");
-    const blocked = await this.rejection(tx, target, current, plan.newRole);
+    const blocked = await this.rejection(tx, target, before, plan);
     if (blocked) return err(blocked);
-    return this.replace(tx, plan, target, { before, current });
+    return this.replace(tx, plan, target, before);
   }
 
   private async rejection(
     tx: IdentityTx,
     target: User,
     current: readonly RoleAssignment[],
-    newRole: Role,
+    plan: Plan,
   ): Promise<DomainError | null> {
-    if (current.length === 1 && current[0]?.role === newRole) return new RoleUnchangedError();
-    if (newRole === "admin") return null;
+    const [only] = current;
+    if (current.length === 1 && only?.role === plan.newRole && sameScope(only.scope, plan.scope.scope)) {
+      return new RoleUnchangedError();
+    }
+    if (plan.newRole === "admin") return null;
     return (await isLastActiveAdmin(tx, target)) ? new LastAdminError() : null;
   }
 
@@ -80,19 +89,14 @@ export class ChangeUserRole {
     tx: IdentityTx,
     plan: Plan,
     target: User,
-    roles: { before: readonly RoleAssignment[]; current: readonly RoleAssignment[] },
+    before: readonly RoleAssignment[],
   ): Promise<Result<RoleAssignment, DomainError>> {
     const { tenantId } = plan.actor.user;
-    const scope = { type: "tenant", id: tenantId } as const;
-    const created = createRoleAssignment({ userId: target.id, role: plan.newRole, scope });
+    const created = createRoleAssignment({ userId: target.id, role: plan.newRole, scope: plan.scope.scope });
     if (!created.ok) return created;
-    for (const old of roles.current) await tx.assignments.deactivate(tenantId, old);
+    for (const old of before) await tx.assignments.deactivate(tenantId, old);
     await tx.assignments.add(tenantId, created.value);
-    const after = roles.before.filter((a) => !roles.current.includes(a));
-    await this.audit(tx, plan, target.id, {
-      before: roles.before,
-      after: [...after, created.value],
-    });
+    await this.audit(tx, plan, target.id, { before, after: [created.value] });
     return ok(created.value);
   }
 
@@ -111,7 +115,7 @@ export class ChangeUserRole {
       entityId: userId,
       tenantId: plan.actor.user.tenantId,
       before: rolesSnapshot(change.before),
-      after: rolesSnapshot(change.after),
+      after: rolesSnapshot(change.after, scopeNames(plan.scope)),
       reason: plan.reason,
     });
   }

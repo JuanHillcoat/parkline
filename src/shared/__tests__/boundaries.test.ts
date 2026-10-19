@@ -94,6 +94,25 @@ describe("architecture boundaries", () => {
     expect(identity).toHaveLength(1);
   });
 
+  it("lets identity use the shared scope directory port and forbids importing organization", async () => {
+    const path = "src/identity/application/use-cases/change-user-role.ts";
+    const port = await dependencyErrors(
+      path,
+      'import type { ScopeDirectory } from "../../../shared/domain/ports/scope-directory";\nexport type X = ScopeDirectory;\n',
+    );
+    const application = await dependencyErrors(
+      path,
+      'import { ListOperations } from "../../../organization/application/use-cases/list-operations";\nexport const x = ListOperations;\n',
+    );
+    const infrastructure = await dependencyErrors(
+      path,
+      'import { PostgresScopeDirectory } from "../../../organization/infrastructure/postgres-scope-directory";\nexport const x = PostgresScopeDirectory;\n',
+    );
+    expect(port).toEqual([]);
+    expect(application).toHaveLength(1);
+    expect(infrastructure).toHaveLength(1);
+  });
+
   it("fails functions longer than 20 lines in non-test code", async () => {
     const body = Array.from({ length: 22 }, (_, i) => `  const v${String(i)} = ${String(i)};`).join("\n");
     const code = `export function long(): void {\n${body}\n}\n`;

@@ -359,6 +359,7 @@ describe("identity use cases on Postgres", () => {
         hasher,
         tokens: new CryptoSessionTokenService(),
         policy: DEFAULT_SESSION_POLICY,
+        scopes: { exists: () => Promise.resolve(false), labels: () => Promise.resolve(new Map()) },
       };
       const create = new CreateUser(deps);
       const input = { actor, email: "ana@example.test", displayName: "Ana", password: PASSWORD };
@@ -385,6 +386,7 @@ describe("identity use cases on Postgres", () => {
         hasher,
         tokens: new CryptoSessionTokenService(),
         policy: DEFAULT_SESSION_POLICY,
+        scopes: { exists: () => Promise.resolve(false), labels: () => Promise.resolve(new Map()) },
       };
       const install = new InstallTenantAdmin(deps);
       const runs = Array.from({ length: 4 }, (_, i) =>

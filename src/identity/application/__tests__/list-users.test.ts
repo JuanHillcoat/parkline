@@ -5,7 +5,7 @@ import { createHarness } from "./support/harness";
 describe("ListUsers", () => {
   it("lists the tenant users ordered by display name with active roles", async () => {
     const h = createHarness();
-    const { admin } = await h.installTenantA();
+    const { tenant, admin } = await h.installTenantA();
     await h.addUser(admin, "zed@example.test", "viewer");
     await h.addUser(admin, "mia@example.test", "manager");
     const result = await h.listUsers.execute({ actor: admin });
@@ -21,6 +21,7 @@ describe("ListUsers", () => {
       displayName: "mia@example.test",
       active: true,
       roles: ["manager"],
+      grants: [{ role: "manager", scopeType: "tenant", scopeId: tenant.id, scopeLabel: null }],
     });
   });
 
@@ -31,8 +32,29 @@ describe("ListUsers", () => {
     if (!result.ok) throw result.error;
     expect(JSON.stringify(result.value)).not.toMatch(/hash|fake/i);
     for (const row of result.value) {
-      expect(Object.keys(row).sort()).toEqual(["active", "displayName", "email", "id", "roles"]);
+      expect(Object.keys(row).sort()).toEqual(["active", "displayName", "email", "grants", "id", "roles"]);
     }
+  });
+
+  it("returns the scope of each role with its label, resolved in one directory call for all users", async () => {
+    const h = createHarness();
+    const { tenant, admin } = await h.installTenantA();
+    h.scopes.add(tenant.id, "business_unit", "div-north", "NORTE");
+    h.scopes.add(tenant.id, "operation", "op-mina", "0050 MINA 1");
+    await h.addUser(admin, "mia@example.test", "manager", { type: "business_unit", id: "div-north" });
+    await h.addUser(admin, "sam@example.test", "manager", { type: "operation", id: "op-mina" });
+    await h.addUser(admin, "zed@example.test", "viewer");
+    h.scopes.add(tenant.id, "operation", "op-mina", "0050 MINA 1", true);
+    h.scopes.labelCalls = 0;
+    const result = await h.listUsers.execute({ actor: admin });
+    if (!result.ok) throw result.error;
+    expect(h.scopes.labelCalls).toBe(1);
+    const grantOf = (email: string) => result.value.find((u) => u.email === email)?.grants[0];
+    expect(grantOf("mia@example.test")).toEqual({
+      role: "manager", scopeType: "business_unit", scopeId: "div-north", scopeLabel: { name: "NORTE", archived: false },
+    });
+    expect(grantOf("sam@example.test")?.scopeLabel).toEqual({ name: "0050 MINA 1", archived: true });
+    expect(grantOf("zed@example.test")).toMatchObject({ scopeType: "tenant", scopeLabel: null });
   });
 
   it("is allowed for admin and manager and denied for the other roles", async () => {
