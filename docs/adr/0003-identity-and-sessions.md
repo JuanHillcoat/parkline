@@ -50,8 +50,16 @@ Every request must run with a tenant and an identity, and every use case must de
 - Known limitation: the throttle covers sign-in only. The tenant-not-installed path is not throttled, and the limits are code defaults, not configuration.
 - Open risk: the actor context (user, tenant, roles) comes from the caller and is not re-read inside the transaction of each use case. The web layer re-authenticates on every request, which narrows the window, but a role revoked between authentication and commit is not seen by that request.
 - Known limitation: `actorRole` is a composite text (for example `admin,viewer`) for users with several roles on sign-in and sign-out entries, and is `anonymous` or `system` for failed sign-ins and install.
-- Known limitation: `ListUsers` merges the roles of all scopes into one list. This is harmless while only the tenant scope exists and must change with P0-04.
+- Resolved (P0-06): `ListUsers` returns one grant per active assignment, with its scope and the scope name, instead of merging the roles of all scopes.
 - Known limitation: user ordering uses `lower(display_name) collate "und-x-icu"`, which requires a Postgres build with ICU support.
 - Known limitation: the install script needs Node.js 22.15 or later and runs with `--experimental-transform-types` and a resolver hook, so it prints an `ExperimentalWarning`.
 - Not covered by automated tests: the composed interactive flow of the install command (only its pure input rules are tested), and the interactive confirmation in a real terminal.
 - Not implemented here: password reset, email delivery, SSO and multi-factor authentication. Each needs its own decision.
+
+## Addendum: scoped roles (P0-06)
+
+- **One role and one scope per user.** `CreateUser` and `ChangeUserRole` receive the role and a scope (company, division, operation or site in the domain). Changing the role replaces every previous assignment. Several assignments per user are not supported yet.
+- **Rules.** `admin` only holds the `tenant` scope (the database already enforced it); every other role may hold any scope. The target must exist, be active and belong to the actor's tenant. Violations are typed results, `scope_not_allowed_for_role` and `scope_not_found`, never exceptions.
+- **`ScopeDirectory` port.** It lives in the shared kernel (ADR 0005 pattern): `exists` and `labels` tell whether an active row exists and what it is called. The organization module implements it, in memory and on Postgres, and `container.ts` wires it, so `identity` does not import `organization`.
+- **Audit.** `role.change` and the create-user entry record the scope type, id and name next to the role; `role.change` still requires a reason.
+- **Screen.** The Users page offers "Alcance" in both dialogs: for an operation the user picks the division first, which only narrows the list (the division is not stored; the operation id is the scope). `admin` forces the company scope. The server validates everything. The `tenant` scope id is applied on the server. `AssignRole` and `RevokeRole` still refuse non-tenant scopes because they would add a second assignment (issue #7 keeps the actor re-read open; issue #23 tracks the archive race).

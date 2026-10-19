@@ -69,6 +69,20 @@ const es = {
     tableCaption: "Usuarios de esta organización",
     columns: { name: "Nombre", email: "Correo", role: "Rol", status: "Estado", actions: "Acciones" },
   },
+  scope: {
+    label: "Alcance",
+    company: "Toda la empresa",
+    division: "División",
+    operation: "Operación",
+    selectDivision: "Seleccione una división",
+    selectOperation: "Seleccione una operación",
+    choose: "Elige el alcance",
+    unavailable: "El alcance actual ya no está disponible. Elige uno nuevo.",
+    noOperations: "Esta división no tiene operaciones activas.",
+    adminHint: "El administrador de sistemas siempre tiene alcance de toda la empresa.",
+    archived: "(de baja)",
+    unknown: "Alcance no disponible",
+  },
   organization: {
     pageTitle: "Organización - Parkline",
     title: "Organización",
@@ -191,7 +205,6 @@ const es = {
       title: "Cambiar rol",
       description: (name: string): string => `${name} perderá los permisos del rol anterior.`,
       submit: "Guardar rol",
-      scopeHint: "Por ahora solo está disponible el alcance de organización.",
       reasonPlaceholder: "¿Por qué cambia el rol?",
     },
     deactivate: {
@@ -233,6 +246,8 @@ const es = {
       parent_archived: "No se puede reactivar: su división o su sitio están dados de baja.",
       already_archived: "Ya está dada de baja. Recarga la página.",
       not_archived: "Ya está activa. Recarga la página.",
+      scope_not_allowed_for_role: "Ese rol solo puede tener alcance de toda la empresa.",
+      scope_not_found: "El alcance elegido ya no existe o está dado de baja.",
       unauthenticated: "Tu sesión terminó. Inicia sesión de nuevo.",
     },
     byField: {
