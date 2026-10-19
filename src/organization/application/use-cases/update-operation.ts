@@ -1,14 +1,14 @@
 import { NotFoundError, type DomainError } from "../../../shared/domain/domain-error";
 import type { Actor, ResourcePosition } from "../../../shared/domain/ports/access-policy";
 import { err, ok, type Result } from "../../../shared/domain/result";
-import { hasReason } from "../../../shared/domain/sensitive-actions";
 import { parseCostCenter } from "../../domain/cost-center";
 import type { Operation } from "../../domain/entities";
-import { NoChangesError, ReasonRequiredError, ReasonTooLongError } from "../../domain/errors";
+import { NoChangesError } from "../../domain/errors";
 import { nameKey, parseName } from "../../domain/name";
 import { recordAudit } from "../audit";
 import type { OrganizationDeps } from "../deps";
-import { auditActor, costCenterTaken, nameTaken, requireFreeName, whenActive } from "../guards";
+import { archivedRow, auditActor, costCenterTaken, lockParents, nameTaken, parentArchived, requireFreeName, whenActive } from "../guards";
+import { parseReason } from "../reason";
 import type { OperationUpdate } from "../ports/repositories";
 import type { OrganizationTx } from "../ports/organization-tx";
 
@@ -31,9 +31,6 @@ type Plan = {
   readonly next: Operation;
   readonly reason: string;
 };
-
-/** The longest reason accepted for an edit, counted after trimming. */
-export const MAX_REASON_LENGTH = 500;
 
 type Valid = { readonly name: string; readonly costCenter: string; readonly reason: string };
 
@@ -78,6 +75,7 @@ export class UpdateOperation {
     if (current === null) return err(new NotFoundError("Operation", input.operationId));
     const role = this.deps.accessPolicy.check(actor, "catalog.write", divisionPosition(actor, current.businessUnitId));
     if (!role.ok) return role;
+    if (current.archivedAt !== null) return archivedRow("Operation", current.id);
     const valid = this.validate(input);
     if (!valid.ok) return valid;
     const moved = await this.authorizeTarget(tx, input, current);
@@ -88,23 +86,24 @@ export class UpdateOperation {
   }
 
   private validate(input: UpdateOperationInput): Result<Valid, DomainError> {
-    if (!hasReason(input.reason)) return err(new ReasonRequiredError());
-    const reason = input.reason.trim();
-    if (reason.length > MAX_REASON_LENGTH) return err(new ReasonTooLongError());
+    const reason = parseReason(input.reason);
+    if (!reason.ok) return reason;
     const name = parseName(input.name);
     if (!name.ok) return name;
     const costCenter = parseCostCenter(input.costCenter);
     if (!costCenter.ok) return costCenter;
-    return ok({ name: name.value, costCenter: costCenter.value, reason });
+    return ok({ name: name.value, costCenter: costCenter.value, reason: reason.value });
   }
 
   /** The target division and site must exist in the tenant; a different division needs write there too. */
   private async authorizeTarget(tx: OrganizationTx, input: UpdateOperationInput, current: Operation): Promise<Result<void, DomainError>> {
     const { actor, businessUnitId, siteId } = input;
-    if ((await tx.businessUnits.findById(actor.tenantId, businessUnitId)) === null) {
-      return err(new NotFoundError("Business unit", businessUnitId));
-    }
-    if ((await tx.sites.findById(actor.tenantId, siteId)) === null) return err(new NotFoundError("Site", siteId));
+    await lockParents(tx, actor.tenantId, businessUnitId, siteId);
+    const unit =await tx.businessUnits.findById(actor.tenantId, businessUnitId);
+    if (unit === null) return err(new NotFoundError("Business unit", businessUnitId));
+    const site = await tx.sites.findById(actor.tenantId, siteId);
+    if (site === null) return err(new NotFoundError("Site", siteId));
+    if (unit.archivedAt !== null || site.archivedAt !== null) return parentArchived();
     if (businessUnitId === current.businessUnitId) return ok(undefined);
     const target = this.deps.accessPolicy.check(actor, "catalog.write", divisionPosition(actor, businessUnitId));
     return target.ok ? ok(undefined) : target;

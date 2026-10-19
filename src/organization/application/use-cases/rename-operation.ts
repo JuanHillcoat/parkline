@@ -5,7 +5,7 @@ import type { Operation } from "../../domain/entities";
 import { nameKey, parseName } from "../../domain/name";
 import { recordAudit } from "../audit";
 import type { OrganizationDeps } from "../deps";
-import { auditActor, nameTaken, requireFreeName, whenActive } from "../guards";
+import { archivedRow, auditActor, nameTaken, requireFreeName, whenActive } from "../guards";
 import type { OrganizationTx } from "../ports/organization-tx";
 
 export type RenameOperationInput = {
@@ -29,6 +29,7 @@ export class RenameOperation {
     const position = { tenantId: actor.tenantId, businessUnitId: operation.businessUnitId, operationId: id };
     const role = this.deps.accessPolicy.check(actor, "catalog.write", position);
     if (!role.ok) return role;
+    if (operation.archivedAt !== null) return archivedRow("Operation", id);
     const name = parseName(input.name);
     if (!name.ok) return name;
     const same = await tx.operations.findByName(actor.tenantId, operation.businessUnitId, nameKey(name.value));

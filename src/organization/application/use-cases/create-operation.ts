@@ -2,10 +2,11 @@ import { NotFoundError, type DomainError } from "../../../shared/domain/domain-e
 import type { Actor } from "../../../shared/domain/ports/access-policy";
 import { err, ok, type Result } from "../../../shared/domain/result";
 import { createOperation, type Operation } from "../../domain/entities";
+import { ParentArchivedError } from "../../domain/errors";
 import { nameKey } from "../../domain/name";
 import { recordAudit } from "../audit";
 import type { OrganizationDeps } from "../deps";
-import { auditActor, costCenterTaken, nameTaken, requireFreeName, whenActive } from "../guards";
+import { auditActor, costCenterTaken, lockParents, nameTaken, requireFreeName, whenActive } from "../guards";
 import type { OrganizationTx } from "../ports/organization-tx";
 
 export type CreateOperationInput = {
@@ -43,12 +44,15 @@ export class CreateOperation {
     return ok(created.value);
   }
 
-  private async findMissingParent(tx: OrganizationTx, input: CreateOperationInput): Promise<NotFoundError | null> {
+  /** A missing division or site is not found; an archived one is a conflict (D4). */
+  private async findMissingParent(tx: OrganizationTx, input: CreateOperationInput): Promise<DomainError | null> {
     const { actor, businessUnitId, siteId } = input;
-    if ((await tx.businessUnits.findById(actor.tenantId, businessUnitId)) === null) {
-      return new NotFoundError("Business unit", businessUnitId);
-    }
-    return (await tx.sites.findById(actor.tenantId, siteId)) === null ? new NotFoundError("Site", siteId) : null;
+    await lockParents(tx, actor.tenantId, businessUnitId, siteId);
+    const unit =await tx.businessUnits.findById(actor.tenantId, businessUnitId);
+    if (unit === null) return new NotFoundError("Business unit", businessUnitId);
+    const site = await tx.sites.findById(actor.tenantId, siteId);
+    if (site === null) return new NotFoundError("Site", siteId);
+    return unit.archivedAt !== null || site.archivedAt !== null ? new ParentArchivedError("The division or the site is archived") : null;
   }
 
   private async store(tx: OrganizationTx, operation: Operation): Promise<Result<void, DomainError>> {

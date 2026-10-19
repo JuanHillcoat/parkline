@@ -7,7 +7,13 @@ import { FakeAccessPolicy } from "../../../__tests__/support/fake-access-policy"
 import type { OrganizationDeps } from "../../deps";
 import { CreateBusinessUnit } from "../../use-cases/create-business-unit";
 import { CreateOperation } from "../../use-cases/create-operation";
+import { ArchiveBusinessUnit } from "../../use-cases/archive-business-unit";
+import { ArchiveOperation } from "../../use-cases/archive-operation";
+import { ArchiveSite } from "../../use-cases/archive-site";
 import { CreateSite } from "../../use-cases/create-site";
+import { RestoreBusinessUnit } from "../../use-cases/restore-business-unit";
+import { RestoreOperation } from "../../use-cases/restore-operation";
+import { RestoreSite } from "../../use-cases/restore-site";
 import { ListBusinessUnits } from "../../use-cases/list-business-units";
 import { ListOperations } from "../../use-cases/list-operations";
 import { ListSites } from "../../use-cases/list-sites";
@@ -49,9 +55,18 @@ export const createHarness = () => {
     listBusinessUnits: new ListBusinessUnits(deps),
     listOperations: new ListOperations(deps),
     listSites: new ListSites(deps),
+    archiveBusinessUnit: new ArchiveBusinessUnit(deps),
+    archiveOperation: new ArchiveOperation(deps),
+    archiveSite: new ArchiveSite(deps),
+    restoreBusinessUnit: new RestoreBusinessUnit(deps),
+    restoreOperation: new RestoreOperation(deps),
+    restoreSite: new RestoreSite(deps),
   };
 
   const admin = actorWith([grant("admin", "tenant", "t-a")]);
+  /** The only role that archives and restores (`catalog.archive`), at tenant scope. */
+  const analyst = actorWith([grant("fleet_analyst", "tenant", "t-a")]);
+  const analystB = actorWith([grant("fleet_analyst", "tenant", "t-b")], { tenantId: "t-b" });
   const orThrow = <T>(result: { ok: true; value: T } | { ok: false; error: Error }): T => {
     if (!result.ok) throw result.error;
     return result.value;
@@ -79,7 +94,7 @@ export const createHarness = () => {
   const adminB = actorWith([grant("admin", "tenant", "t-b")], { tenantId: "t-b" });
   const auditOf = (action: string) => audit.entries.filter((entry) => entry.action === action);
 
-  return { audit, store, deps, admin, adminB, auditOf, orThrow, seedTenantA, ...useCases };
+  return { audit, store, deps, admin, adminB, analyst, analystB, auditOf, orThrow, seedTenantA, ...useCases };
 };
 
 export type Harness = ReturnType<typeof createHarness>;

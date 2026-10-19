@@ -4,10 +4,16 @@ import type { OperationRow } from "../../_lib/organization-view";
 import {
   createDivisionAction,
   createOperationAction,
+  archiveDivisionAction,
+  archiveOperationAction,
+  archiveSiteAction,
   createSiteAction,
   renameDivisionAction,
   renameOperationAction,
   renameSiteAction,
+  restoreDivisionAction,
+  restoreOperationAction,
+  restoreSiteAction,
   updateOperationAction,
 } from "./actions";
 
@@ -60,11 +66,11 @@ function CostCenterField({ id, initial }: { id: string; initial?: string }) {
   );
 }
 
-function ReasonField({ id }: { id: string }) {
+function ReasonField({ id, placeholder }: { id: string; placeholder: string }) {
   return (
     <div className="field">
       <label htmlFor={id}>{copy.common.reason}</label>
-      <textarea id={id} name="reason" required rows={3} placeholder={copy.dialogs.editOperation.reasonPlaceholder}
+      <textarea id={id} name="reason" required rows={3} placeholder={placeholder}
         className="input" />
       <span className="hint">{copy.common.reasonHint}</span>
     </div>
@@ -116,7 +122,7 @@ export function EditOperationDialog({ target, options }: EditOperationProps) {
       <SelectField id={`${key}-site`} name="siteId" label={t.siteLabel} prompt={t.selectSite}
         options={options.sites} initial={target.siteId} />
       <CostCenterField id={`${key}-cost-center`} initial={target.costCenter} />
-      <ReasonField id={`${key}-reason`} />
+      <ReasonField id={`${key}-reason`} placeholder={t.reasonPlaceholder} />
     </ActionDialog>
   );
 }
@@ -146,6 +152,26 @@ export function RenameDialog({ kind, target }: { kind: RenameKind; target: Optio
       description={t.description} submitLabel={t.submit} action={RENAME_ACTIONS[kind]}>
       <input type="hidden" name="id" value={target.id} />
       <NameField id={`rename-${kind}-${target.id}`} label={t.nameLabel} hint={t.nameHint} initial={target.name} />
+    </ActionDialog>
+  );
+}
+
+const ARCHIVE_ACTIONS = {
+  archive: { division: archiveDivisionAction, operation: archiveOperationAction, site: archiveSiteAction },
+  restore: { division: restoreDivisionAction, operation: restoreOperationAction, site: restoreSiteAction },
+} satisfies Record<"archive" | "restore", Record<RenameKind, DialogAction>>;
+
+type ArchiveDialogProps = { readonly kind: RenameKind; readonly verb: "archive" | "restore"; readonly target: Option };
+
+/** Archives or restores one row. The reason is mandatory and audited (ADR-0004, ADR-0006). */
+export function ArchiveDialog({ kind, verb, target }: ArchiveDialogProps) {
+  const t = copy.dialogs[verb];
+  return (
+    <ActionDialog triggerLabel={t.trigger} triggerClassName="btn btn-link" title={t.title(target.name)}
+      danger={verb === "archive"} description={t.description} submitLabel={t.submit}
+      action={ARCHIVE_ACTIONS[verb][kind]}>
+      <input type="hidden" name="id" value={target.id} />
+      <ReasonField id={`${verb}-${kind}-${target.id}`} placeholder={t.reasonPlaceholder} />
     </ActionDialog>
   );
 }

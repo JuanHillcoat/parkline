@@ -2,7 +2,13 @@ import { toActor } from "../../../src/identity/application/actor-mapper";
 import { getContainer } from "../../../src/shared/infrastructure/container";
 import { canReadCatalog } from "../../_lib/catalog-access";
 import { copy } from "../../_lib/copy";
-import { buildDivisionGroups, buildSiteRows, siteNamesById } from "../../_lib/organization-view";
+import {
+  archivedToggleHref,
+  buildDivisionGroups,
+  buildSiteRows,
+  siteNamesById,
+  wantsArchived,
+} from "../../_lib/organization-view";
 import { requireActor } from "../../_lib/session";
 import { NewDivisionDialog, NewOperationDialog, NewSiteDialog } from "./organization-dialogs";
 import { DivisionCard, SitesTable } from "./organization-tables";
@@ -27,12 +33,12 @@ function Empty({ text }: { text: string }) {
 }
 
 /** Reads only through the list use cases, which already filter by the actor's scopes. */
-async function loadStructure(actor: Actor) {
+async function loadStructure(actor: Actor, includeArchived: boolean) {
   const { organization } = getContainer();
   const [units, operations, sites] = await Promise.all([
-    organization.listBusinessUnits.execute({ actor }),
-    organization.listOperations.execute({ actor }),
-    organization.listSites.execute({ actor }),
+    organization.listBusinessUnits.execute({ actor, includeArchived }),
+    organization.listOperations.execute({ actor, includeArchived }),
+    organization.listSites.execute({ actor, includeArchived }),
   ]);
   if (!units.ok || !operations.ok || !sites.ok) return null;
   return { units: units.value, operations: operations.value, sites: sites.value };
@@ -51,7 +57,19 @@ function Actions({ data }: { data: Data }) {
   );
 }
 
-function Header({ data, canWrite }: { data: Data; canWrite: boolean }) {
+function ArchivedToggle({ showing }: { showing: boolean }) {
+  return (
+    <p>
+      <a className="btn btn-link" href={archivedToggleHref(showing)}>
+        {showing ? t.hideArchived : t.showArchived}
+      </a>
+    </p>
+  );
+}
+
+type Access = { readonly canWrite: boolean; readonly canArchive: boolean };
+
+function Header({ data, canWrite, canArchive, showArchived }: Access & { data: Data; showArchived: boolean }) {
   const needsFirstSteps = canWrite && (data.units.length === 0 || data.sites.length === 0);
   return (
     <>
@@ -62,12 +80,13 @@ function Header({ data, canWrite }: { data: Data; canWrite: boolean }) {
         </div>
         {canWrite && <Actions data={data} />}
       </header>
+      {canArchive && <ArchivedToggle showing={showArchived} />}
       {needsFirstSteps && <p className="hint">{t.createFirst}</p>}
     </>
   );
 }
 
-function Structure({ data, canWrite }: { data: Data; canWrite: boolean }) {
+function Structure({ data, ...access }: Access & { data: Data }) {
   const groups = buildDivisionGroups(data.units, data.operations, siteNamesById(data.sites));
   const rows = buildSiteRows(data.sites, data.operations);
   return (
@@ -76,26 +95,32 @@ function Structure({ data, canWrite }: { data: Data; canWrite: boolean }) {
       {groups.length === 0
         ? <Empty text={t.emptyDivisions} />
         : groups.map((group) => (
-            <DivisionCard key={group.id ?? "hidden"} group={group} canWrite={canWrite}
+            <DivisionCard key={group.id ?? "hidden"} group={group} {...access}
               options={{ divisions: data.units, sites: data.sites }} />
           ))}
       <h2 className="section-title">{t.sitesTitle}</h2>
-      {rows.length === 0 ? <Empty text={t.emptySites} /> : <SitesTable rows={rows} canWrite={canWrite} />}
+      {rows.length === 0 ? <Empty text={t.emptySites} /> : <SitesTable rows={rows} {...access} />}
     </>
   );
 }
 
-export default async function OrganizationPage() {
+type PageProps = { readonly searchParams: Promise<{ readonly archived?: string | readonly string[] }> };
+
+export default async function OrganizationPage({ searchParams }: PageProps) {
   const context = await requireActor();
   if (!canReadCatalog(context)) return <Restricted />;
   const actor = toActor(context);
-  const data = await loadStructure(actor);
+  const { accessPolicy } = getContainer();
+  const position = { tenantId: actor.tenantId };
+  const canArchive = accessPolicy.check(actor, "catalog.archive", position).ok;
+  const showArchived = canArchive && wantsArchived((await searchParams).archived);
+  const data = await loadStructure(actor, showArchived);
   if (data === null) return <Restricted />;
-  const canWrite = getContainer().accessPolicy.check(actor, "catalog.write", { tenantId: actor.tenantId }).ok;
+  const canWrite = accessPolicy.check(actor, "catalog.write", position).ok;
   return (
     <>
-      <Header data={data} canWrite={canWrite} />
-      <Structure data={data} canWrite={canWrite} />
+      <Header data={data} canWrite={canWrite} canArchive={canArchive} showArchived={showArchived} />
+      <Structure data={data} canWrite={canWrite} canArchive={canArchive} />
     </>
   );
 }

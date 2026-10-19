@@ -4,21 +4,27 @@ import { ok, type Result } from "../../../shared/domain/result";
 import type { BusinessUnit } from "../../domain/entities";
 import { visibleBusinessUnits } from "../../domain/visibility";
 import type { OrganizationDeps } from "../deps";
-import { canReadAs, whenActive } from "../guards";
+import { canReadAs, mayIncludeArchived, whenActive, withArchived } from "../guards";
 
-export type ListBusinessUnitsInput = { readonly actor: Actor };
+export type ListBusinessUnitsInput = {
+  readonly actor: Actor;
+  /** Honored only for an actor holding `catalog.archive` (D6); otherwise ignored. */
+  readonly includeArchived?: boolean;
+};
 
-/** Read-only, no audit entry. Filtered by `catalog.read` visibility (D4). */
+/** Read-only, no audit entry. Filtered by `catalog.read` visibility (D4); active rows unless D6 allows more. */
 export class ListBusinessUnits {
   constructor(private readonly deps: OrganizationDeps) {}
 
   execute(input: ListBusinessUnitsInput): Promise<Result<readonly BusinessUnit[], DomainError>> {
     const { actor } = input;
     const canRead = canReadAs(this.deps.accessPolicy, actor);
+    const archived = mayIncludeArchived(this.deps.accessPolicy, actor, input.includeArchived);
     return whenActive(actor, () =>
-      this.deps.unitOfWork.run(async (tx) =>
-        ok(visibleBusinessUnits(await tx.businessUnits.listByTenant(actor.tenantId), canRead)),
-      ),
+      this.deps.unitOfWork.run(async (tx) => {
+        const units = withArchived(await tx.businessUnits.listByTenant(actor.tenantId), archived);
+        return ok(visibleBusinessUnits(units, canRead));
+      }),
     );
   }
 }

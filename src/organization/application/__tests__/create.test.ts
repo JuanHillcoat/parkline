@@ -9,7 +9,7 @@ describe("CreateBusinessUnit", () => {
   it("creates the unit and audits it in the same unit of work", async () => {
     const h = createHarness();
     const unit = h.orThrow(await h.createBusinessUnit.execute({ actor: h.admin, name: "  Norte " }));
-    expect(unit).toEqual({ id: "id-1", tenantId: "t-a", name: "NORTE" });
+    expect(unit).toEqual({ id: "id-1", tenantId: "t-a", name: "NORTE", archivedAt: null });
     expect(await h.store.read((tx) => tx.businessUnits.listByTenant("t-a"))).toEqual([unit]);
     expect(h.auditOf("organization.business_unit.create")).toEqual([
       expect.objectContaining({
@@ -260,7 +260,7 @@ describe("CreateSite", () => {
   it("creates the site and audits it", async () => {
     const h = createHarness();
     const site = h.orThrow(await h.createSite.execute({ actor: tenantActor("fleet_analyst"), name: "Taller" }));
-    expect(site).toEqual({ id: "id-1", tenantId: "t-a", name: "TALLER" });
+    expect(site).toEqual({ id: "id-1", tenantId: "t-a", name: "TALLER", archivedAt: null });
     expect(h.auditOf("organization.site.create")).toEqual([
       expect.objectContaining({ entityType: "site", entityId: site.id, siteId: site.id, after: { name: "TALLER" } }),
     ]);

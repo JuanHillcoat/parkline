@@ -7,7 +7,7 @@ import { visibleBusinessUnits, visibleOperations, visibleSites, type CanRead } f
 // Synthetic world. Tenant A: Division A {Operation A1 at Site A1, Operation A2
 // at Site A2}, Division B {Operation B1 at Site A2: two operations share a
 // site}; Site A3 has no operation. Tenant B repeats the shape with other ids.
-const bu = (id: string, tenantId = "t-a"): BusinessUnit => ({ id, tenantId, name: id });
+const bu = (id: string, tenantId = "t-a"): BusinessUnit => ({ id, tenantId, name: id, archivedAt: null });
 const op = (id: string, businessUnitId: string, siteId: string, costCenter: string, tenantId = "t-a"): Operation => ({
   id,
   tenantId,
@@ -15,8 +15,9 @@ const op = (id: string, businessUnitId: string, siteId: string, costCenter: stri
   siteId,
   name: id,
   costCenter,
+  archivedAt: null,
 });
-const site = (id: string, tenantId = "t-a"): Site => ({ id, tenantId, name: id });
+const site = (id: string, tenantId = "t-a"): Site => ({ id, tenantId, name: id, archivedAt: null });
 
 const units = [bu("div-a"), bu("div-b"), bu("div-x", "t-b")];
 const operations = [

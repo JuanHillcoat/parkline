@@ -2,11 +2,16 @@ import { describe, expect, it } from "vitest";
 import { ForbiddenError } from "../../../src/identity/domain/authorizer";
 import { NotFoundError } from "../../../src/shared/domain/domain-error";
 import {
+  AlreadyArchivedError,
+  ArchivedError,
   CostCenterTakenError,
+  HasActiveOperationsError,
   InvalidCostCenterError,
   InvalidNameError,
   NameTakenError,
   NoChangesError,
+  NotArchivedError,
+  ParentArchivedError,
   ReasonRequiredError,
   ReasonTooLongError,
 } from "../../../src/organization/domain/errors";
@@ -23,6 +28,11 @@ const cases = [
   ["reason_required", new ReasonRequiredError()],
   ["no_changes", new NoChangesError()],
   ["reason_too_long", new ReasonTooLongError()],
+  ["archived", new ArchivedError("Operation o1 is archived")],
+  ["has_active_operations", new HasActiveOperationsError("Site still has 2 active operations")],
+  ["parent_archived", new ParentArchivedError("parent")],
+  ["already_archived", new AlreadyArchivedError("Site s1 is already archived")],
+  ["not_archived", new NotArchivedError("Site s1 is not archived")],
 ] as const;
 
 describe("errorMessage for the organization codes", () => {
@@ -42,6 +52,11 @@ describe("errorMessage for the organization codes", () => {
   it("maps reason_too_long to its own message, not the required-reason one", () => {
     expect(errorMessage(new ReasonTooLongError())).toBe("El motivo es demasiado largo.");
     expect(errorMessage(new ReasonTooLongError())).not.toBe(errorMessage(new ReasonRequiredError()));
+  });
+
+  it("tells the user what to do first when a block applies", () => {
+    expect(errorMessage(new HasActiveOperationsError("x"))).toContain("Da de baja primero sus operaciones");
+    expect(errorMessage(new ParentArchivedError("x"))).toContain("dados de baja");
   });
 
   it("keeps the generic not-found text", () => {

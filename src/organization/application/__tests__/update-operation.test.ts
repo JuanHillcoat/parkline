@@ -10,7 +10,8 @@ import {
   ReasonRequiredError,
   ReasonTooLongError,
 } from "../../domain/errors";
-import { MAX_REASON_LENGTH, type UpdateOperationInput } from "../use-cases/update-operation";
+import { MAX_REASON_LENGTH } from "../reason";
+import type { UpdateOperationInput } from "../use-cases/update-operation";
 import { actorWith, createHarness, grant, type Harness } from "./support/harness";
 
 type Seed = Awaited<ReturnType<Harness["seedTenantA"]>>;
