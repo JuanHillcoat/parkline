@@ -102,7 +102,7 @@ const withoutCostCenter = (stored: SetOperationArchivedAt): SetArchivedAt => {
 };
 
 /** The state the row must still be in for the write: active to archive, archived to restore. */
-const stateOf = (sql: TransactionSql, archivedAt: Date | null) =>
+const stateClause = (sql: TransactionSql, archivedAt: Date | null) =>
   archivedAt === null ? sql`archived_at is not null` : sql`archived_at is null`;
 
 /** Translates a known unique violation into the typed result; any other error, even a 23505, is rethrown. */
@@ -155,7 +155,7 @@ export class PostgresBusinessUnitRepository implements BusinessUnitRepository {
     const stored = await archivedStored(
       this.sql,
       (s) => s`update business_units set archived_at = ${archivedAt}
-               where tenant_id = ${tenantId} and id = ${id} and ${stateOf(s, archivedAt)}`,
+               where tenant_id = ${tenantId} and id = ${id} and ${stateClause(s, archivedAt)}`,
     );
     return withoutCostCenter(stored);
   }
@@ -247,7 +247,7 @@ export class PostgresOperationRepository implements OperationRepository {
     return archivedStored(
       this.sql,
       (s) => s`update operations set archived_at = ${archivedAt}
-               where tenant_id = ${tenantId} and id = ${id} and ${stateOf(s, archivedAt)}`,
+               where tenant_id = ${tenantId} and id = ${id} and ${stateClause(s, archivedAt)}`,
     );
   }
 
@@ -317,7 +317,7 @@ export class PostgresSiteRepository implements SiteRepository {
     const stored = await archivedStored(
       this.sql,
       (s) => s`update sites set archived_at = ${archivedAt}
-               where tenant_id = ${tenantId} and id = ${id} and ${stateOf(s, archivedAt)}`,
+               where tenant_id = ${tenantId} and id = ${id} and ${stateClause(s, archivedAt)}`,
     );
     return withoutCostCenter(stored);
   }

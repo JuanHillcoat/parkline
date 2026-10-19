@@ -38,10 +38,23 @@ The model also has to answer who sees what. Role assignments already carried a t
 - Positive: an edit that moves an operation or changes its cost center leaves an audit entry with the old values, the new values and a reason.
 - Open risk: existence is checked before authorization in `CreateOperation` and `UpdateOperation`, so an actor without grants can tell an existing id from a missing one. Tracked in issue #16.
 - Open risk: migration `0006` takes `ACCESS EXCLUSIVE` locks and rewrites rows. That is acceptable while the tables are small; a larger deployment needs a maintenance window. It also fails, and rolls back, if normalization makes two names of one owner equal.
-- Limit: there is no deactivation or delete yet. A wrong operation can be renamed or edited, never removed.
+- Limit: there is no physical delete. A wrong row is archived (see the addendum) or, for an operation, edited.
 - Limit: the cost center changes only through the edit with a reason.
 - Limit: operation-scoped and division-scoped writers see no create, rename or edit buttons in the page, which gates on tenant-wide `catalog.write`. The server still enforces the rules above.
 - Limit: two operations may share a site, so a site scope sees every operation located at it.
 - Limit: the SQL key follows the database locale for exotic capitals outside the accent map (for example final sigma). The TypeScript key is checked first, so the unique index only matters under a race.
 - Deferred: the operation shift profile (issue #15); the expansion beyond the Fleet and Equipment sector (issue #17); a redesign of the screen (issue #19).
 - Assumption: the four-digit cost center format is the maintainer's. If the accounting system uses another format, the check constraint, the parser and the form change together.
+
+## Addendum: archive and restore (P0-05)
+
+Divisions, sites and operations entered by mistake can be taken out of use without deleting history. This addendum supersedes the deferral of "Deletes and deactivation now" above.
+
+- **Soft delete with a reason.** Each of the three tables has a nullable `archived_at` (migration `0008`). Archiving sets it, restoring clears it. Both need a non-blank reason (at most 500 characters) and write one audit entry in the same transaction, `organization.archive` or `organization.restore`, with `entity_type` set to the kind and `before` and `after` carrying `archived_at`. Both actions are in `SENSITIVE_AUDIT_ACTIONS` and in the trigger function, so a missing reason is refused by the database too (ADR-0004).
+- **Fleet-only permission.** `catalog.archive` is granted to `fleet_analyst` and to no other role, not even `admin`. It is checked through the `AccessPolicy` at the position of the row (tenant for divisions and sites, the division for operations). The web page shows the buttons and the toggle only to holders at tenant level.
+- **Partial unique indexes.** Names (per tenant for divisions and sites, per division for operations) and cost centers (per tenant) are unique among active rows only (`where archived_at is null`), so an archived row frees them. Restoring a row whose name or cost center was taken meanwhile gives the typed `name_taken` or `cost_center_taken`.
+- **Blocks, no cascade.** A division or a site with active operations cannot be archived (`has_active_operations`): the user archives the operations first. An operation can be restored only when its division and its site are active (`parent_archived`). Editing or renaming an archived row is refused (`archived`). Repeating the same change gives `already_archived` or `not_archived`.
+- **Locks on parents.** Archiving a division or a site takes an exclusive row lock before it counts the active operations; creating, moving or restoring an operation takes a share lock on both parents (division first, then site) before it reads their state. Without them a concurrent create and archive could leave an active operation under an archived parent. Database tests assert that invariant after every round of concurrent writers.
+- **Lists.** The list use cases return active rows by default; `includeArchived` is honored only for actors holding `catalog.archive` and returns archived rows marked as such. Visibility rules are unchanged. Role assignments that point at an archived scope stay valid and their holder simply sees nothing of it.
+- **Open points.** Migration `0008` takes `ACCESS EXCLUSIVE` locks like `0006` (issue #21). Existence is still checked before authorization in some use cases (issue #16). The screen redesign (issue #19), the expansion beyond the Fleet and Equipment sector (issue #17) and the default-privilege hardening (issue #13) are not changed by this work.
+- **Cost.** Plain SQL and TypeScript, no service or dependency. $0.

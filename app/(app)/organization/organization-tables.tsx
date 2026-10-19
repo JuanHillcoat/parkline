@@ -1,17 +1,30 @@
 import { copy } from "../../_lib/copy";
 import type { DivisionGroup, OperationRow, SiteRow } from "../../_lib/organization-view";
-import { EditOperationDialog, RenameDialog, type EditOptions } from "./organization-dialogs";
+import { ArchiveDialog, EditOperationDialog, RenameDialog, type EditOptions, type RenameKind } from "./organization-dialogs";
 
 const t = copy.organization;
 
-type WriteAccess = { readonly canWrite: boolean; readonly options: EditOptions };
+type Access = { readonly canWrite: boolean; readonly canArchive: boolean };
+type WriteAccess = Access & { readonly options: EditOptions };
 
-function OperationActions({ row, canWrite, options }: WriteAccess & { row: OperationRow }) {
-  if (!canWrite) return null;
+function ArchivedTag() {
+  return <span className="badge badge-neutral">{copy.common.archivedTag}</span>;
+}
+
+type ArchiveControlProps = { readonly kind: RenameKind; readonly archived: boolean; readonly target: { id: string; name: string } };
+
+/** Archived rows only offer "Reactivar"; active rows offer "Dar de baja". Nothing without `catalog.archive`. */
+function ArchiveControl({ kind, archived, target, canArchive }: ArchiveControlProps & { canArchive: boolean }) {
+  if (!canArchive) return null;
+  return <ArchiveDialog kind={kind} verb={archived ? "restore" : "archive"} target={target} />;
+}
+
+function OperationActions({ row, canWrite, canArchive, options }: WriteAccess & { row: OperationRow }) {
   return (
     <>
-      <EditOperationDialog target={row} options={options} />
-      <RenameDialog kind="operation" target={row} />
+      {canWrite && !row.archived && <EditOperationDialog target={row} options={options} />}
+      {canWrite && !row.archived && <RenameDialog kind="operation" target={row} />}
+      <ArchiveControl kind="operation" archived={row.archived} target={row} canArchive={canArchive} />
     </>
   );
 }
@@ -19,9 +32,9 @@ function OperationActions({ row, canWrite, options }: WriteAccess & { row: Opera
 function OperationLine(props: WriteAccess & { row: OperationRow }) {
   const { row } = props;
   return (
-    <tr>
+    <tr data-archived={row.archived}>
       <td className="cell-code">{row.costCenter}</td>
-      <th scope="row">{row.name}</th>
+      <th scope="row">{row.name} {row.archived && <ArchivedTag />}</th>
       <td>{row.siteName ?? <span className="cell-sub">{t.noSite}</span>}</td>
       <td className="cell-actions"><OperationActions {...props} /></td>
     </tr>
@@ -42,7 +55,7 @@ function OperationsHead() {
   );
 }
 
-function OperationsTable({ group, canWrite, options }: WriteAccess & { group: DivisionGroup }) {
+function OperationsTable({ group, ...access }: WriteAccess & { group: DivisionGroup }) {
   return (
     <div className="table-wrap">
       <table className="table">
@@ -50,7 +63,7 @@ function OperationsTable({ group, canWrite, options }: WriteAccess & { group: Di
         <OperationsHead />
         <tbody>
           {group.operations.map((row) => (
-            <OperationLine key={row.id} row={row} canWrite={canWrite} options={options} />
+            <OperationLine key={row.id} row={row} {...access} />
           ))}
         </tbody>
       </table>
@@ -58,40 +71,44 @@ function OperationsTable({ group, canWrite, options }: WriteAccess & { group: Di
   );
 }
 
-function GroupHeader({ group, canWrite }: { group: DivisionGroup; canWrite: boolean }) {
+function GroupHeader({ group, canWrite, canArchive }: Access & { group: DivisionGroup }) {
+  const target = group.id !== null && group.name !== null ? { id: group.id, name: group.name } : null;
   return (
     <header className="group-head">
       <h3>{group.name ?? t.otherDivision}</h3>
-      <span className="cell-sub">{t.operationCount(group.operations.length)}</span>
-      {canWrite && group.id !== null && group.name !== null && (
-        <RenameDialog kind="division" target={{ id: group.id, name: group.name }} />
-      )}
+      {group.archived && <ArchivedTag />}
+      <span className="cell-sub">{t.operationCount(group.activeOperations)}</span>
+      {canWrite && !group.archived && target !== null && <RenameDialog kind="division" target={target} />}
+      {target !== null && <ArchiveControl kind="division" archived={group.archived} target={target} canArchive={canArchive} />}
     </header>
   );
 }
 
-export function DivisionCard({ group, canWrite, options }: WriteAccess & { group: DivisionGroup }) {
+export function DivisionCard({ group, ...access }: WriteAccess & { group: DivisionGroup }) {
   return (
-    <section className="card group-card">
-      <GroupHeader group={group} canWrite={canWrite} />
+    <section className="card group-card" data-archived={group.archived}>
+      <GroupHeader group={group} canWrite={access.canWrite} canArchive={access.canArchive} />
       {group.operations.length === 0
         ? <p className="cell-sub">{t.noOperations}</p>
-        : <OperationsTable group={group} canWrite={canWrite} options={options} />}
+        : <OperationsTable group={group} {...access} />}
     </section>
   );
 }
 
-function SiteLine({ row, canWrite }: { row: SiteRow; canWrite: boolean }) {
+function SiteLine({ row, canWrite, canArchive }: Access & { row: SiteRow }) {
   return (
-    <tr>
-      <th scope="row">{row.name}</th>
+    <tr data-archived={row.archived}>
+      <th scope="row">{row.name} {row.archived && <ArchivedTag />}</th>
       <td>{row.operationCount}</td>
-      <td className="cell-actions">{canWrite && <RenameDialog kind="site" target={row} />}</td>
+      <td className="cell-actions">
+        {canWrite && !row.archived && <RenameDialog kind="site" target={row} />}
+        <ArchiveControl kind="site" archived={row.archived} target={row} canArchive={canArchive} />
+      </td>
     </tr>
   );
 }
 
-export function SitesTable({ rows, canWrite }: { rows: readonly SiteRow[]; canWrite: boolean }) {
+export function SitesTable({ rows, ...access }: Access & { rows: readonly SiteRow[] }) {
   const c = t.columns;
   return (
     <div className="table-wrap">
@@ -105,7 +122,7 @@ export function SitesTable({ rows, canWrite }: { rows: readonly SiteRow[]; canWr
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => <SiteLine key={row.id} row={row} canWrite={canWrite} />)}
+          {rows.map((row) => <SiteLine key={row.id} row={row} {...access} />)}
         </tbody>
       </table>
     </div>

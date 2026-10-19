@@ -63,3 +63,39 @@ export async function renameSiteAction(_previous: ActionState, form: FormData): 
     organization().renameSite.execute({ actor: toActor(actor), id: field(form, "id"), name: field(form, "name") }),
   );
 }
+
+export async function archiveDivisionAction(_previous: ActionState, form: FormData): Promise<ActionState> {
+  return runMutation(PATH, (actor) =>
+    organization().archiveBusinessUnit.execute({ actor: toActor(actor), id: field(form, "id"), reason: field(form, "reason") }),
+  );
+}
+
+export async function archiveSiteAction(_previous: ActionState, form: FormData): Promise<ActionState> {
+  return runMutation(PATH, (actor) =>
+    organization().archiveSite.execute({ actor: toActor(actor), id: field(form, "id"), reason: field(form, "reason") }),
+  );
+}
+
+export async function archiveOperationAction(_previous: ActionState, form: FormData): Promise<ActionState> {
+  return runMutation(PATH, (actor) =>
+    organization().archiveOperation.execute({ actor: toActor(actor), id: field(form, "id"), reason: field(form, "reason") }),
+  );
+}
+
+export async function restoreDivisionAction(_previous: ActionState, form: FormData): Promise<ActionState> {
+  return runMutation(PATH, (actor) =>
+    organization().restoreBusinessUnit.execute({ actor: toActor(actor), id: field(form, "id"), reason: field(form, "reason") }),
+  );
+}
+
+export async function restoreSiteAction(_previous: ActionState, form: FormData): Promise<ActionState> {
+  return runMutation(PATH, (actor) =>
+    organization().restoreSite.execute({ actor: toActor(actor), id: field(form, "id"), reason: field(form, "reason") }),
+  );
+}
+
+export async function restoreOperationAction(_previous: ActionState, form: FormData): Promise<ActionState> {
+  return runMutation(PATH, (actor) =>
+    organization().restoreOperation.execute({ actor: toActor(actor), id: field(form, "id"), reason: field(form, "reason") }),
+  );
+}

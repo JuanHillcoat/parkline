@@ -6,6 +6,7 @@ import { nameKey } from "../domain/name";
 import type { ArchiveSubject, ArchiveVerb } from "./archiving";
 import { costCenterTaken, lockParents, nameTaken, parentArchived, requireFreeName } from "./guards";
 import type { OrganizationTx } from "./ports/organization-tx";
+import type { SetOperationArchivedAt } from "./ports/repositories";
 
 const done = Promise.resolve(ok(undefined));
 
@@ -15,18 +16,23 @@ const stateChanged = (label: string, id: string, archivedAt: Date | null): Resul
     ? err(new NotArchivedError(`${label} ${id} is not archived`))
     : err(new AlreadyArchivedError(`${label} ${id} is already archived`));
 
-type Stored = "done" | "name_taken" | "cost_center_taken" | "state_changed";
-
 /** Maps what a repository reported to the typed result; `taken` builds the conflict of the restore. */
 const outcome = (
-  stored: Stored,
+  stored: SetOperationArchivedAt,
   row: { readonly id: string; readonly name: string; readonly costCenter?: string },
   label: string,
   archivedAt: Date | null,
 ): Result<void, DomainError> => {
-  if (stored === "done") return ok(undefined);
-  if (stored === "state_changed") return stateChanged(label, row.id, archivedAt);
-  return stored === "name_taken" || row.costCenter === undefined ? nameTaken(row.name) : costCenterTaken(row.costCenter);
+  switch (stored) {
+    case "done":
+      return ok(undefined);
+    case "state_changed":
+      return stateChanged(label, row.id, archivedAt);
+    case "name_taken":
+      return nameTaken(row.name);
+    case "cost_center_taken":
+      return costCenterTaken(row.costCenter ?? "");
+  }
 };
 
 /** D3: archiving a division or a site first needs its operations archived (D9: no cascade). */
@@ -43,7 +49,7 @@ export const businessUnitSubject: ArchiveSubject<BusinessUnit> = {
     if (verb === "archive") {
       await tx.businessUnits.lock(row.tenantId, row.id, "exclusive");
       const active = await tx.operations.countActiveByBusinessUnit(row.tenantId, row.id);
-      return requireNoActiveOperations(active, "The business unit");
+      return requireNoActiveOperations(active, businessUnitSubject.label);
     }
     return requireFreeName(await tx.businessUnits.findByName(row.tenantId, nameKey(row.name)), row.name, row.id);
   },
@@ -61,7 +67,7 @@ export const siteSubject: ArchiveSubject<Site> = {
     if (verb === "archive") {
       await tx.sites.lock(row.tenantId, row.id, "exclusive");
       const active = await tx.operations.countActiveBySite(row.tenantId, row.id);
-      return requireNoActiveOperations(active, "The site");
+      return requireNoActiveOperations(active, siteSubject.label);
     }
     return requireFreeName(await tx.sites.findByName(row.tenantId, nameKey(row.name)), row.name, row.id);
   },

@@ -634,3 +634,14 @@ dialog.dialog::backdrop {
   color: var(--muted-strong);
   font-size: 13px;
 }
+
+/* Archived rows (P0-05): muted, tagged with the "De baja" badge */
+.table tr[data-archived="true"] td,
+.table tr[data-archived="true"] th,
+.group-card[data-archived="true"] h3 {
+  color: var(--muted);
+}
+
+.group-card[data-archived="true"] {
+  background: var(--neutral-bg);
+}

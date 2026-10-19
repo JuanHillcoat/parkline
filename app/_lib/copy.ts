@@ -21,6 +21,7 @@ const es = {
     role: "Rol",
     reason: "Motivo",
     reasonHint: "Obligatorio. Queda registrado en la auditoría.",
+    archivedTag: "De baja",
   },
   nav: {
     main: "Principal",
@@ -84,6 +85,8 @@ const es = {
     noSite: "Sitio no visible",
     emptyDivisions: "Aún no hay divisiones. Crea la primera para empezar.",
     emptySites: "Aún no hay sitios. Crea el primero para poder crear operaciones.",
+    showArchived: "Mostrar dadas de baja",
+    hideArchived: "Ocultar dadas de baja",
     createFirst: "Para crear una operación, primero crea al menos una división y un sitio.",
     columns: {
       costCenter: "Centro de costo",
@@ -153,6 +156,22 @@ const es = {
       costCenterHint: "4 dígitos",
       reasonPlaceholder: "¿Por qué se modifica esta operación?",
     },
+    archive: {
+      trigger: "Dar de baja",
+      title: (name: string): string => `¿Dar de baja ${name}?`,
+      description:
+        "La fila queda guardada y se puede reactivar más adelante. Deja de aparecer en las listas y libera su nombre. La baja queda registrada en la auditoría con el motivo.",
+      submit: "Dar de baja",
+      reasonPlaceholder: "¿Por qué se da de baja?",
+    },
+    restore: {
+      trigger: "Reactivar",
+      title: (name: string): string => `¿Reactivar ${name}?`,
+      description:
+        "La fila vuelve a las listas si su nombre sigue libre y, en una operación, su división y su sitio están activos. La reactivación queda registrada en la auditoría con el motivo.",
+      submit: "Reactivar",
+      reasonPlaceholder: "¿Por qué se reactiva?",
+    },
     newUser: {
       trigger: "Nuevo usuario",
       title: "Nuevo usuario",
@@ -209,6 +228,11 @@ const es = {
       reason_too_long: "El motivo es demasiado largo.",
       no_changes: "No hay cambios que guardar. Modifica al menos un dato.",
       invalid_role: "Elige un rol válido.",
+      archived: "Está dada de baja. Reactívala para poder modificarla.",
+      has_active_operations: "No se puede dar de baja: tiene operaciones activas. Da de baja primero sus operaciones.",
+      parent_archived: "No se puede reactivar: su división o su sitio están dados de baja.",
+      already_archived: "Ya está dada de baja. Recarga la página.",
+      not_archived: "Ya está activa. Recarga la página.",
       unauthenticated: "Tu sesión terminó. Inicia sesión de nuevo.",
     },
     byField: {
