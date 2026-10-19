@@ -157,19 +157,21 @@ describe("sensitive-action reason trigger (owner connection)", () => {
     });
   });
 
-  it("organization.operation.update needs a visible reason: null, empty, blank and invisible-only are refused", async () => {
-    await withDb(async (owner) => {
-      const action = "organization.operation.update";
-      for (const reason of [null, "", "  ", String.fromCharCode(0x200b, 0xa0, 0xfeff), String.fromCharCode(0x3000, 0x2060)]) {
-        const error = await insertAudit(owner, { action, reason }).then(() => null, asPgError);
-        expect(error?.code, JSON.stringify(reason)).toBe("23514");
-        expect(error?.message).toBe(`audit action "${action}" requires a non-blank reason`);
-      }
-      await insertAudit(owner, { action, reason: "Correccion de centro de costo" });
-      const rows = await owner`select count(*)::int as n from audit_log`;
-      expect(rows[0]?.n).toBe(1);
-    });
-  });
+  it.each(["organization.operation.update", "organization.archive", "organization.restore"])(
+    "%s needs a visible reason: null, empty, blank and invisible-only are refused",
+    async (action) => {
+      await withDb(async (owner) => {
+        for (const reason of [null, "", "  ", String.fromCharCode(0x200b, 0xa0, 0xfeff), String.fromCharCode(0x3000, 0x2060)]) {
+          const error = await insertAudit(owner, { action, reason }).then(() => null, asPgError);
+          expect(error?.code, JSON.stringify(reason)).toBe("23514");
+          expect(error?.message).toBe(`audit action "${action}" requires a non-blank reason`);
+        }
+        await insertAudit(owner, { action, reason: "Motivo documentado" });
+        const rows = await owner`select count(*)::int as n from audit_log`;
+        expect(rows[0]?.n).toBe(1);
+      });
+    },
+  );
 
   it("accepts a reason with a visible character among invisible ones", async () => {
     await withDb(async (owner) => {

@@ -17,13 +17,18 @@ const idAt = (scopeType: string, position: ResourcePosition): string | undefined
   return undefined;
 };
 
-const grantsPermission = (grant: Grant, permission: string): boolean =>
-  permission === "catalog.read" || WRITERS.includes(grant.role);
+const ARCHIVERS = ["fleet_analyst"];
+
+const grantsPermission = (grant: Grant, permission: string): boolean => {
+  if (permission === "catalog.read") return true;
+  if (permission === "catalog.archive") return ARCHIVERS.includes(grant.role);
+  return WRITERS.includes(grant.role);
+};
 
 /**
  * Test double with the same contract as the shared `AccessPolicy`: a grant
  * covers a position when its scope id sits on the position. Every role reads
- * the catalog; only `admin` and `fleet_analyst` write it. The organization
+ * the catalog; only `admin` and `fleet_analyst` write it; only `fleet_analyst` archives. The organization
  * module must not import identity, so it tests against this fake.
  */
 export class FakeAccessPolicy implements AccessPolicy {

@@ -73,10 +73,11 @@ const failure = (run: PromiseLike<unknown>): Promise<PgError | null> =>
   );
 
 describe("organization schema after migrating", () => {
-  it("applies 0005, 0006 (organization names) and 0007 (organization edit) and the three tables start empty (no seed)", () => {
+  it("applies 0005 to 0008 (organization, names, edit, archive) and the three tables start empty (no seed)", () => {
     expect(applied).toContain("0005_organization.sql");
     expect(applied).toContain("0006_organization_names.sql");
-    expect(applied.at(-1)).toBe("0007_organization_edit.sql");
+    expect(applied).toContain("0007_organization_edit.sql");
+    expect(applied.at(-1)).toBe("0008_organization_archive.sql");
     expect(emptyAfterMigrating).toEqual({ business_units: 0, operations: 0, sites: 0 });
   });
 
@@ -226,8 +227,143 @@ describe("cost center (D7)", () => {
   });
 });
 
+describe("archived_at and partial uniqueness (migration 0008, D5)", () => {
+  type Table = (typeof TABLES)[number];
+  const archive = (table: Table, id: string) => sql.unsafe(`update ${table} set archived_at = now() where id = '${id}'`);
+  const restore = (table: Table, id: string) => sql.unsafe(`update ${table} set archived_at = null where id = '${id}'`);
+  const constraintOf = async (run: PromiseLike<unknown>): Promise<string | undefined> =>
+    ((await failure(run)) as { constraint_name?: string } | null)?.constraint_name;
+
+  it("adds a nullable timestamptz archived_at to the three tables, null for new rows", async () => {
+    const columns = await sql<{ table_name: string; data_type: string; is_nullable: string }[]>`
+      select table_name, data_type, is_nullable from information_schema.columns
+      where table_schema = 'public' and column_name = 'archived_at' order by table_name`;
+    expect(columns).toEqual(
+      ["business_units", "operations", "sites"].map((table_name) => ({
+        table_name,
+        data_type: "timestamp with time zone",
+        is_nullable: "YES",
+      })),
+    );
+    const t = await addTenant("Tenant AR0");
+    const rows = await sql`select archived_at from business_units where id = ${await addUnit(t, "Unit")}`;
+    expect(rows[0]?.archived_at).toBeNull();
+  });
+
+  it("replaces the unique constraints with partial unique indexes over active rows", async () => {
+    const old = await sql`
+      select conname from pg_constraint where conname in (
+        'business_units_tenant_id_name_key_key', 'sites_tenant_id_name_key_key',
+        'operations_tenant_id_business_unit_id_name_key_key', 'operations_tenant_id_cost_center_key')`;
+    expect(old).toHaveLength(0);
+    const indexes = await sql<{ indexname: string; indexdef: string }[]>`
+      select indexname, indexdef from pg_indexes
+      where schemaname = 'public' and indexname in (
+        'business_units_active_name_key', 'sites_active_name_key',
+        'operations_active_name_key', 'operations_active_cost_center_key')
+      order by indexname`;
+    expect(indexes.map((i) => i.indexname)).toEqual([
+      "business_units_active_name_key",
+      "operations_active_cost_center_key",
+      "operations_active_name_key",
+      "sites_active_name_key",
+    ]);
+    for (const index of indexes) {
+      expect(index.indexdef, index.indexname).toContain("CREATE UNIQUE INDEX");
+      expect(index.indexdef, index.indexname).toContain("WHERE (archived_at IS NULL)");
+    }
+  });
+
+  it("frees the name of an archived division and site, while two active rows still collide", async () => {
+    const t = await addTenant("Tenant AR1");
+    const unit = await addUnit(t, "Old Name");
+    const site = await addSite(t, "Old Site");
+    await archive("business_units", unit);
+    await archive("sites", site);
+    const reusedUnit = await addUnit(t, "old  NAME");
+    const reusedSite = await addSite(t, "OLD SITE");
+    expect(await constraintOf(addUnit(t, "Old Name"))).toBe("business_units_active_name_key");
+    expect(await constraintOf(addSite(t, "old site"))).toBe("sites_active_name_key");
+    expect(await constraintOf(restore("business_units", unit))).toBe("business_units_active_name_key");
+    expect(await constraintOf(restore("sites", site))).toBe("sites_active_name_key");
+    // Several archived rows may share a name, and a restore works once the name is free again.
+    await archive("business_units", reusedUnit);
+    await addUnit(t, "Old Name");
+    await archive("sites", reusedSite);
+    await restore("sites", site);
+  });
+
+  it("frees the name and the cost center of an archived operation and rejects a colliding restore by index", async () => {
+    const t = await addTenant("Tenant AR2");
+    const unit = await addUnit(t, "Division");
+    const first = await addOperation(t, unit, "Night Ops", "0500");
+    await archive("operations", first);
+    const second = await addOperation(t, unit, "night ops", "0500");
+    expect(await constraintOf(restore("operations", first))).toBe("operations_active_name_key");
+    expect(await constraintOf(addOperation(t, unit, "NIGHT OPS", freshCode()))).toBe("operations_active_name_key");
+    await sql`update operations set name = 'Day Ops' where id = ${second}`;
+    expect(await constraintOf(restore("operations", first))).toBe("operations_active_cost_center_key");
+    expect(await constraintOf(addOperation(t, unit, "Third", "0500"))).toBe("operations_active_cost_center_key");
+    await archive("operations", second);
+    await restore("operations", first);
+    const rows = await sql`select 1 from operations where tenant_id = ${t} and archived_at is null`;
+    expect(rows).toHaveLength(1);
+  });
+
+  it("keeps the composite foreign keys: an archived row cannot be deleted while referenced", async () => {
+    const t = await addTenant("Tenant AR3");
+    const unit = await addUnit(t, "Division");
+    await addOperation(t, unit, "Op");
+    await archive("business_units", unit);
+    expect((await failure(sql`delete from business_units where id = ${unit}`))?.code).toBe("23503");
+  });
+});
+
+describe("migration 0008 on a database that already has rows", () => {
+  let dir = "";
+  let name = "";
+  let old: Sql;
+
+  afterEach(async () => {
+    await old.end();
+    await admin.unsafe(`drop database if exists ${name}`);
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("keeps every existing row active and keeps the uniqueness of active rows", async () => {
+    dir = mkdtempSync(join(tmpdir(), "parkline-mig-"));
+    for (const file of readdirSync(MIGRATIONS_DIR).filter((f) => f < "0008")) {
+      copyFileSync(resolve(MIGRATIONS_DIR, file), join(dir, file));
+    }
+    name = `parkline_test_${randomBytes(6).toString("hex")}`;
+    await admin.unsafe(`create database ${name}`);
+    const url = new URL(adminUrl);
+    url.pathname = `/${name}`;
+    old = postgres(url.toString(), { max: 1, onnotice: () => undefined });
+    await migrate(old, dir);
+    const [t] = await old<{ id: string }[]>`insert into tenants (id, name) values (gen_random_uuid(), 'Legacy') returning id`;
+    const tenant = t?.id ?? "";
+    const [u] = await old<{ id: string }[]>`insert into business_units (tenant_id, name) values (${tenant}, 'ZONA NORTE') returning id`;
+    const [s] = await old<{ id: string }[]>`insert into sites (tenant_id, name) values (${tenant}, 'PATIO') returning id`;
+    await old`insert into operations (tenant_id, business_unit_id, site_id, name, cost_center)
+      values (${tenant}, ${u?.id ?? ""}, ${s?.id ?? ""}, 'CAMINO', '0001')`;
+    expect(await migrate(old, MIGRATIONS_DIR)).toEqual(["0008_organization_archive.sql"]);
+    for (const table of TABLES) {
+      const rows = await old.unsafe<{ archived_at: Date | null }[]>(`select archived_at from ${table}`);
+      expect(rows.map((r) => r.archived_at), table).toEqual([null]);
+    }
+    const duplicate = await failure(old`insert into sites (tenant_id, name) values (${tenant}, 'patio')`);
+    expect(duplicate?.code).toBe("23505");
+  });
+});
+
 describe("migration file hygiene", () => {
-  it.each(["0005_organization.sql", "0006_organization_names.sql", "0007_organization_edit.sql"])(
+  it.each([
+    "0005_organization.sql",
+    "0006_organization_names.sql",
+    "0007_organization_edit.sql",
+    "0008_organization_archive.sql",
+  ])(
     "%s holds only printable ASCII and line feeds: no raw control or invisible characters",
     (file) => {
       const text = readFileSync(resolve(MIGRATIONS_DIR, file), "utf8");
@@ -501,6 +637,9 @@ describe("restricted application role on the organization tables", () => {
       `update business_units set name = 'Renamed' where id = '${unit}'`,
       `update operations set name = 'Renamed' where id = '${op}'`,
       `update sites set name = 'Renamed' where id = '${site}'`,
+      `update business_units set archived_at = now() where id = '${unit}'`,
+      `update operations set archived_at = now() where id = '${op}'`,
+      `update sites set archived_at = now() where id = '${site}'`,
       ...TABLES.map((table) => `select count(*) from ${table}`),
     ]);
     expect(results).toEqual(results.map(() => null));

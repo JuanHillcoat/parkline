@@ -5,7 +5,7 @@ import type { BusinessUnit } from "../../domain/entities";
 import { nameKey, parseName } from "../../domain/name";
 import { recordAudit } from "../audit";
 import type { OrganizationDeps } from "../deps";
-import { auditActor, nameTaken, requireFreeName, whenActive } from "../guards";
+import { archivedRow, auditActor, nameTaken, requireFreeName, whenActive } from "../guards";
 import type { OrganizationTx } from "../ports/organization-tx";
 
 export type RenameBusinessUnitInput = {
@@ -28,6 +28,7 @@ export class RenameBusinessUnit {
     if (unit === null) return err(new NotFoundError("Business unit", id));
     const role = this.deps.accessPolicy.check(actor, "catalog.write", { tenantId: actor.tenantId, businessUnitId: id });
     if (!role.ok) return role;
+    if (unit.archivedAt !== null) return archivedRow("Business unit", id);
     const name = parseName(input.name);
     if (!name.ok) return name;
     const free = requireFreeName(await tx.businessUnits.findByName(actor.tenantId, nameKey(name.value)), name.value, id);

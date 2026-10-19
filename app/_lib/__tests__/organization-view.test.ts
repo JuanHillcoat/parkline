@@ -6,8 +6,8 @@ import {
   siteNamesById,
 } from "../organization-view";
 
-const unit = (id: string, name: string) => ({ id, tenantId: "t", name });
-const site = (id: string, name: string) => ({ id, tenantId: "t", name });
+const unit = (id: string, name: string) => ({ id, tenantId: "t", name, archivedAt: null });
+const site = (id: string, name: string) => ({ id, tenantId: "t", name, archivedAt: null });
 const op = (id: string, businessUnitId: string, siteId: string, costCenter: string, name: string) => ({
   id,
   tenantId: "t",
@@ -15,6 +15,7 @@ const op = (id: string, businessUnitId: string, siteId: string, costCenter: stri
   siteId,
   costCenter,
   name,
+  archivedAt: null,
 });
 
 const units = [unit("u1", "North"), unit("u2", "South")];

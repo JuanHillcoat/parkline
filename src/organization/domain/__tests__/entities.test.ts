@@ -15,8 +15,20 @@ describe("entity factories", () => {
   it("builds a business unit with a trimmed, uppercase name", () => {
     expect(createBusinessUnit({ id: "bu-1", tenantId: "t", name: " Norte " })).toEqual({
       ok: true,
-      value: { id: "bu-1", tenantId: "t", name: "NORTE" },
+      value: { id: "bu-1", tenantId: "t", name: "NORTE", archivedAt: null },
     });
+  });
+
+  it("builds every entity active (archivedAt null) and keeps a given archive date", () => {
+    const at = new Date("2026-02-01T00:00:00Z");
+    const active = [
+      createBusinessUnit({ id: "1", tenantId: "t", name: "A" }),
+      createOperation(operationInput),
+      createSite({ id: "1", tenantId: "t", name: "A" }),
+    ];
+    for (const result of active) expect(result.ok && result.value.archivedAt).toBeNull();
+    const archived = createSite({ id: "1", tenantId: "t", name: "A", archivedAt: at });
+    expect(archived.ok && archived.value.archivedAt).toEqual(at);
   });
 
   it("builds an operation with its division, its single site and its cost center", () => {
@@ -28,6 +40,7 @@ describe("entity factories", () => {
       siteId: "s-1",
       name: "MINA 1",
       costCenter: "0050",
+      archivedAt: null,
     });
   });
 
@@ -38,7 +51,7 @@ describe("entity factories", () => {
 
   it("builds a site and keeps the accents of its name", () => {
     const result = createSite({ id: "s-1", tenantId: "t", name: "Bahía Blanca" });
-    expect(result.ok && result.value).toEqual({ id: "s-1", tenantId: "t", name: "BAHÍA BLANCA" });
+    expect(result.ok && result.value).toEqual({ id: "s-1", tenantId: "t", name: "BAHÍA BLANCA", archivedAt: null });
   });
 
   it("rejects an invalid name in every factory", () => {

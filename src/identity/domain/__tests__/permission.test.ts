@@ -7,8 +7,17 @@ describe("role permissions", () => {
     for (const role of ROLES) expect(ROLE_PERMISSIONS[role]).toBeDefined();
   });
 
-  it("grants admin every permission", () => {
-    for (const permission of PERMISSIONS) expect(roleGrants("admin", permission)).toBe(true);
+  it("grants admin every permission except archiving catalog rows", () => {
+    for (const permission of PERMISSIONS.filter((p) => p !== "catalog.archive")) {
+      expect(roleGrants("admin", permission)).toBe(true);
+    }
+  });
+
+  it("grants catalog.archive to the fleet analyst only", () => {
+    expect(roleGrants("fleet_analyst", "catalog.archive")).toBe(true);
+    for (const role of ["admin", "manager", "supervisor", "viewer"] as const) {
+      expect(roleGrants(role, "catalog.archive")).toBe(false);
+    }
   });
 
   it("lets a manager read users and audit but not assign roles", () => {

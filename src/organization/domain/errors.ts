@@ -43,6 +43,29 @@ export class NoChangesError extends ValidationError {
   }
 }
 
+/** The row is archived: it cannot be renamed or edited until it is restored (D7). */
+export class ArchivedError extends ConflictError {
+  readonly code: string = "archived";
+}
+
+/** A division or site with active operations cannot be archived (D3, D9: no cascade). */
+export class HasActiveOperationsError extends ConflictError {
+  readonly code: string = "has_active_operations";
+}
+
+/** The division or the site of the operation is archived (D4). */
+export class ParentArchivedError extends ConflictError {
+  readonly code: string = "parent_archived";
+}
+
+export class AlreadyArchivedError extends ConflictError {
+  readonly code: string = "already_archived";
+}
+
+export class NotArchivedError extends ConflictError {
+  readonly code: string = "not_archived";
+}
+
 /** Another entity with the same normalized name exists under the same owner (D7). */
 export class NameTakenError extends ConflictError {
   readonly code: string = "name_taken";

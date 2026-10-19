@@ -1,9 +1,10 @@
 import { ForbiddenError, type DomainError } from "../../shared/domain/domain-error";
 import type { AccessPolicy, Actor } from "../../shared/domain/ports/access-policy";
 import { err, ok, type Result } from "../../shared/domain/result";
-import { CostCenterTakenError, NameTakenError } from "../domain/errors";
+import { ArchivedError, CostCenterTakenError, NameTakenError, ParentArchivedError } from "../domain/errors";
 import type { CanRead } from "../domain/visibility";
 import type { AuditFields } from "./audit";
+import type { OrganizationTx } from "./ports/organization-tx";
 
 /** An inactive actor is refused before any lookup, so it learns nothing about the catalog. */
 export const requireActive = (actor: Actor): Result<void, DomainError> =>
@@ -24,6 +25,16 @@ export const canReadAs =
   (position) =>
     policy.check(actor, "catalog.read", position).ok;
 
+/** D6: the `includeArchived` flag counts only for an actor holding `catalog.archive` tenant-wide; else it is ignored. */
+export const mayIncludeArchived = (policy: AccessPolicy, actor: Actor, requested: boolean | undefined): boolean =>
+  requested === true && policy.check(actor, "catalog.archive", { tenantId: actor.tenantId }).ok;
+
+/** Active rows only, unless archived ones were asked for (and allowed). */
+export const withArchived = <T extends { readonly archivedAt: Date | null }>(
+  rows: readonly T[],
+  include: boolean,
+): readonly T[] => (include ? rows : rows.filter((row) => row.archivedAt === null));
+
 /** D7: a match under the same owner is a conflict, unless it is the entity being renamed. */
 export const requireFreeName = (
   found: { readonly id: string } | null,
@@ -38,6 +49,20 @@ export const nameTaken = (name: string): Result<never, DomainError> =>
 /** D7: a cost center is unique per tenant. */
 export const costCenterTaken = (costCenter: string): Result<never, DomainError> =>
   err(new CostCenterTakenError(`The cost center ${costCenter} is already in use`));
+
+/** D7: an archived row cannot be renamed or edited until it is restored. */
+export const archivedRow = (kind: string, id: string): Result<never, DomainError> =>
+  err(new ArchivedError(`${kind} ${id} is archived`));
+
+/** D4: an operation cannot be created, moved or restored under an archived division or site. */
+/** Share-locks the division, then the site (always this order), before the caller reads their `archivedAt`. */
+export const lockParents = async (tx: OrganizationTx, tenantId: string, businessUnitId: string, siteId: string): Promise<void> => {
+  await tx.businessUnits.lock(tenantId, businessUnitId, "share");
+  await tx.sites.lock(tenantId, siteId, "share");
+};
+
+export const parentArchived =(): Result<never, DomainError> =>
+  err(new ParentArchivedError("The division or the site is archived"));
 
 type ActorFields = Pick<AuditFields, "actorId" | "actorKind" | "actorRole" | "tenantId">;
 

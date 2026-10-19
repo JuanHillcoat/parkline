@@ -21,6 +21,9 @@ import { CryptoSessionTokenService } from "../../identity/infrastructure/crypto-
 import { createPostgresIdentityTx } from "../../identity/infrastructure/postgres-identity-tx";
 import { ScryptPasswordHasher } from "../../identity/infrastructure/scrypt-password-hasher";
 import type { OrganizationDeps } from "../../organization/application/deps";
+import { ArchiveBusinessUnit } from "../../organization/application/use-cases/archive-business-unit";
+import { ArchiveOperation } from "../../organization/application/use-cases/archive-operation";
+import { ArchiveSite } from "../../organization/application/use-cases/archive-site";
 import { CreateBusinessUnit } from "../../organization/application/use-cases/create-business-unit";
 import { CreateOperation } from "../../organization/application/use-cases/create-operation";
 import { CreateSite } from "../../organization/application/use-cases/create-site";
@@ -30,6 +33,9 @@ import { ListSites } from "../../organization/application/use-cases/list-sites";
 import { RenameBusinessUnit } from "../../organization/application/use-cases/rename-business-unit";
 import { RenameOperation } from "../../organization/application/use-cases/rename-operation";
 import { RenameSite } from "../../organization/application/use-cases/rename-site";
+import { RestoreBusinessUnit } from "../../organization/application/use-cases/restore-business-unit";
+import { RestoreOperation } from "../../organization/application/use-cases/restore-operation";
+import { RestoreSite } from "../../organization/application/use-cases/restore-site";
 import { UpdateOperation } from "../../organization/application/use-cases/update-operation";
 import { createPostgresOrganizationTx } from "../../organization/infrastructure/postgres-organization-tx";
 import type { AccessPolicy } from "../domain/ports/access-policy";
@@ -77,6 +83,12 @@ const organizationUseCases = (deps: OrganizationDeps) => ({
   renameOperation: new RenameOperation(deps),
   renameSite: new RenameSite(deps),
   updateOperation: new UpdateOperation(deps),
+  archiveBusinessUnit: new ArchiveBusinessUnit(deps),
+  restoreBusinessUnit: new RestoreBusinessUnit(deps),
+  archiveSite: new ArchiveSite(deps),
+  restoreSite: new RestoreSite(deps),
+  archiveOperation: new ArchiveOperation(deps),
+  restoreOperation: new RestoreOperation(deps),
   listBusinessUnits: new ListBusinessUnits(deps),
   listOperations: new ListOperations(deps),
   listSites: new ListSites(deps),

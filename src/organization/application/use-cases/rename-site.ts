@@ -5,7 +5,7 @@ import type { Site } from "../../domain/entities";
 import { nameKey, parseName } from "../../domain/name";
 import { recordAudit } from "../audit";
 import type { OrganizationDeps } from "../deps";
-import { auditActor, nameTaken, requireFreeName, whenActive } from "../guards";
+import { archivedRow, auditActor, nameTaken, requireFreeName, whenActive } from "../guards";
 import type { OrganizationTx } from "../ports/organization-tx";
 
 export type RenameSiteInput = {
@@ -28,6 +28,7 @@ export class RenameSite {
     if (site === null) return err(new NotFoundError("Site", id));
     const role = this.deps.accessPolicy.check(actor, "catalog.write", { tenantId: actor.tenantId, siteId: id });
     if (!role.ok) return role;
+    if (site.archivedAt !== null) return archivedRow("Site", id);
     const name = parseName(input.name);
     if (!name.ok) return name;
     const free = requireFreeName(await tx.sites.findByName(actor.tenantId, nameKey(name.value)), name.value, id);
