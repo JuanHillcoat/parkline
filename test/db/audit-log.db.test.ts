@@ -57,14 +57,17 @@ describe("database after migrations", () => {
       where table_schema = 'public' order by table_name
     `;
     expect(rows.map((r) => r.table_name)).toEqual([
+      "asset_types",
       "audit_log",
       "business_units",
+      "equipments",
       "operations",
       "outbox_events",
       "schema_migrations",
       "sessions",
       "sign_in_attempts",
       "sites",
+      "suppliers",
       "tenants",
       "user_role_assignments",
       "users",
@@ -118,6 +121,6 @@ describe("migration runner", () => {
     const applied = await migrate(sql, MIGRATIONS_DIR);
     expect(applied).toEqual([]);
     const rows = await sql`select count(*)::int as n from schema_migrations`;
-    expect(rows[0]?.n).toBe(8);
+    expect(rows[0]?.n).toBe(9);
   });
 });

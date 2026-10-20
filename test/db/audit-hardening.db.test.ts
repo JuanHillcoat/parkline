@@ -157,7 +157,15 @@ describe("sensitive-action reason trigger (owner connection)", () => {
     });
   });
 
-  it.each(["organization.operation.update", "organization.archive", "organization.restore"])(
+  it.each([
+    "organization.operation.update",
+    "organization.archive",
+    "organization.restore",
+    "fleet.asset_type.update",
+    "fleet.equipment.update",
+    "fleet.archive",
+    "fleet.restore",
+  ])(
     "%s needs a visible reason: null, empty, blank and invisible-only are refused",
     async (action) => {
       await withDb(async (owner) => {
