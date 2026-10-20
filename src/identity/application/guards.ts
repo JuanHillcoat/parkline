@@ -1,3 +1,4 @@
+import { scopeKey } from "../../shared/domain/ports/scope-directory";
 import { err, ok, type Result } from "../../shared/domain/result";
 import type { RoleAssignment } from "../domain/role-assignment";
 import type { User } from "../domain/user";
@@ -27,7 +28,13 @@ export const isLastActiveAdmin = async (tx: IdentityTx, target: User): Promise<b
   return (await tx.assignments.countActiveAdminUsers(target.tenantId)) <= 1;
 };
 
-/** Compact snapshot of a user's roles for audit `before` and `after`. */
-export const rolesSnapshot = (assignments: readonly RoleAssignment[]) => ({
-  roles: assignments.map((a) => ({ role: a.role, scope: a.scope })),
+/**
+ * Compact snapshot of a user's roles for audit `before` and `after`. `names` (by `scopeKey`) adds
+ * `scopeName` to the roles whose scope has a human label, so the entry reads without a lookup.
+ */
+export const rolesSnapshot = (assignments: readonly RoleAssignment[], names: ReadonlyMap<string, string> = new Map()) => ({
+  roles: assignments.map((a) => {
+    const scopeName = names.get(scopeKey(a.scope.type, a.scope.id));
+    return scopeName === undefined ? { role: a.role, scope: a.scope } : { role: a.role, scope: a.scope, scopeName };
+  }),
 });

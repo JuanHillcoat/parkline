@@ -1,4 +1,15 @@
+import { ValidationError } from "../../shared/domain/domain-error";
+import { err, ok, type Result } from "../../shared/domain/result";
+
 export type ScopeType = "tenant" | "business_unit" | "operation" | "site";
+
+const SCOPE_TYPES: readonly string[] = ["tenant", "business_unit", "operation", "site"];
+
+/** Validates a raw scope type coming from a form or another caller. */
+export const parseScopeType = (value: string): Result<ScopeType, ValidationError> =>
+  SCOPE_TYPES.includes(value)
+    ? ok(value as ScopeType)
+    : err(new ValidationError(`Unknown scope type ${value}`, "scope.type"));
 
 /** A grant boundary: a node of the organizational hierarchy. */
 export type Scope = { readonly type: ScopeType; readonly id: string };

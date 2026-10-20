@@ -38,6 +38,7 @@ import { RestoreOperation } from "../../organization/application/use-cases/resto
 import { RestoreSite } from "../../organization/application/use-cases/restore-site";
 import { UpdateOperation } from "../../organization/application/use-cases/update-operation";
 import { createPostgresOrganizationTx } from "../../organization/infrastructure/postgres-organization-tx";
+import { PostgresScopeDirectory } from "../../organization/infrastructure/postgres-scope-directory";
 import type { AccessPolicy } from "../domain/ports/access-policy";
 import type { AuditLog } from "../domain/ports/audit-log";
 import { PostgresAuditLog } from "./postgres-audit-log";
@@ -63,6 +64,8 @@ const identityDeps = (sql: Sql, options: ContainerOptions): IdentityDeps => ({
   hasher: options.hasher ?? new ScryptPasswordHasher(),
   tokens: new CryptoSessionTokenService(),
   policy: options.policy ?? DEFAULT_SESSION_POLICY,
+  // Implemented by organization, handed to identity as the shared port only (ADR-0005).
+  scopes: new PostgresScopeDirectory(sql),
 });
 
 const organizationDeps = (sql: Sql, options: ContainerOptions, accessPolicy: AccessPolicy): OrganizationDeps => ({

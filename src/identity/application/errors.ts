@@ -1,4 +1,4 @@
-import { ConflictError, DomainError, ValidationError } from "../../shared/domain/domain-error";
+import { ConflictError, DomainError, NotFoundError, ValidationError } from "../../shared/domain/domain-error";
 import type { SessionRejection } from "../domain/session";
 
 /** Generic on purpose: never reveals whether the email exists or the user is inactive. */
@@ -81,6 +81,24 @@ export class ScopeNotAssignableYetError extends DomainError {
 
   constructor(scopeType: string) {
     super(`Scope type ${scopeType} cannot be assigned yet`);
+  }
+}
+
+/** The role cannot be granted over that kind of scope (admin only holds the tenant scope). */
+export class ScopeNotAllowedForRoleError extends ValidationError {
+  readonly code: string = "scope_not_allowed_for_role";
+
+  constructor(role: string, scopeType: string) {
+    super(`The role ${role} cannot be assigned over a ${scopeType} scope`, "scope");
+  }
+}
+
+/** The scope is missing, archived or belongs to another tenant. */
+export class ScopeNotFoundError extends NotFoundError {
+  readonly code: string = "scope_not_found";
+
+  constructor(scopeType: string, id: string) {
+    super(`Scope ${scopeType}`, id);
   }
 }
 

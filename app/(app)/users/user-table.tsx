@@ -1,6 +1,6 @@
 import type { UserSummary } from "../../../src/identity/application/use-cases/list-users";
 import { copy } from "../../_lib/copy";
-import { ROLE_LABELS } from "../../_lib/messages";
+import { grantText, type ScopeOptions } from "../../_lib/user-scope";
 import { ChangeRoleDialog, DeactivateDialog } from "./user-dialogs";
 
 type RowProps = {
@@ -8,14 +8,22 @@ type RowProps = {
   readonly isSelf: boolean;
   readonly canAssign: boolean;
   readonly canDeactivate: boolean;
+  readonly options: ScopeOptions;
 };
 
-function RowActions({ user, isSelf, canAssign, canDeactivate }: RowProps) {
+function RowActions({ user, isSelf, canAssign, canDeactivate, options }: RowProps) {
   if (!user.active) return null;
-  const target = { id: user.id, displayName: user.displayName, role: user.roles[0] ?? null };
+  const grant = user.grants[0];
+  const target = {
+    id: user.id,
+    displayName: user.displayName,
+    role: grant?.role ?? null,
+    scopeType: grant?.scopeType ?? "tenant",
+    scopeId: grant?.scopeId ?? "",
+  };
   return (
     <span className="row-actions">
-      {canAssign && <ChangeRoleDialog target={target} />}
+      {canAssign && <ChangeRoleDialog target={target} options={options} />}
       {canDeactivate && !isSelf && <DeactivateDialog target={target} />}
     </span>
   );
@@ -23,7 +31,7 @@ function RowActions({ user, isSelf, canAssign, canDeactivate }: RowProps) {
 
 function UserRow(props: RowProps) {
   const { user, isSelf } = props;
-  const roles = user.roles.map((role) => ROLE_LABELS[role]).join(", ") || copy.common.noRole;
+  const roles = user.grants.map(grantText).join(", ") || copy.common.noRole;
   return (
     <tr data-inactive={!user.active}>
       <th scope="row" className="cell-name">
@@ -47,6 +55,7 @@ type TableProps = {
   readonly selfId: string;
   readonly canAssign: boolean;
   readonly canDeactivate: boolean;
+  readonly options: ScopeOptions;
 };
 
 function TableHead() {
@@ -63,7 +72,7 @@ function TableHead() {
   );
 }
 
-export function UserTable({ users, selfId, canAssign, canDeactivate }: TableProps) {
+export function UserTable({ users, selfId, canAssign, canDeactivate, options }: TableProps) {
   return (
     <div className="table-wrap">
       <table className="table">
@@ -72,7 +81,7 @@ export function UserTable({ users, selfId, canAssign, canDeactivate }: TableProp
         <tbody>
           {users.map((user) => (
             <UserRow key={user.id} user={user} isSelf={user.id === selfId}
-              canAssign={canAssign} canDeactivate={canDeactivate} />
+              canAssign={canAssign} canDeactivate={canDeactivate} options={options} />
           ))}
         </tbody>
       </table>

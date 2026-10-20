@@ -1,5 +1,6 @@
 import type { Clock } from "../../shared/domain/ports/clock";
 import type { IdGenerator } from "../../shared/domain/ports/id-generator";
+import type { ScopeDirectory } from "../../shared/domain/ports/scope-directory";
 import type { UnitOfWork } from "../../shared/domain/ports/unit-of-work";
 import type { SessionPolicy } from "../domain/session";
 import type { IdentityTx } from "./ports/identity-tx";
@@ -13,4 +14,6 @@ export type IdentityDeps = {
   readonly hasher: PasswordHasher;
   readonly tokens: SessionTokenService;
   readonly policy: SessionPolicy;
+  /** Organization nodes a role can be scoped to (ADR-0005); identity never imports organization. */
+  readonly scopes: ScopeDirectory;
 };

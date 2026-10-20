@@ -10,6 +10,7 @@ import type { IdentityDeps } from "../deps";
 import { EmailTakenError } from "../errors";
 import { rolesSnapshot } from "../guards";
 import type { IdentityTx } from "../ports/identity-tx";
+import { resolveScope, scopeNames, type RawScope, type ResolvedScope } from "../scope-rules";
 
 export type CreateUserInput = {
   readonly actor: ActorContext;
@@ -17,6 +18,8 @@ export type CreateUserInput = {
   readonly displayName: string;
   readonly password: string;
   readonly role?: Role;
+  /** Where the role applies; defaults to the whole tenant. Ignored when there is no role. */
+  readonly scope?: RawScope;
 };
 
 type Plan = {
@@ -25,6 +28,7 @@ type Plan = {
   readonly user: User;
   readonly passwordHash: string;
   readonly assignment: RoleAssignment | null;
+  readonly scopeNames: ReadonlyMap<string, string>;
 };
 
 /** The admin sets the initial password; there is no email delivery in this slice. */
@@ -36,24 +40,34 @@ export class CreateUser {
     if (!actorRole.ok) return actorRole;
     const password = validatePassword(input.password);
     if (!password.ok) return password;
-    const prepared = this.prepare(input);
+    const scope = await this.scopeOf(input);
+    if (!scope.ok) return scope;
+    const prepared = this.prepare(input, scope.value);
     if (!prepared.ok) return prepared;
     const passwordHash = await this.deps.hasher.hash(input.password);
     const plan: Plan = { ...prepared.value, actor: input.actor, actorRole: actorRole.value, passwordHash };
     return this.deps.unitOfWork.run((tx) => this.persist(tx, plan));
   }
 
+  private async scopeOf(input: CreateUserInput): Promise<Result<ResolvedScope | null, DomainError>> {
+    if (input.role === undefined) return ok(null);
+    return resolveScope(this.deps, input.actor.user.tenantId, input.role, input.scope);
+  }
+
   private prepare(
     input: CreateUserInput,
-  ): Result<{ user: User; assignment: RoleAssignment | null }, DomainError> {
+    resolved: ResolvedScope | null,
+  ): Result<Pick<Plan, "user" | "assignment" | "scopeNames">, DomainError> {
     const { tenantId } = input.actor.user;
     const { email, displayName } = input;
     const user = createUser({ id: this.deps.ids.next(), tenantId, email, displayName });
     if (!user.ok) return user;
-    if (input.role === undefined) return ok({ user: user.value, assignment: null });
-    const scope = { type: "tenant", id: tenantId } as const;
-    const assignment = createRoleAssignment({ userId: user.value.id, role: input.role, scope });
-    return assignment.ok ? ok({ user: user.value, assignment: assignment.value }) : assignment;
+    if (input.role === undefined || resolved === null) {
+      return ok({ user: user.value, assignment: null, scopeNames: new Map() });
+    }
+    const assignment = createRoleAssignment({ userId: user.value.id, role: input.role, scope: resolved.scope });
+    if (!assignment.ok) return assignment;
+    return ok({ user: user.value, assignment: assignment.value, scopeNames: scopeNames(resolved) });
   }
 
   private async persist(tx: IdentityTx, plan: Plan): Promise<Result<User, DomainError>> {
@@ -69,7 +83,7 @@ export class CreateUser {
       entityType: "user",
       entityId: user.id,
       tenantId: user.tenantId,
-      after: { email: user.email, displayName: user.displayName, ...rolesSnapshot(assignment ? [assignment] : []) },
+      after: { email: user.email, displayName: user.displayName, ...rolesSnapshot(assignment ? [assignment] : [], plan.scopeNames) },
     });
     return ok(user);
   }

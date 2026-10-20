@@ -1,21 +1,10 @@
-import { ROLES, type Role } from "../../../src/identity/domain/role";
+import type { Role } from "../../../src/identity/domain/role";
 import { MIN_PASSWORD_LENGTH } from "../../../src/identity/domain/password-policy";
 import { ActionDialog } from "../../_components/action-dialog";
 import { copy } from "../../_lib/copy";
-import { ROLE_LABELS } from "../../_lib/messages";
+import type { ScopeOptions } from "../../_lib/user-scope";
 import { changeRoleAction, createUserAction, deactivateUserAction } from "./actions";
-
-function RoleSelect({ id, current }: { id: string; current: Role | null }) {
-  return (
-    <div className="field">
-      <label htmlFor={id}>{copy.common.role}</label>
-      <select id={id} name="role" defaultValue={current ?? ""} required className="input">
-        {current === null && <option value="" disabled>{copy.common.selectRole}</option>}
-        {ROLES.map((role) => <option key={role} value={role}>{ROLE_LABELS[role]}</option>)}
-      </select>
-    </div>
-  );
-}
+import { RoleScopeFields } from "./scope-fields";
 
 function ReasonField({ id, placeholder }: { id: string; placeholder: string }) {
   return (
@@ -37,7 +26,7 @@ function TextField(props: { id: string; name: string; label: string; type?: stri
   );
 }
 
-export function NewUserDialog() {
+export function NewUserDialog({ options }: { options: ScopeOptions }) {
   const t = copy.dialogs.newUser;
   return (
     <ActionDialog triggerLabel={t.trigger} triggerClassName="btn btn-primary" title={t.title}
@@ -48,21 +37,27 @@ export function NewUserDialog() {
       <TextField id="new-password" name="password" label={t.passwordLabel} type="password"
         placeholder={t.passwordPlaceholder(MIN_PASSWORD_LENGTH)} />
       <p className="hint">{t.passwordHint(MIN_PASSWORD_LENGTH)}</p>
-      <RoleSelect id="new-role" current="viewer" />
+      <RoleScopeFields idPrefix="new" options={options} current={null} fallbackRole="viewer" />
     </ActionDialog>
   );
 }
 
-type Target = { readonly id: string; readonly displayName: string; readonly role: Role | null };
+type Target = {
+  readonly id: string;
+  readonly displayName: string;
+  readonly role: Role | null;
+  readonly scopeType: string;
+  readonly scopeId: string;
+};
 
-export function ChangeRoleDialog({ target }: { target: Target }) {
+export function ChangeRoleDialog({ target, options }: { target: Target; options: ScopeOptions }) {
   const t = copy.dialogs.changeRole;
   return (
     <ActionDialog triggerLabel={t.trigger} triggerClassName="btn btn-link" title={t.title}
       description={t.description(target.displayName)} submitLabel={t.submit} action={changeRoleAction}>
       <input type="hidden" name="userId" value={target.id} />
-      <RoleSelect id={`role-${target.id}`} current={target.role} />
-      <p className="hint">{t.scopeHint}</p>
+      <RoleScopeFields idPrefix={`role-${target.id}`} options={options} fallbackRole=""
+        current={target.role === null ? null : { role: target.role, scopeType: target.scopeType, scopeId: target.scopeId }} />
       <ReasonField id={`reason-role-${target.id}`} placeholder={t.reasonPlaceholder} />
     </ActionDialog>
   );

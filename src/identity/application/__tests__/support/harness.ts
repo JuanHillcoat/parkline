@@ -21,6 +21,7 @@ import { ListUsers } from "../../use-cases/list-users";
 import { RevokeRole } from "../../use-cases/revoke-role";
 import { SignIn } from "../../use-cases/sign-in";
 import { SignOut } from "../../use-cases/sign-out";
+import { FakeScopeDirectory } from "./fake-scope-directory";
 
 export const PASSWORD = "correct-horse-battery";
 export const START = new Date("2026-01-01T09:00:00Z");
@@ -30,7 +31,9 @@ export const createHarness = (policy: SessionPolicy = DEFAULT_SESSION_POLICY) =>
   const store = new InMemoryIdentityStore(audit);
   const clock = new FixedClock(START);
   const hasher = new FakePasswordHasher();
+  const scopes = new FakeScopeDirectory();
   const deps: IdentityDeps = {
+    scopes,
     unitOfWork: store.unitOfWork(),
     clock,
     ids: new SequentialIdGenerator("id"),
@@ -55,13 +58,19 @@ export const createHarness = (policy: SessionPolicy = DEFAULT_SESSION_POLICY) =>
     return { tenant: result.value.tenant, admin: await actorOf(result.value.user) };
   };
 
-  const addUser = async (admin: ActorContext, email: string, role?: Role): Promise<User> => {
+  const addUser = async (
+    admin: ActorContext,
+    email: string,
+    role?: Role,
+    scope?: { type: string; id: string },
+  ): Promise<User> => {
     const created = await new CreateUser(deps).execute({
       actor: admin,
       email,
       displayName: email,
       password: PASSWORD,
       role,
+      scope,
     });
     if (!created.ok) throw created.error;
     return created.value;
@@ -99,6 +108,7 @@ export const createHarness = (policy: SessionPolicy = DEFAULT_SESSION_POLICY) =>
     store,
     clock,
     hasher,
+    scopes,
     deps,
     actorOf,
     auditOf,
