@@ -73,11 +73,12 @@ const failure = (run: PromiseLike<unknown>): Promise<PgError | null> =>
   );
 
 describe("organization schema after migrating", () => {
-  it("applies 0005 to 0008 (organization, names, edit, archive) and the three tables start empty (no seed)", () => {
+  it("applies 0005 to 0009 (organization, names, edit, archive, fleet) and the three tables start empty (no seed)", () => {
     expect(applied).toContain("0005_organization.sql");
     expect(applied).toContain("0006_organization_names.sql");
     expect(applied).toContain("0007_organization_edit.sql");
-    expect(applied.at(-1)).toBe("0008_organization_archive.sql");
+    expect(applied).toContain("0008_organization_archive.sql");
+    expect(applied.at(-1)).toBe("0009_fleet_catalogs.sql");
     expect(emptyAfterMigrating).toEqual({ business_units: 0, operations: 0, sites: 0 });
   });
 
@@ -237,7 +238,8 @@ describe("archived_at and partial uniqueness (migration 0008, D5)", () => {
   it("adds a nullable timestamptz archived_at to the three tables, null for new rows", async () => {
     const columns = await sql<{ table_name: string; data_type: string; is_nullable: string }[]>`
       select table_name, data_type, is_nullable from information_schema.columns
-      where table_schema = 'public' and column_name = 'archived_at' order by table_name`;
+      where table_schema = 'public' and column_name = 'archived_at'
+        and table_name in ('business_units', 'operations', 'sites') order by table_name`;
     expect(columns).toEqual(
       ["business_units", "operations", "sites"].map((table_name) => ({
         table_name,
@@ -347,7 +349,7 @@ describe("migration 0008 on a database that already has rows", () => {
     const [s] = await old<{ id: string }[]>`insert into sites (tenant_id, name) values (${tenant}, 'PATIO') returning id`;
     await old`insert into operations (tenant_id, business_unit_id, site_id, name, cost_center)
       values (${tenant}, ${u?.id ?? ""}, ${s?.id ?? ""}, 'CAMINO', '0001')`;
-    expect(await migrate(old, MIGRATIONS_DIR)).toEqual(["0008_organization_archive.sql"]);
+    expect(await migrate(old, MIGRATIONS_DIR)).toEqual(["0008_organization_archive.sql", "0009_fleet_catalogs.sql"]);
     for (const table of TABLES) {
       const rows = await old.unsafe<{ archived_at: Date | null }[]>(`select archived_at from ${table}`);
       expect(rows.map((r) => r.archived_at), table).toEqual([null]);
@@ -363,6 +365,7 @@ describe("migration file hygiene", () => {
     "0006_organization_names.sql",
     "0007_organization_edit.sql",
     "0008_organization_archive.sql",
+    "0009_fleet_catalogs.sql",
   ])(
     "%s holds only printable ASCII and line feeds: no raw control or invisible characters",
     (file) => {

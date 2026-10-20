@@ -1,5 +1,5 @@
 import { requirePermission, type ActorContext } from "../../src/identity/application/actor-context";
-import { canReadCatalog } from "../_lib/catalog-access";
+import { canReadCatalog, canViewFleet } from "../_lib/catalog-access";
 import { copy } from "../_lib/copy";
 import { ROLE_LABELS } from "../_lib/messages";
 import { signOutAction } from "./actions";
@@ -54,6 +54,7 @@ export function Sidebar({ actor }: { actor: ActorContext }) {
       <nav aria-label={copy.nav.main}>
         <ul className="nav">
           <li><NavLink href="/">{copy.nav.home}</NavLink></li>
+          {canViewFleet(actor) && <li><NavLink href="/fleet">{copy.nav.fleet}</NavLink></li>}
           {COMING_SOON.map((label) => <SoonItem key={label} label={label} />)}
         </ul>
         {(canReadUsers || canReadOrganization) && (

@@ -3,6 +3,23 @@
  * only file allowed to import across modules' infrastructure.
  */
 import postgres, { type Sql } from "postgres";
+import type { FleetDeps } from "../../fleet/application/deps";
+import { ArchiveAssetType } from "../../fleet/application/use-cases/archive-asset-type";
+import { ArchiveEquipment } from "../../fleet/application/use-cases/archive-equipment";
+import { ArchiveSupplier } from "../../fleet/application/use-cases/archive-supplier";
+import { CreateAssetType } from "../../fleet/application/use-cases/create-asset-type";
+import { CreateEquipment } from "../../fleet/application/use-cases/create-equipment";
+import { CreateSupplier } from "../../fleet/application/use-cases/create-supplier";
+import { ListAssetTypes } from "../../fleet/application/use-cases/list-asset-types";
+import { ListEquipment } from "../../fleet/application/use-cases/list-equipment";
+import { ListSuppliers } from "../../fleet/application/use-cases/list-suppliers";
+import { RenameSupplier } from "../../fleet/application/use-cases/rename-supplier";
+import { RestoreAssetType } from "../../fleet/application/use-cases/restore-asset-type";
+import { RestoreEquipment } from "../../fleet/application/use-cases/restore-equipment";
+import { RestoreSupplier } from "../../fleet/application/use-cases/restore-supplier";
+import { UpdateAssetType } from "../../fleet/application/use-cases/update-asset-type";
+import { UpdateEquipment } from "../../fleet/application/use-cases/update-equipment";
+import { createPostgresFleetTx } from "../../fleet/infrastructure/postgres-fleet-tx";
 import type { IdentityDeps } from "../../identity/application/deps";
 import { IdentityAccessPolicy } from "../../identity/application/identity-access-policy";
 import type { PasswordHasher } from "../../identity/application/ports/password-hasher";
@@ -97,25 +114,55 @@ const organizationUseCases = (deps: OrganizationDeps) => ({
   listSites: new ListSites(deps),
 });
 
+const fleetDeps = (sql: Sql, options: ContainerOptions, accessPolicy: AccessPolicy): FleetDeps => ({
+  unitOfWork: new PostgresUnitOfWork(sql, (handle) => {
+    const audit = new PostgresAuditLog(handle);
+    return createPostgresFleetTx(handle, options.wrapAudit?.(audit) ?? audit);
+  }),
+  clock: new SystemClock(),
+  ids: new UuidIdGenerator(),
+  accessPolicy,
+});
+
+const fleetUseCases = (deps: FleetDeps) => ({
+  archiveAssetType: new ArchiveAssetType(deps),
+  archiveEquipment: new ArchiveEquipment(deps),
+  archiveSupplier: new ArchiveSupplier(deps),
+  createAssetType: new CreateAssetType(deps),
+  createEquipment: new CreateEquipment(deps),
+  createSupplier: new CreateSupplier(deps),
+  listAssetTypes: new ListAssetTypes(deps),
+  listEquipment: new ListEquipment(deps),
+  listSuppliers: new ListSuppliers(deps),
+  renameSupplier: new RenameSupplier(deps),
+  restoreAssetType: new RestoreAssetType(deps),
+  restoreEquipment: new RestoreEquipment(deps),
+  restoreSupplier: new RestoreSupplier(deps),
+  updateAssetType: new UpdateAssetType(deps),
+  updateEquipment: new UpdateEquipment(deps),
+});
+
+const identityUseCases = (deps: IdentityDeps) => ({
+  install: new InstallTenantAdmin(deps),
+  signIn: new SignIn(deps),
+  signOut: new SignOut(deps),
+  authenticate: new AuthenticateSession(deps),
+  createUser: new CreateUser(deps),
+  assignRole: new AssignRole(deps),
+  revokeRole: new RevokeRole(deps),
+  deactivateUser: new DeactivateUser(deps),
+  listUsers: new ListUsers(deps),
+  changeUserRole: new ChangeUserRole(deps),
+});
+
 export const createContainer = (sql: Sql, options: ContainerOptions = {}) => {
-  const deps = identityDeps(sql, options);
   const accessPolicy: AccessPolicy = new IdentityAccessPolicy();
   return {
     /** Cross-module authorization (ADR-0005); modules receive it instead of importing identity. */
     accessPolicy,
     organization: organizationUseCases(organizationDeps(sql, options, accessPolicy)),
-    identity: {
-      install: new InstallTenantAdmin(deps),
-      signIn: new SignIn(deps),
-      signOut: new SignOut(deps),
-      authenticate: new AuthenticateSession(deps),
-      createUser: new CreateUser(deps),
-      assignRole: new AssignRole(deps),
-      revokeRole: new RevokeRole(deps),
-      deactivateUser: new DeactivateUser(deps),
-      listUsers: new ListUsers(deps),
-      changeUserRole: new ChangeUserRole(deps),
-    },
+    fleet: fleetUseCases(fleetDeps(sql, options, accessPolicy)),
+    identity: identityUseCases(identityDeps(sql, options)),
   };
 };
 
