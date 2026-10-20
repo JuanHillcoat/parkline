@@ -13,6 +13,10 @@ export const SENSITIVE_AUDIT_ACTIONS: readonly string[] = [
   "organization.operation.update",
   "organization.archive",
   "organization.restore",
+  "fleet.asset_type.update",
+  "fleet.equipment.update",
+  "fleet.archive",
+  "fleet.restore",
 ];
 
 export const requiresReason = (action: string): boolean => SENSITIVE_AUDIT_ACTIONS.includes(action);

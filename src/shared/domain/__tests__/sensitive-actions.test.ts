@@ -17,6 +17,10 @@ describe("SENSITIVE_AUDIT_ACTIONS", () => {
       "organization.operation.update",
       "organization.archive",
       "organization.restore",
+      "fleet.asset_type.update",
+      "fleet.equipment.update",
+      "fleet.archive",
+      "fleet.restore",
     ]);
   });
 });
