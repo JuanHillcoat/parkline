@@ -1,4 +1,5 @@
 import { ActionDialog, type DialogAction } from "../../_components/action-dialog";
+import { NameField, ReasonField, SelectField, type Option } from "../../_components/form-fields";
 import { copy } from "../../_lib/copy";
 import type { OperationRow } from "../../_lib/organization-view";
 import {
@@ -17,42 +18,6 @@ import {
   updateOperationAction,
 } from "./actions";
 
-type Option = { readonly id: string; readonly name: string };
-
-function NameField(props: { id: string; label: string; hint: string; placeholder?: string; initial?: string }) {
-  return (
-    <div className="field">
-      <label htmlFor={props.id}>{props.label}</label>
-      <input id={props.id} name="name" type="text" required defaultValue={props.initial}
-        placeholder={props.placeholder} className="input" autoComplete="off" />
-      <span className="hint">{props.hint}</span>
-    </div>
-  );
-}
-
-type SelectProps = {
-  readonly id: string;
-  readonly name: string;
-  readonly label: string;
-  readonly prompt: string;
-  readonly options: readonly Option[];
-  readonly hint?: string;
-  readonly initial?: string;
-};
-
-function SelectField(props: SelectProps) {
-  return (
-    <div className="field">
-      <label htmlFor={props.id}>{props.label}</label>
-      <select id={props.id} name={props.name} required defaultValue={props.initial ?? ""} className="input">
-        <option value="" disabled>{props.prompt}</option>
-        {props.options.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
-      </select>
-      {props.hint !== undefined && <span className="hint">{props.hint}</span>}
-    </div>
-  );
-}
-
 function CostCenterField({ id, initial }: { id: string; initial?: string }) {
   const t = copy.dialogs.newOperation;
   return (
@@ -62,17 +27,6 @@ function CostCenterField({ id, initial }: { id: string; initial?: string }) {
         maxLength={4} pattern="[0-9]{4}" placeholder={t.costCenterPlaceholder} className="input"
         autoComplete="off" defaultValue={initial} />
       <span className="hint">{t.costCenterHint}</span>
-    </div>
-  );
-}
-
-function ReasonField({ id, placeholder }: { id: string; placeholder: string }) {
-  return (
-    <div className="field">
-      <label htmlFor={id}>{copy.common.reason}</label>
-      <textarea id={id} name="reason" required rows={3} placeholder={placeholder}
-        className="input" />
-      <span className="hint">{copy.common.reasonHint}</span>
     </div>
   );
 }

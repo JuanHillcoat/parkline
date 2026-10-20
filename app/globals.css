@@ -645,3 +645,16 @@ dialog.dialog::backdrop {
 .group-card[data-archived="true"] {
   background: var(--neutral-bg);
 }
+
+/* Fleet catalogs (P0-07): observations as a secondary, truncated line */
+.cell-note {
+  display: block;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.section-title .cell-sub {
+  margin-left: 8px;
+  font-weight: 400;
+}

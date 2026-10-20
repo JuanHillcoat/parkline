@@ -63,3 +63,10 @@ describe("errorMessage for the organization codes", () => {
     expect(errorMessage(new NotFoundError("Site", "x"))).toBe("Ese registro ya no existe.");
   });
 });
+
+describe("parent_archived for the organization module", () => {
+  it("keeps naming only the division and the site", () => {
+    const message = errorMessage(new ParentArchivedError("parent"));
+    expect(message).toBe("No se puede reactivar: su división o su sitio están dados de baja.");
+  });
+});

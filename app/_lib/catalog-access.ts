@@ -9,3 +9,11 @@ import { roleGrants } from "../../src/identity/domain/permission";
  */
 export const canReadCatalog = ({ user, assignments }: ActorContext): boolean =>
   user.active && assignments.some((a) => a.active && roleGrants(a.role, "catalog.read"));
+
+/**
+ * Whether the actor holds `catalog.read` at company scope. Equipment has no operation
+ * yet (decision D6, ADR-0007), so scoped readers would only see empty lists: the
+ * fleet screen and its menu entry are for company-wide readers.
+ */
+export const canViewFleet = ({ user, assignments }: ActorContext): boolean =>
+  user.active && assignments.some((a) => a.active && a.scope.type === "tenant" && roleGrants(a.role, "catalog.read"));
