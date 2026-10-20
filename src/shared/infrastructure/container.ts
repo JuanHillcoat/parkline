@@ -3,6 +3,7 @@
  * only file allowed to import across modules' infrastructure.
  */
 import postgres, { type Sql } from "postgres";
+import { connectionOptions } from "./connection-options";
 import type { FleetDeps } from "../../fleet/application/deps";
 import { ArchiveAssetType } from "../../fleet/application/use-cases/archive-asset-type";
 import { ArchiveEquipment } from "../../fleet/application/use-cases/archive-equipment";
@@ -182,6 +183,6 @@ const databaseUrl = (): string => {
  * that dev hot reloads reuse one connection pool. Import it only from `app/`.
  */
 export const getContainer = (): Container => {
-  containerGlobal.parklineContainer ??= createContainer(postgres(databaseUrl()));
+  containerGlobal.parklineContainer ??= createContainer(postgres(databaseUrl(), connectionOptions(process.env)));
   return containerGlobal.parklineContainer;
 };
