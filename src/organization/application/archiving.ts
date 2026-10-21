@@ -1,10 +1,10 @@
-import { NotFoundError, type DomainError } from "../../shared/domain/domain-error";
+import { type DomainError } from "../../shared/domain/domain-error";
 import type { Actor, ResourcePosition } from "../../shared/domain/ports/access-policy";
 import { err, ok, type Result } from "../../shared/domain/result";
 import { AlreadyArchivedError, NotArchivedError } from "../domain/errors";
 import { recordAudit, type AuditFields } from "./audit";
 import type { OrganizationDeps } from "./deps";
-import { auditActor, whenActive } from "./guards";
+import { auditActor, missingRow, whenActive } from "./guards";
 import type { OrganizationTx } from "./ports/organization-tx";
 import { parseReason } from "./reason";
 
@@ -71,7 +71,7 @@ const prepare = async <T extends ArchivableRow>(
 ): Promise<Result<Prepared<T>, DomainError>> => {
   const { actor, id } = input;
   const row = await subject.find(tx, actor.tenantId, id);
-  if (row === null) return err(new NotFoundError(subject.label, id));
+  if (row === null) return missingRow(deps.accessPolicy, actor, "catalog.archive", subject.label, id);
   const role = deps.accessPolicy.check(actor, "catalog.archive", subject.position(actor.tenantId, row));
   if (!role.ok) return role;
   const reason = parseReason(input.reason);

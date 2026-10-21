@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import postgres, { type Sql } from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -72,6 +72,12 @@ async function createAnalyst(email: string): Promise<string> {
     }),
   );
   return user.id;
+}
+
+/** A tenant-wide analyst: createAnalyst already gives that role at tenant scope; returns its email to sign in. */
+async function createWideAnalyst(email: string): Promise<string> {
+  await createAnalyst(email);
+  return email;
 }
 
 const adminToken = async (): Promise<string> =>
@@ -191,6 +197,30 @@ describe("organization flow through the container as parkline_app", () => {
     expect(must(await o.listBusinessUnits.execute({ actor }))).toEqual([]);
     const denied = await o.createSite.execute({ actor, name: "Not Allowed" });
     expect(denied.ok).toBe(false);
+  });
+
+  it("answers a scoped actor the same for a missing id as for a row outside its reach, through the Postgres adapters", async () => {
+    const userId = await createAnalyst("probe.analyst@example.test");
+    await scopeTo(userId, "business_unit", ids.divA ?? "");
+    const scoped = await signInActor("probe.analyst@example.test");
+    const o = c.organization;
+    const missing = randomUUID();
+    const code = (result: Result<unknown, { code: string }>) => (result.ok ? "ok" : result.error.code);
+    const answers = [
+      await o.renameBusinessUnit.execute({ actor: scoped, id: ids.divB ?? "", name: "Probe" }),
+      await o.renameBusinessUnit.execute({ actor: scoped, id: missing, name: "Probe" }),
+      await o.archiveSite.execute({ actor: scoped, id: ids.site3 ?? "", reason: "probe" }),
+      await o.archiveSite.execute({ actor: scoped, id: missing, reason: "probe" }),
+      await o.renameOperation.execute({ actor: scoped, id: ids.opB1 ?? "", name: "Probe" }),
+      await o.renameOperation.execute({ actor: scoped, id: missing, name: "Probe" }),
+    ].map(code);
+    expect(answers).toEqual(Array(6).fill("forbidden"));
+    const wide = await signInActor(await createWideAnalyst("wide.analyst@example.test"));
+    // The precondition of the next assertion, checked without writing anything: a blank name is only
+    // judged after authorization passes, so "invalid_name" proves the actor holds the permission tenant-wide.
+    expect(code(await o.renameSite.execute({ actor: wide, id: ids.site3 ?? "", name: "   " }))).toBe("invalid_name");
+    const gone = await o.renameSite.execute({ actor: wide, id: missing, name: "Probe" });
+    expect(code(gone)).toBe("not_found");
   });
 
   it("wrote one audit entry per mutation with the right action", async () => {

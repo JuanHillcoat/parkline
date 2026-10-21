@@ -7,7 +7,17 @@ import { NoChangesError } from "../../domain/errors";
 import { nameKey, parseName } from "../../domain/name";
 import { recordAudit } from "../audit";
 import type { OrganizationDeps } from "../deps";
-import { archivedRow, auditActor, costCenterTaken, lockParents, nameTaken, parentArchived, requireFreeName, whenActive } from "../guards";
+import {
+  archivedRow,
+  auditActor,
+  costCenterTaken,
+  lockParents,
+  missingRow,
+  nameTaken,
+  parentArchived,
+  requireFreeName,
+  whenActive,
+} from "../guards";
 import { parseReason } from "../reason";
 import type { OperationUpdate } from "../ports/repositories";
 import type { OrganizationTx } from "../ports/organization-tx";
@@ -72,7 +82,7 @@ export class UpdateOperation {
   private async update(tx: OrganizationTx, input: UpdateOperationInput): Promise<Result<Operation, DomainError>> {
     const { actor } = input;
     const current = await tx.operations.findById(actor.tenantId, input.operationId);
-    if (current === null) return err(new NotFoundError("Operation", input.operationId));
+    if (current === null) return missingRow(this.deps.accessPolicy, actor, "catalog.write", "Operation", input.operationId);
     const role = this.deps.accessPolicy.check(actor, "catalog.write", divisionPosition(actor, current.businessUnitId));
     if (!role.ok) return role;
     if (current.archivedAt !== null) return archivedRow("Operation", current.id);
@@ -98,15 +108,19 @@ export class UpdateOperation {
   /** The target division and site must exist in the tenant; a different division needs write there too. */
   private async authorizeTarget(tx: OrganizationTx, input: UpdateOperationInput, current: Operation): Promise<Result<void, DomainError>> {
     const { actor, businessUnitId, siteId } = input;
+    // The target division is authorized before it is looked up: the check needs only its id, so a caller
+    // cannot probe which divisions exist by moving an operation to them. The site is still looked up without
+    // its own check: sites are readable by any catalog reader, so a division writer may learn that one exists.
+    if (businessUnitId !== current.businessUnitId) {
+      const target = this.deps.accessPolicy.check(actor, "catalog.write", divisionPosition(actor, businessUnitId));
+      if (!target.ok) return target;
+    }
     await lockParents(tx, actor.tenantId, businessUnitId, siteId);
-    const unit =await tx.businessUnits.findById(actor.tenantId, businessUnitId);
+    const unit = await tx.businessUnits.findById(actor.tenantId, businessUnitId);
     if (unit === null) return err(new NotFoundError("Business unit", businessUnitId));
     const site = await tx.sites.findById(actor.tenantId, siteId);
     if (site === null) return err(new NotFoundError("Site", siteId));
-    if (unit.archivedAt !== null || site.archivedAt !== null) return parentArchived();
-    if (businessUnitId === current.businessUnitId) return ok(undefined);
-    const target = this.deps.accessPolicy.check(actor, "catalog.write", divisionPosition(actor, businessUnitId));
-    return target.ok ? ok(undefined) : target;
+    return unit.archivedAt !== null || site.archivedAt !== null ? parentArchived() : ok(undefined);
   }
 
   private async apply(tx: OrganizationTx, plan: Plan): Promise<Result<Operation, DomainError>> {

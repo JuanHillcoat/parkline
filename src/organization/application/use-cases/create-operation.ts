@@ -32,10 +32,13 @@ export class CreateOperation {
 
   private async create(tx: OrganizationTx, input: CreateOperationInput): Promise<Result<Operation, DomainError>> {
     const { actor, businessUnitId, siteId, name, costCenter } = input;
-    const missing = await this.findMissingParent(tx, input);
-    if (missing !== null) return err(missing);
+    // Authorization first: it needs only the division id received, so a caller without the grant on that
+    // division learns nothing about which divisions exist. The site is looked up afterwards; sites are
+    // readable by any catalog reader, so a division writer learning that one exists is within its reach.
     const role = this.deps.accessPolicy.check(actor, "catalog.write", { tenantId: actor.tenantId, businessUnitId });
     if (!role.ok) return role;
+    const missing = await this.findMissingParent(tx, input);
+    if (missing !== null) return err(missing);
     const created = createOperation({ id: this.deps.ids.next(), tenantId: actor.tenantId, businessUnitId, siteId, name, costCenter });
     if (!created.ok) return created;
     const stored = await this.store(tx, created.value);

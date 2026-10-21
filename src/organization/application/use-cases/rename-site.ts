@@ -1,11 +1,11 @@
-import { NotFoundError, type DomainError } from "../../../shared/domain/domain-error";
+import { type DomainError } from "../../../shared/domain/domain-error";
 import type { Actor } from "../../../shared/domain/ports/access-policy";
-import { err, ok, type Result } from "../../../shared/domain/result";
+import { ok, type Result } from "../../../shared/domain/result";
 import type { Site } from "../../domain/entities";
 import { nameKey, parseName } from "../../domain/name";
 import { recordAudit } from "../audit";
 import type { OrganizationDeps } from "../deps";
-import { archivedRow, auditActor, nameTaken, requireFreeName, whenActive } from "../guards";
+import { archivedRow, auditActor, missingRow, nameTaken, requireFreeName, whenActive } from "../guards";
 import type { OrganizationTx } from "../ports/organization-tx";
 
 export type RenameSiteInput = {
@@ -25,7 +25,7 @@ export class RenameSite {
   private async rename(tx: OrganizationTx, input: RenameSiteInput): Promise<Result<Site, DomainError>> {
     const { actor, id } = input;
     const site = await tx.sites.findById(actor.tenantId, id);
-    if (site === null) return err(new NotFoundError("Site", id));
+    if (site === null) return missingRow(this.deps.accessPolicy, actor, "catalog.write", "Site", id);
     const role = this.deps.accessPolicy.check(actor, "catalog.write", { tenantId: actor.tenantId, siteId: id });
     if (!role.ok) return role;
     if (site.archivedAt !== null) return archivedRow("Site", id);

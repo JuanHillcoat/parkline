@@ -1,4 +1,4 @@
-import { ForbiddenError, type DomainError } from "../../shared/domain/domain-error";
+import { ForbiddenError, NotFoundError, type DomainError } from "../../shared/domain/domain-error";
 import type { AccessPolicy, Actor } from "../../shared/domain/ports/access-policy";
 import { err, ok, type Result } from "../../shared/domain/result";
 import { ArchivedError, CostCenterTakenError, NameTakenError, ParentArchivedError } from "../domain/errors";
@@ -17,6 +17,23 @@ export const whenActive = <T>(
 ): Promise<Result<T, DomainError>> => {
   const active = requireActive(actor);
   return active.ok ? run() : Promise.resolve(active);
+};
+
+/**
+ * The answer for a row that is not there. Authorization needs the row's position, so it cannot run
+ * before the lookup; to keep ids from being probed, a missing row answers exactly like a row the actor
+ * cannot reach (forbidden) unless the actor holds the permission tenant-wide, who could act on any row
+ * and may be told it does not exist.
+ */
+export const missingRow = (
+  policy: AccessPolicy,
+  actor: Actor,
+  permission: string,
+  kind: string,
+  id: string,
+): Result<never, DomainError> => {
+  const tenantWide = policy.check(actor, permission, { tenantId: actor.tenantId });
+  return tenantWide.ok ? err(new NotFoundError(kind, id)) : tenantWide;
 };
 
 /** The visibility predicate of D4: `catalog.read` over a position, decided by the shared policy. */
