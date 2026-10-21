@@ -204,6 +204,8 @@ describe("organization flow through the container as parkline_app", () => {
     await scopeTo(userId, "business_unit", ids.divA ?? "");
     const scoped = await signInActor("probe.analyst@example.test");
     const o = c.organization;
+    // The fixtures this test relies on must exist: an empty id would also answer "forbidden" and hide a broken setup.
+    expect([ids.divB, ids.site3, ids.opB1].every((id) => typeof id === "string" && id.length > 0)).toBe(true);
     const missing = randomUUID();
     const code = (result: Result<unknown, { code: string }>) => (result.ok ? "ok" : result.error.code);
     const answers = [
