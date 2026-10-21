@@ -2,7 +2,7 @@ import tseslint from "typescript-eslint";
 import { architectureConfig } from "./eslint.architecture.mjs";
 
 export default tseslint.config(
-  { ignores: [".next/**", "node_modules/**", "coverage/**", "next-env.d.ts", "private-docs/**", "**/__tests__/support/**"] },
+  { ignores: [".next/**", "node_modules/**", "coverage/**", "next-env.d.ts", "private-docs/**", "**/__tests__/support/**", "playwright-report/**", "test-results/**", "e2e/.auth/**"] },
   ...tseslint.configs.strictTypeChecked,
   {
     languageOptions: {

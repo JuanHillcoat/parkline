@@ -14,3 +14,9 @@ private-docs/
 
 # Local tooling state
 .atl/
+
+# End-to-end tests: run credentials, stored sessions and reports
+e2e/.world.json
+e2e/.auth/
+playwright-report/
+test-results/
