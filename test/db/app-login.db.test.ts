@@ -4,6 +4,7 @@ import postgres, { type Sql } from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createAppLogin } from "../../scripts/app-login";
 import { migrate } from "../../scripts/migrate";
+import { RestrictedLoginError, assertOwnerConnection, describeFailure, isRestrictedLogin } from "../../scripts/privilege-hint";
 
 const MIGRATIONS_DIR = resolve(import.meta.dirname, "../../db/migrations");
 const DEFAULT_URL = "postgres://parkline:parkline_dev@localhost:54329/parkline";
@@ -143,5 +144,51 @@ describe("db:create-app-login", () => {
   it("refuses to change a superuser", async () => {
     const [row] = await owner<{ name: string }[]>`select current_user as name`;
     await expect(createAppLogin(owner, { user: row?.name ?? "",  password: FIRST })).rejects.toThrow(/superuser/);
+  });
+});
+
+describe("running owner-only commands with the restricted login", () => {
+  const user = `parkline_test_hint_${suffix}`;
+  const password = `hint-${randomBytes(9).toString("hex")}`;
+
+  it("tells the owner connection from the application login", async () => {
+    extraUsers.push(user);
+    await createAppLogin(owner, { user, password });
+    expect(await isRestrictedLogin(owner)).toBe(false);
+    expect(await isRestrictedLogin(connectAs(user, password))).toBe(true);
+  });
+
+  it("answers false, without failing, while the group role does not exist yet", async () => {
+    expect(await isRestrictedLogin(owner, `parkline_missing_${suffix}`)).toBe(false);
+    expect(await isRestrictedLogin(connectAs(user, password), `parkline_missing_${suffix}`)).toBe(false);
+  });
+
+  it("does not mistake an owner that only administers the group role for the application login", async () => {
+    const admin2 = `parkline_test_adm_${suffix}`;
+    const pw = `adm-${randomBytes(9).toString("hex")}`;
+    extraUsers.push(admin2);
+    await owner.unsafe(`create role ${admin2} login nosuperuser createrole password '${pw}'`);
+    await owner.unsafe(`grant parkline_app to ${admin2} with admin option, inherit false, set false`);
+    expect(await isRestrictedLogin(connectAs(admin2, pw))).toBe(false);
+  });
+
+  it("refuses to start as the application login and explains how to fix it", async () => {
+    const app = connectAs(user, password);
+    const failure = await assertOwnerConnection(app).then(
+      () => undefined,
+      (error: unknown) => error,
+    );
+    expect(failure).toBeInstanceOf(RestrictedLoginError);
+    expect(describeFailure(failure, {})).toContain("MIGRATE_DATABASE_URL");
+  });
+
+  it("explains the raw permission error Postgres gives when the check is skipped", async () => {
+    const app = connectAs(user, password);
+    const failure = await app`create table hint_made (id int)`.then(
+      () => undefined,
+      (error: unknown) => error,
+    );
+    expect((failure as { code?: string }).code).toBe("42501");
+    expect(describeFailure(failure, {})).toContain("MIGRATE_DATABASE_URL");
   });
 });

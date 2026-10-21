@@ -12,6 +12,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import postgres, { type Sql } from "postgres";
 import { migrationUrl } from "./migrate-url";
+import { assertOwnerConnection, exitWithFailure } from "./privilege-hint";
 
 const MIGRATION_FILE = /^\d{4}_[a-z0-9_]+\.sql$/;
 
@@ -47,6 +48,7 @@ async function main(): Promise<void> {
   }
   const sql = postgres(url, { max: 1, onnotice: () => undefined });
   try {
+    await assertOwnerConnection(sql);
     const dir = resolve(import.meta.dirname, "../db/migrations");
     const applied = await migrate(sql, dir);
     console.log(applied.length === 0 ? "No pending migrations." : `Applied: ${applied.join(", ")}`);
@@ -57,7 +59,6 @@ async function main(): Promise<void> {
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   main().catch((error: unknown) => {
-    console.error(error);
-    process.exit(1);
+    exitWithFailure(error, process.env);
   });
 }

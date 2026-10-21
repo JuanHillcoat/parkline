@@ -11,6 +11,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import postgres, { type Sql } from "postgres";
 import { migrationUrl } from "./migrate-url";
+import { assertOwnerConnection, describeFailure } from "./privilege-hint";
 
 export const APP_GROUP_ROLE = "parkline_app";
 export const DEFAULT_APP_LOGIN = "parkline_login";
@@ -97,6 +98,7 @@ async function main(): Promise<void> {
   if (!config.ok) throw new Error(config.message);
   const sql = postgres(url, { max: 1, onnotice: () => undefined });
   try {
+    await assertOwnerConnection(sql);
     const outcome = await createAppLogin(sql, config.value);
     console.log(`Login role ${config.value.user} ${outcome}; member of ${APP_GROUP_ROLE}.`);
   } finally {
@@ -106,7 +108,8 @@ async function main(): Promise<void> {
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   main().catch((error: unknown) => {
-    console.error(error instanceof Error ? error.message : "Creating the application login failed");
+    const fallback = error instanceof Error ? error.message : "Creating the application login failed";
+    console.error(describeFailure(error, process.env) ?? fallback);
     process.exit(1);
   });
 }
