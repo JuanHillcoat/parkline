@@ -1,11 +1,11 @@
-import { NotFoundError, type DomainError } from "../../../shared/domain/domain-error";
+import { type DomainError } from "../../../shared/domain/domain-error";
 import type { Actor } from "../../../shared/domain/ports/access-policy";
-import { err, ok, type Result } from "../../../shared/domain/result";
+import { ok, type Result } from "../../../shared/domain/result";
 import type { BusinessUnit } from "../../domain/entities";
 import { nameKey, parseName } from "../../domain/name";
 import { recordAudit } from "../audit";
 import type { OrganizationDeps } from "../deps";
-import { archivedRow, auditActor, nameTaken, requireFreeName, whenActive } from "../guards";
+import { archivedRow, auditActor, missingRow, nameTaken, requireFreeName, whenActive } from "../guards";
 import type { OrganizationTx } from "../ports/organization-tx";
 
 export type RenameBusinessUnitInput = {
@@ -25,7 +25,7 @@ export class RenameBusinessUnit {
   private async rename(tx: OrganizationTx, input: RenameBusinessUnitInput): Promise<Result<BusinessUnit, DomainError>> {
     const { actor, id } = input;
     const unit = await tx.businessUnits.findById(actor.tenantId, id);
-    if (unit === null) return err(new NotFoundError("Business unit", id));
+    if (unit === null) return missingRow(this.deps.accessPolicy, actor, "catalog.write", "Business unit", id);
     const role = this.deps.accessPolicy.check(actor, "catalog.write", { tenantId: actor.tenantId, businessUnitId: id });
     if (!role.ok) return role;
     if (unit.archivedAt !== null) return archivedRow("Business unit", id);
