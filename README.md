@@ -62,7 +62,7 @@ Sign-in uses a session cookie (`HttpOnly`, `SameSite=Lax`, `Secure` in productio
 | ----------------------- | -------------------------------------------------------------------------------------------- |
 | `DATABASE_URL`          | Postgres connection string of the application and the install command. Also used by migrations when `MIGRATE_DATABASE_URL` is unset |
 | `MIGRATE_DATABASE_URL`  | Optional. Owner connection for `db:migrate` and `db:create-app-login`; falls back to `DATABASE_URL` |
-| `DATABASE_POOLER`       | Optional. Set to `transaction` when `DATABASE_URL` points at a transaction pooler (for example the pooled Neon endpoint): one connection per instance and no prepared statements. Leave unset for a direct connection |
+| `DATABASE_POOLER`       | Optional. Set to `transaction` when `DATABASE_URL` points at a transaction pooler (for example the pooled Neon endpoint): one connection per instance and no prepared statements. Leave unset (or `false`) for a direct connection. Any other value stops the app at startup |
 | `APP_DB_USER`           | Optional, default `parkline_login`. Login role created by `db:create-app-login`              |
 | `APP_DB_PASSWORD`       | Required by `db:create-app-login` only (at least 12 characters). Environment only, never a flag |
 | `INSTALL_ADMIN_PASSWORD`| Optional. Password for `install:admin` when there is no terminal. Never a command-line flag  |
