@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Equipment } from "../../../src/fleet/domain/entities";
-import { buildKpis, countActive, distribute, hasNoData } from "../dashboard-view";
+import { buildKpis, countActive, distribute, hasNoData, dropUnknowableCounts} from "../dashboard-view";
 
 const GONE = new Date("2026-01-01T00:00:00Z");
 const unit = (id: string, supplierId: string, assetTypeId: string, archivedAt: Date | null = null): Equipment => ({
@@ -101,5 +101,40 @@ describe("hasNoData", () => {
 
   it("is false when nothing could be read, so no first steps are shown", () => {
     expect(hasNoData(buildKpis({}))).toBe(false);
+  });
+});
+
+describe("dropUnknowableCounts", () => {
+  it("hides the division count for a user who sees operations but no division (an operation always belongs to one)", () => {
+    expect(dropUnknowableCounts({ divisions: 0, operations: 1, sites: 1 })).toEqual({ operations: 1, sites: 1 });
+  });
+
+  it("hides the site count for a user who sees operations but no site (an operation always has one)", () => {
+    expect(dropUnknowableCounts({ divisions: 1, operations: 2, sites: 0 })).toEqual({ divisions: 1, operations: 2 });
+  });
+
+  it("hides both counts at once for a user who sees only operations", () => {
+    expect(dropUnknowableCounts({ divisions: 0, operations: 3, sites: 0 })).toEqual({ operations: 3 });
+  });
+
+  it("keeps real zeros: a company with nothing registered shows every zero", () => {
+    const empty = { equipment: 0, suppliers: 0, assetTypes: 0, divisions: 0, operations: 0, sites: 0 };
+    expect(dropUnknowableCounts(empty)).toEqual(empty);
+  });
+
+  it("keeps a division with no operations yet and a site with no operations yet", () => {
+    expect(dropUnknowableCounts({ divisions: 2, operations: 0, sites: 1 })).toEqual({ divisions: 2, operations: 0, sites: 1 });
+  });
+
+  it("leaves the counts of a user who sees every level untouched", () => {
+    const all = { divisions: 3, operations: 5, sites: 4, equipment: 9 };
+    expect(dropUnknowableCounts(all)).toEqual(all);
+  });
+
+  it("does not touch the fleet counts and does not mutate its input", () => {
+    const input = { divisions: 0, operations: 1, equipment: 0 };
+    const copyOfInput = { ...input };
+    expect(dropUnknowableCounts(input)).toEqual({ operations: 1, equipment: 0 });
+    expect(input).toEqual(copyOfInput);
   });
 });

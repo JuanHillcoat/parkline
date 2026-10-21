@@ -315,16 +315,19 @@ test.describe("dashboard for scoped users", () => {
       });
 
       test("shows only the organization counts it can read, never a false zero", async ({ page }) => {
-        test.fixme(
-          key === "supervisor",
-          "App bug: an operation-scoped user sees 'Divisiones: 0' although the operation belongs to a division, because the division list is filtered by scope. Expected: hide the card or count the parent division.",
-        );
         await page.goto("/");
         await expect(kpiCard(page, t.kpi.operations)).toBeVisible();
         await expect(page.getByRole("region", { name: t.firstSteps.title })).toHaveCount(0);
         const values = await page.locator(".kpi-value").allTextContents();
         expect(values.length).toBeGreaterThan(0);
         expect(values.every((value) => parseInt(value, 10) >= 1)).toBe(true);
+      });
+
+      test("shows the division count only when the user can see divisions", async ({ page }) => {
+        await page.goto("/");
+        const divisions = kpiCard(page, t.kpi.divisions);
+        if (key === "manager") await expect(divisions).toBeVisible();
+        else await expect(divisions).toHaveCount(0);
       });
     });
   }
