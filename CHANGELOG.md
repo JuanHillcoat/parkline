@@ -6,6 +6,7 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Added
 
+- App shell and dashboard (`p0-10`): sidebar with icons and sections, top bar with an account menu and a mobile drawer, shared page, card, table and status-pill styles (tables become stacked cards below 640px), a dashboard at `/` with totals and distribution bars from the existing list use cases, and the fleet screen reorganized into tabs with search, filters and pagination for equipment.
 - First deploy (`p0-09`, ADR-0008): Neon Free and Vercel Hobby, migrated from the maintainer machine; the web app uses only the restricted login.
 - First deploy preparation (`p0-09`, ADR-0008): `DATABASE_POOLER=transaction` makes the container use one connection and no prepared statements behind a transaction pooler, and the free-tier limits of Neon and Vercel are recorded.
 - Project tooling: pnpm, Next.js (App Router), React, strict TypeScript, ESLint, Vitest and npm scripts (`p0-01`, T1).
