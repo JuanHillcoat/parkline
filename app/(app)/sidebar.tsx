@@ -1,67 +1,56 @@
 import { requirePermission, type ActorContext } from "../../src/identity/application/actor-context";
+import { BrandMark } from "../_components/icons";
 import { canReadCatalog, canViewFleet } from "../_lib/catalog-access";
 import { copy } from "../_lib/copy";
 import { ROLE_LABELS } from "../_lib/messages";
-import { signOutAction } from "./actions";
+import { initialsOf, navigationFor, type NavSection } from "../_lib/navigation";
 import { NavLink } from "./nav-link";
 
-const COMING_SOON = copy.nav.comingSoon;
-
-function SoonItem({ label }: { label: string }) {
-  return (
-    <li>
-      <span className="nav-item" aria-disabled="true">
-        {label}
-        <span className="nav-tag">{copy.common.soon}</span>
-      </span>
-    </li>
-  );
-}
-
-function Account({ actor }: { actor: ActorContext }) {
+/** The roles of the actor as one display line. */
+export function roleLine(actor: ActorContext): string {
   const roles = actor.assignments.map((a) => ROLE_LABELS[a.role]);
-  return (
-    <div className="account">
-      <p className="account-name">{actor.user.displayName}</p>
-      <p className="account-role">{roles.join(", ") || copy.common.noRole}</p>
-      <form action={signOutAction}>
-        <button type="submit" className="btn signout">{copy.nav.signOut}</button>
-      </form>
-    </div>
-  );
+  return roles.join(", ") || copy.common.noRole;
 }
 
-type AdministrationProps = { readonly users: boolean; readonly organization: boolean };
-
-function Administration({ users, organization }: AdministrationProps) {
+function Section({ section }: { section: NavSection }) {
   return (
     <>
-      <p className="nav-heading">{copy.nav.administration}</p>
+      <p className="nav-heading">{section.label}</p>
       <ul className="nav">
-        {users && <li><NavLink href="/users">{copy.nav.users}</NavLink></li>}
-        {organization && <li><NavLink href="/organization">{copy.nav.organization}</NavLink></li>}
+        {section.items.map((item) => (
+          <li key={item.href}><NavLink item={item} /></li>
+        ))}
       </ul>
     </>
   );
 }
 
-export function Sidebar({ actor }: { actor: ActorContext }) {
-  const canReadUsers = requirePermission(actor, "user.read").ok;
-  const canReadOrganization = canReadCatalog(actor);
+function Account({ actor }: { actor: ActorContext }) {
   return (
-    <aside className="sidebar">
-      <p className="brand">{copy.common.productName}</p>
-      <nav aria-label={copy.nav.main}>
-        <ul className="nav">
-          <li><NavLink href="/">{copy.nav.home}</NavLink></li>
-          {canViewFleet(actor) && <li><NavLink href="/fleet">{copy.nav.fleet}</NavLink></li>}
-          {COMING_SOON.map((label) => <SoonItem key={label} label={label} />)}
-        </ul>
-        {(canReadUsers || canReadOrganization) && (
-          <Administration users={canReadUsers} organization={canReadOrganization} />
-        )}
+    <div className="account">
+      <span className="avatar" aria-hidden="true">{initialsOf(actor.user.displayName)}</span>
+      <div className="account-text">
+        <p className="account-name">{actor.user.displayName}</p>
+        <p className="account-role">{roleLine(actor)}</p>
+      </div>
+    </div>
+  );
+}
+
+/** Sidebar content: the shell frame provides the surrounding `aside`. */
+export function SidebarContent({ actor }: { actor: ActorContext }) {
+  const sections = navigationFor({
+    fleet: canViewFleet(actor),
+    users: requirePermission(actor, "user.read").ok,
+    organization: canReadCatalog(actor),
+  });
+  return (
+    <>
+      <p className="brand"><BrandMark /><span>{copy.common.productName}</span></p>
+      <nav aria-label={copy.nav.main} className="sidebar-nav">
+        {sections.map((section) => <Section key={section.label} section={section} />)}
       </nav>
       <Account actor={actor} />
-    </aside>
+    </>
   );
 }

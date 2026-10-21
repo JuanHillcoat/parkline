@@ -33,10 +33,10 @@ function OperationLine(props: WriteAccess & { row: OperationRow }) {
   const { row } = props;
   return (
     <tr data-archived={row.archived}>
-      <td className="cell-code">{row.costCenter}</td>
+      <td className="cell-code" data-label={t.columns.costCenter}>{row.costCenter}</td>
       <th scope="row">{row.name} {row.archived && <ArchivedTag />}</th>
-      <td>{row.siteName ?? <span className="cell-sub">{t.noSite}</span>}</td>
-      <td className="cell-actions"><OperationActions {...props} /></td>
+      <td data-label={t.columns.site}>{row.siteName ?? <span className="cell-sub">{t.noSite}</span>}</td>
+      <td className="cell-actions"><div className="row-actions"><OperationActions {...props} /></div></td>
     </tr>
   );
 }
@@ -77,9 +77,11 @@ function GroupHeader({ group, canWrite, canArchive }: Access & { group: Division
     <header className="group-head">
       <h3>{group.name ?? t.otherDivision}</h3>
       {group.archived && <ArchivedTag />}
-      <span className="cell-sub">{t.operationCount(group.activeOperations)}</span>
-      {canWrite && !group.archived && target !== null && <RenameDialog kind="division" target={target} />}
-      {target !== null && <ArchiveControl kind="division" archived={group.archived} target={target} canArchive={canArchive} />}
+      <span className="count-pill">{t.operationCount(group.activeOperations)}</span>
+      <div className="row-actions">
+        {canWrite && !group.archived && target !== null && <RenameDialog kind="division" target={target} />}
+        {target !== null && <ArchiveControl kind="division" archived={group.archived} target={target} canArchive={canArchive} />}
+      </div>
     </header>
   );
 }
@@ -99,10 +101,12 @@ function SiteLine({ row, canWrite, canArchive }: Access & { row: SiteRow }) {
   return (
     <tr data-archived={row.archived}>
       <th scope="row">{row.name} {row.archived && <ArchivedTag />}</th>
-      <td>{row.operationCount}</td>
+      <td className="cell-num" data-label={t.columns.operations}>{row.operationCount}</td>
       <td className="cell-actions">
-        {canWrite && !row.archived && <RenameDialog kind="site" target={row} />}
-        <ArchiveControl kind="site" archived={row.archived} target={row} canArchive={canArchive} />
+        <div className="row-actions">
+          {canWrite && !row.archived && <RenameDialog kind="site" target={row} />}
+          <ArchiveControl kind="site" archived={row.archived} target={row} canArchive={canArchive} />
+        </div>
       </td>
     </tr>
   );
@@ -117,7 +121,7 @@ export function SitesTable({ rows, ...access }: Access & { rows: readonly SiteRo
         <thead>
           <tr>
             <th scope="col">{c.site}</th>
-            <th scope="col">{c.operations}</th>
+            <th scope="col" className="cell-num">{c.operations}</th>
             <th scope="col"><span className="visually-hidden">{c.actions}</span></th>
           </tr>
         </thead>

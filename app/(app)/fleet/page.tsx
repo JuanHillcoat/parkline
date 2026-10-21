@@ -8,13 +8,21 @@ import {
   buildEquipmentRows,
   buildSupplierRows,
   canCreateEquipment,
-  fleetToggleHref,
+  filterEquipment,
+  fleetHref,
+  knownId,
+  paginate,
+  parseFleetTab,
+  parsePage,
   supplierOptions,
+  type FleetQuery,
+  type FleetTab,
 } from "../../_lib/fleet-view";
 import { wantsArchived } from "../../_lib/organization-view";
 import { requireActor } from "../../_lib/session";
 import { NewEquipmentDialog } from "./equipment-dialogs";
 import { NewAssetTypeDialog, NewSupplierDialog } from "./fleet-dialogs";
+import { EquipmentToolbar, FleetTabs, Pagination } from "./fleet-toolbar";
 import { AssetTypesTable, EquipmentTable, SuppliersTable, type Access } from "./fleet-tables";
 
 export const metadata = { title: copy.fleet.pageTitle };
@@ -33,7 +41,7 @@ function Restricted() {
 }
 
 function Empty({ text }: { text: string }) {
-  return <p className="card empty-note" role="status">{text}</p>;
+  return <div className="empty-state" role="status"><p>{text}</p></div>;
 }
 
 /** Reads only through the list use cases, which already filter by the actor's scopes. */
@@ -50,26 +58,37 @@ async function loadFleet(actor: Actor, includeArchived: boolean) {
 
 type Data = NonNullable<Awaited<ReturnType<typeof loadFleet>>>;
 
-function Actions({ data }: { data: Data }) {
+type Params = {
+  readonly tab?: string | readonly string[];
+  readonly archived?: string | readonly string[];
+  readonly q?: string | readonly string[];
+  readonly supplier?: string | readonly string[];
+  readonly type?: string | readonly string[];
+  readonly page?: string | readonly string[];
+};
+
+function Actions({ data, tab }: { data: Data; tab: FleetTab }) {
   const options = { suppliers: supplierOptions(data.suppliers), assetTypes: assetTypeOptions(data.assetTypes) };
   return (
     <span className="head-actions">
-      <NewSupplierDialog />
-      <NewAssetTypeDialog />
-      {canCreateEquipment(options.suppliers, options.assetTypes) && <NewEquipmentDialog options={options} />}
+      {tab === "suppliers" && <NewSupplierDialog />}
+      {tab === "asset-types" && <NewAssetTypeDialog />}
+      {tab === "equipment" && canCreateEquipment(options.suppliers, options.assetTypes) && <NewEquipmentDialog options={options} />}
     </span>
   );
 }
 
-function ArchivedToggle({ showing }: { showing: boolean }) {
+function ArchivedToggle({ query, showing }: { query: FleetQuery; showing: boolean }) {
   return (
-    <p>
-      <a className="btn btn-link" href={fleetToggleHref(showing)}>{showing ? t.hideArchived : t.showArchived}</a>
-    </p>
+    <div className="toolbar">
+      <a className="btn" href={fleetHref({ ...query, archived: !showing, page: 1 })}>{showing ? t.hideArchived : t.showArchived}</a>
+    </div>
   );
 }
 
-function Header({ data, canWrite, canArchive, showArchived }: Access & { data: Data; showArchived: boolean }) {
+type HeaderProps = Access & { data: Data; tab: FleetTab };
+
+function Header({ data, canWrite, tab }: HeaderProps) {
   const needsFirstSteps = canWrite && !canCreateEquipment(supplierOptions(data.suppliers), assetTypeOptions(data.assetTypes));
   return (
     <>
@@ -78,67 +97,100 @@ function Header({ data, canWrite, canArchive, showArchived }: Access & { data: D
           <h1>{t.title}</h1>
           <p className="page-sub">{t.subtitle}</p>
         </div>
-        {canWrite && <Actions data={data} />}
+        {canWrite && <Actions data={data} tab={tab} />}
       </header>
-      {canArchive && <ArchivedToggle showing={showArchived} />}
       {needsFirstSteps && <p className="hint">{t.createFirst}</p>}
     </>
   );
 }
 
-function Section({ title, count, children }: { title: string; count?: string; children: ReactNode }) {
+function Panel({ children }: { children: ReactNode }) {
+  return <section className="card section-card tab-panel">{children}</section>;
+}
+
+type PanelProps = Access & { data: Data; query: FleetQuery };
+
+function SuppliersPanel({ data, query, ...access }: PanelProps) {
+  const rows = buildSupplierRows(data.suppliers, data.equipment);
   return (
-    <>
-      <h2 className="section-title">{title} {count !== undefined && <span className="cell-sub">{count}</span>}</h2>
-      {children}
-    </>
+    <Panel>
+      {access.canArchive && <ArchivedToggle query={query} showing={query.archived === true} />}
+      {rows.length === 0 ? <Empty text={t.emptySuppliers} /> : <SuppliersTable rows={rows} {...access} />}
+    </Panel>
   );
 }
 
-function Catalogs({ data, ...access }: Access & { data: Data }) {
-  const suppliers = buildSupplierRows(data.suppliers, data.equipment);
-  const types = buildAssetTypeRows(data.assetTypes, data.equipment);
+function AssetTypesPanel({ data, query, ...access }: PanelProps) {
+  const rows = buildAssetTypeRows(data.assetTypes, data.equipment);
   return (
-    <>
-      <Section title={t.suppliersTitle}>
-        {suppliers.length === 0 ? <Empty text={t.emptySuppliers} /> : <SuppliersTable rows={suppliers} {...access} />}
-      </Section>
-      <Section title={t.assetTypesTitle}>
-        {types.length === 0 ? <Empty text={t.emptyAssetTypes} /> : <AssetTypesTable rows={types} {...access} />}
-      </Section>
-    </>
+    <Panel>
+      {access.canArchive && <ArchivedToggle query={query} showing={query.archived === true} />}
+      {rows.length === 0 ? <Empty text={t.emptyAssetTypes} /> : <AssetTypesTable rows={rows} {...access} />}
+    </Panel>
   );
 }
 
-function EquipmentSection({ data, ...access }: Access & { data: Data }) {
-  const rows = buildEquipmentRows(data.equipment, data.suppliers, data.assetTypes);
+function EquipmentPanel({ data, query, params, ...access }: PanelProps & { params: Params }) {
   const options = { suppliers: supplierOptions(data.suppliers), assetTypes: assetTypeOptions(data.assetTypes) };
-  const active = rows.filter((row) => !row.archived).length;
+  const all = buildEquipmentRows(data.equipment, data.suppliers, data.assetTypes);
+  const page = paginate(filterEquipment(all, filtersOf(data, params)), parsePage(params.page));
   return (
-    <Section title={t.equipmentTitle} count={t.equipmentCount(active)}>
-      {rows.length === 0 ? <Empty text={t.emptyEquipment} /> : <EquipmentTable rows={rows} options={options} {...access} />}
-    </Section>
+    <Panel>
+      <EquipmentToolbar filters={filtersOf(data, params)} archived={query.archived === true}
+        suppliers={data.suppliers} types={data.assetTypes} />
+      {access.canArchive && <ArchivedToggle query={query} showing={query.archived === true} />}
+      {all.length === 0 && <Empty text={t.emptyEquipment} />}
+      {all.length > 0 && page.total === 0 && <Empty text={t.noResults} />}
+      {page.total > 0 && <EquipmentTable rows={page.items} options={options} {...access} />}
+      {page.total > 0 && <Pagination page={page} query={{ ...query, page: page.page }} />}
+    </Panel>
   );
 }
 
-type PageProps = { readonly searchParams: Promise<{ readonly archived?: string | readonly string[] }> };
+const text = (raw: string | readonly string[] | undefined): string => (typeof raw === "string" ? raw.trim() : "");
 
-export default async function FleetPage({ searchParams }: PageProps) {
+function filtersOf(data: Data, params: Params) {
+  return { q: text(params.q), supplierId: knownId(params.supplier, data.suppliers), typeId: knownId(params.type, data.assetTypes) };
+}
+
+function queryOf(data: Data, params: Params, tab: FleetTab, archived: boolean): FleetQuery {
+  const { q, supplierId, typeId } = filtersOf(data, params);
+  return tab === "equipment" ? { tab, archived, q, supplierId, typeId } : { tab, archived };
+}
+
+function countsOf(data: Data): Record<FleetTab, number> {
+  return { equipment: data.equipment.length, suppliers: data.suppliers.length, "asset-types": data.assetTypes.length };
+}
+
+function Body({ data, params, tab, archived, ...access }: Access & { data: Data; params: Params; tab: FleetTab; archived: boolean }) {
+  const query = queryOf(data, params, tab, archived);
+  return (
+    <>
+      <FleetTabs active={tab} archived={archived} counts={countsOf(data)} />
+      {tab === "suppliers" && <SuppliersPanel data={data} query={query} {...access} />}
+      {tab === "asset-types" && <AssetTypesPanel data={data} query={query} {...access} />}
+      {tab === "equipment" && <EquipmentPanel data={data} query={query} params={params} {...access} />}
+    </>
+  );
+}
+
+export default async function FleetPage({ searchParams }: { readonly searchParams: Promise<Params> }) {
   const context = await requireActor();
   const actor = toActor(context);
   const { accessPolicy } = getContainer();
   const position = { tenantId: actor.tenantId };
   if (!accessPolicy.check(actor, "catalog.read", position).ok) return <Restricted />;
   const canArchive = accessPolicy.check(actor, "catalog.archive", position).ok;
-  const showArchived = canArchive && wantsArchived((await searchParams).archived);
-  const data = await loadFleet(actor, showArchived);
+  const params = await searchParams;
+  const archived = canArchive && wantsArchived(params.archived);
+  const data = await loadFleet(actor, archived);
   if (data === null) return <Restricted />;
   const canWrite = accessPolicy.check(actor, "catalog.write", position).ok;
+  const tab = parseFleetTab(params.tab);
   return (
     <>
-      <Header data={data} canWrite={canWrite} canArchive={canArchive} showArchived={showArchived} />
-      <Catalogs data={data} canWrite={canWrite} canArchive={canArchive} />
-      <EquipmentSection data={data} canWrite={canWrite} canArchive={canArchive} />
+      <Header data={data} canWrite={canWrite} canArchive={canArchive} tab={tab} />
+      <Body data={data} params={params} tab={tab} archived={archived} canWrite={canWrite} canArchive={canArchive} />
     </>
   );
 }

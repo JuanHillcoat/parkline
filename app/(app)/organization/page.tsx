@@ -6,6 +6,7 @@ import {
   archivedToggleHref,
   buildDivisionGroups,
   buildSiteRows,
+  type SiteRow,
   siteNamesById,
   wantsArchived,
 } from "../../_lib/organization-view";
@@ -29,7 +30,7 @@ function Restricted() {
 }
 
 function Empty({ text }: { text: string }) {
-  return <p className="card empty-note" role="status">{text}</p>;
+  return <div className="empty-state" role="status"><p>{text}</p></div>;
 }
 
 /** Reads only through the list use cases, which already filter by the actor's scopes. */
@@ -59,11 +60,11 @@ function Actions({ data }: { data: Data }) {
 
 function ArchivedToggle({ showing }: { showing: boolean }) {
   return (
-    <p>
-      <a className="btn btn-link" href={archivedToggleHref(showing)}>
+    <div className="toolbar">
+      <a className="btn" href={archivedToggleHref(showing)}>
         {showing ? t.hideArchived : t.showArchived}
       </a>
-    </p>
+    </div>
   );
 }
 
@@ -86,6 +87,18 @@ function Header({ data, canWrite, canArchive, showArchived }: Access & { data: D
   );
 }
 
+function SitesSection({ rows, ...access }: Access & { rows: readonly SiteRow[] }) {
+  return (
+    <section className="card section-card">
+      <header className="section-head">
+        <h2>{t.sitesTitle}</h2>
+        <span className="count-pill">{rows.length}</span>
+      </header>
+      {rows.length === 0 ? <Empty text={t.emptySites} /> : <SitesTable rows={rows} {...access} />}
+    </section>
+  );
+}
+
 function Structure({ data, ...access }: Access & { data: Data }) {
   const groups = buildDivisionGroups(data.units, data.operations, siteNamesById(data.sites));
   const rows = buildSiteRows(data.sites, data.operations);
@@ -98,8 +111,7 @@ function Structure({ data, ...access }: Access & { data: Data }) {
             <DivisionCard key={group.id ?? "hidden"} group={group} {...access}
               options={{ divisions: data.units, sites: data.sites }} />
           ))}
-      <h2 className="section-title">{t.sitesTitle}</h2>
-      {rows.length === 0 ? <Empty text={t.emptySites} /> : <SitesTable rows={rows} {...access} />}
+      <SitesSection rows={rows} {...access} />
     </>
   );
 }

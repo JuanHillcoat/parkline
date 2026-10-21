@@ -38,9 +38,9 @@ function UserRow(props: RowProps) {
         {user.displayName}
         {isSelf && ` ${copy.common.you}`}
       </th>
-      <td>{user.email}</td>
-      <td>{roles}</td>
-      <td>
+      <td data-label={copy.users.columns.email}>{user.email}</td>
+      <td data-label={copy.users.columns.role}>{roles}</td>
+      <td data-label={copy.users.columns.status}>
         <span className={user.active ? "badge badge-ok" : "badge badge-neutral"}>
           {user.active ? copy.common.active : copy.common.inactive}
         </span>
