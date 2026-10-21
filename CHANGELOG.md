@@ -6,6 +6,7 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Added
 
+- Definition of done (issue 39): every issue, implementation and feature ships with the unit, database and end-to-end tests that apply to it, a pull request template lists each level, and the three CI jobs are required to merge.
 - End-to-end tests (issue 36, ADR-0009): Playwright against the compiled app with an ephemeral database, a restricted login and a synthetic world of five users; suites for sign-in and session, navigation per role, dashboard, organization, fleet, users and the mobile view; `pnpm test:e2e`; and an `e2e` job in CI that uploads the report on failure.
 - `db:migrate` and `db:create-app-login` stop with an actionable message when they run as the restricted application login or hit a permission error, instead of a bare Postgres error (issue 11).
 - App shell and dashboard (`p0-10`): sidebar with icons and sections, top bar with an account menu and a mobile drawer, shared page, card, table and status-pill styles (tables become stacked cards below 640px), a dashboard at `/` with totals and distribution bars from the existing list use cases, and the fleet screen reorganized into tabs with search, filters and pagination for equipment.
