@@ -104,3 +104,60 @@ jobs:
         run: pnpm test:db
         env:
           DATABASE_URL: ${{ env.MIGRATE_DATABASE_URL }}
+
+  e2e:
+    name: End-to-end tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      # Cluster the launcher creates its ephemeral database in. Local throwaway values, not secrets.
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: parkline
+          POSTGRES_PASSWORD: parkline_dev
+          POSTGRES_DB: parkline
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U parkline -d parkline"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      # The launcher (e2e/support/start-server.ts) connects as this administrator, creates an
+      # ephemeral database and a restricted login, builds the synthetic world and serves the
+      # compiled app. See e2e/README.md and ADR-0009.
+      E2E_ADMIN_DATABASE_URL: postgres://parkline:parkline_dev@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.23.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Install the browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: End-to-end tests
+        run: pnpm test:e2e
+
+      # Only on failure, kept a week: artifact storage is limited on the free plan.
+      - name: Upload the report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+          retention-days: 7

@@ -71,7 +71,7 @@ const elements = [
   { type: "app", pattern: "app/**", partialMatch: false },
 ];
 
-const testGlobs = ["**/__tests__/**", "**/*.test.ts", "**/*.test.tsx"];
+const testGlobs = ["**/__tests__/**", "**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts"];
 
 export const architectureConfig = [
   {
