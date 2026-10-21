@@ -82,6 +82,8 @@ See `.env.example`. Never commit a real `.env`.
 | `test`        | Runs unit tests (Vitest `unit` project; no Docker needed)        |
 | `test:watch`  | Runs unit tests in watch mode                                    |
 | `test:db`     | Runs database tests (Vitest `db` project; needs Docker)          |
+| `test:e2e`    | Builds the app and runs the Playwright end-to-end tests (needs Docker and `pnpm exec playwright install chromium` once) |
+| `test:e2e:only` | Runs the end-to-end tests without rebuilding the app |
 | `db:up`       | Starts the local Postgres 16 container and waits until it is ready |
 | `db:migrate`  | Applies pending migrations from `db/migrations/` as the owner (`MIGRATE_DATABASE_URL`, else `DATABASE_URL`) |
 | `db:create-app-login` | Creates or updates the restricted application login (member of `parkline_app`); needs `APP_DB_PASSWORD` and the owner connection |

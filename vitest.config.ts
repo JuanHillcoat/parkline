@@ -11,6 +11,8 @@ export default defineConfig({
             "src/**/__tests__/**/*.test.ts",
             "app/**/__tests__/**/*.test.ts",
             "scripts/**/__tests__/**/*.test.ts",
+            // Pure helpers of the end-to-end launcher; the Playwright specs are *.spec.ts and never match.
+            "e2e/support/**/__tests__/**/*.test.ts",
           ],
         },
       },
