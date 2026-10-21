@@ -6,6 +6,7 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Added
 
+- Definition of done (issue 39): every issue, implementation and feature ships with the unit, database and end-to-end tests that apply to it, a pull request template lists each level, and the three CI jobs are required to merge.
 - End-to-end tests (issue 36, ADR-0009): Playwright against the compiled app with an ephemeral database, a restricted login and a synthetic world of five users; suites for sign-in and session, navigation per role, dashboard, organization, fleet, users and the mobile view; `pnpm test:e2e`; and an `e2e` job in CI that uploads the report on failure.
 - `db:migrate` and `db:create-app-login` stop with an actionable message when they run as the restricted application login or hit a permission error, instead of a bare Postgres error (issue 11).
 - `db:migrate`, `db:create-app-login` and `install:admin` no longer print Node's `ExperimentalWarning` for type stripping, so it does not mix with prompts and output. The flag silences every `ExperimentalWarning` these commands could emit; other kinds of warning and every error still show (issue 8).

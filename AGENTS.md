@@ -37,6 +37,18 @@ These conventions apply to every change, human or agent.
 - End-to-end tests are `e2e/specs/*.spec.ts` (Playwright, ADR-0009). They run with `pnpm test:e2e` (builds first; `pnpm test:e2e:only` skips the build), need Docker, and create an ephemeral database and login for each run. A change that alters a screen, a label, a role or a flow updates its end-to-end tests in the same change.
 - Test data is synthetic. Never load test data into the development database.
 
+## Definition of done
+
+Every issue, implementation and new feature ships with all the tests that apply to it, in the same change. A change without them is not done, whatever else is finished. This is a standing project rule.
+
+- **Unit tests** (`pnpm test`): always, for any code that changes behavior. Domain code follows strict TDD with the RED and GREEN evidence recorded.
+- **Database tests** (`pnpm test:db`): whenever the change touches a migration, a table, a privilege, a trigger, the SQL of an adapter, the database connection or a command that changes the database.
+- **End-to-end tests** (`pnpm test:e2e`): whenever the change adds or alters a screen, a flow, a label, a role or a permission, a validation message shown to the user, the navigation or the responsive layout. The permission differences between roles are part of the flow.
+- A defect found by any means (manual use, review, CI, production) gets a regression test at the lowest level that can catch it, plus an end-to-end test when the user can see it.
+- When a level does not apply (documentation only, CI configuration only, a refactor with no change in behavior that the existing tests already cover), the feature document and the pull request say which level is skipped and why. Skipping a level that applies needs the maintainer's explicit approval, recorded in the feature document.
+- The feature document lists the tests as tasks with their evidence, and the pull request description lists the result of each level (see `.github/pull_request_template.md`).
+- Review feedback and CI failures are fixed with a test, not only with a code change.
+
 ## Data, secrets and documents
 
 - Never commit secrets: tokens, passwords, keys, or `.env*` files other than `.env.example`. The credentials in `.env.example` and `docker-compose.yml` are local development values only, never used in production.
@@ -79,8 +91,7 @@ These conventions apply to every change, human or agent.
 Before reporting a change as done, run:
 
 - `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm build`, always.
-- `pnpm test:db` when the change touches the database and Docker is running.
-- `pnpm test:e2e` when the change touches a screen, a flow, a role or a permission and Docker is running (CI runs it as the `e2e` job).
+- `pnpm test:db` and `pnpm test:e2e` according to the Definition of done above; both need Docker. CI runs them as the `database` and `e2e` jobs and all three jobs must pass before a merge.
 
 ## Language and documentation
 
