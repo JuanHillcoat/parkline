@@ -29,6 +29,19 @@ const KPI_ORDER: readonly (readonly [KpiKey, string])[] = [
 export const countActive = (rows: readonly { readonly archivedAt: Date | null }[]): number =>
   rows.filter((row) => row.archivedAt === null).length;
 
+/**
+ * Drops the counts a scoped user cannot know. The lists are filtered by scope, so a user placed on
+ * one operation sees that operation and its site but no division, and "0 divisions" would be false:
+ * an operation always belongs to a division and has exactly one site. A real zero (nothing
+ * registered, or a division with no operations yet) is kept.
+ */
+export function dropUnknowableCounts(counts: Partial<Record<KpiKey, number>>): Partial<Record<KpiKey, number>> {
+  const kept = { ...counts };
+  if ((kept.operations ?? 0) > 0 && kept.divisions === 0) delete kept.divisions;
+  if ((kept.operations ?? 0) > 0 && kept.sites === 0) delete kept.sites;
+  return kept;
+}
+
 /** The KPI cards in their fixed order, only for the counts that could be read. */
 export const buildKpis = (counts: Partial<Record<KpiKey, number>>): Kpi[] =>
   KPI_ORDER.flatMap(([key, href]) => {

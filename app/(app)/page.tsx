@@ -5,7 +5,7 @@ import type { Result } from "../../src/shared/domain/result";
 import { getContainer } from "../../src/shared/infrastructure/container";
 import { canReadCatalog, canViewFleet } from "../_lib/catalog-access";
 import { copy } from "../_lib/copy";
-import { buildKpis, countActive, distribute, hasNoData, type KpiKey } from "../_lib/dashboard-view";
+import { buildKpis, countActive, distribute, dropUnknowableCounts, hasNoData, type KpiKey } from "../_lib/dashboard-view";
 import { requireActor } from "../_lib/session";
 import { FirstSteps, KpiGrid } from "./dashboard-cards";
 import { DistributionCard } from "./dashboard-distribution";
@@ -93,7 +93,7 @@ async function loadDashboard(context: ActorContext) {
     showStructure ? loadStructure(actor) : null,
   ]);
   const lists = { equipment: fleet?.equipment, suppliers: fleet?.suppliers, assetTypes: fleet?.assetTypes, ...structure };
-  return { fleet, kpis: buildKpis(countsOf(lists)), showFleet, showStructure };
+  return { fleet, kpis: buildKpis(dropUnknowableCounts(countsOf(lists))), showFleet, showStructure };
 }
 
 export default async function HomePage() {
