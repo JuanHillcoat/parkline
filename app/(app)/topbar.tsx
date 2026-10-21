@@ -1,0 +1,32 @@
+import type { ReactNode, RefObject } from "react";
+import { MenuIcon } from "../_components/icons";
+import { copy } from "../_lib/copy";
+
+type TopbarProps = {
+  readonly title: string;
+  readonly drawerOpen: boolean;
+  readonly onMenu: () => void;
+  readonly menuRef: RefObject<HTMLButtonElement | null>;
+  readonly children: ReactNode;
+};
+
+/** Bar above the content: drawer button (narrow widths), section title and account menu. */
+export function Topbar({ title, drawerOpen, onMenu, menuRef, children }: TopbarProps) {
+  return (
+    <header className="topbar">
+      <button
+        type="button"
+        ref={menuRef}
+        className="icon-btn menu-btn"
+        aria-label={copy.nav.openMenu}
+        aria-expanded={drawerOpen}
+        aria-controls="app-sidebar"
+        onClick={onMenu}
+      >
+        <MenuIcon />
+      </button>
+      <p className="topbar-title">{title}</p>
+      {children}
+    </header>
+  );
+}

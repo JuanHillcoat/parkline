@@ -9,6 +9,10 @@ const c = t.columns;
 
 export type Access = { readonly canWrite: boolean; readonly canArchive: boolean };
 
+function StatusPill({ archived }: { archived: boolean }) {
+  return <span className={archived ? "badge badge-neutral" : "badge badge-ok"}>{archived ? copy.common.archivedTag : copy.common.active}</span>;
+}
+
 function ArchivedTag() {
   return <span className="badge badge-neutral">{copy.common.archivedTag}</span>;
 }
@@ -21,14 +25,16 @@ function ArchiveControl({ kind, archived, target, canArchive }: ControlProps) {
   return <ArchiveDialog kind={kind} verb={archived ? "restore" : "archive"} target={target} />;
 }
 
-function TableShell({ caption, head, children }: { caption: string; head: readonly string[]; children: ReactNode }) {
+type ShellProps = { caption: string; head: readonly string[]; numeric?: readonly number[]; children: ReactNode };
+
+function TableShell({ caption, head, numeric = [], children }: ShellProps) {
   return (
     <div className="table-wrap">
       <table className="table">
         <caption className="visually-hidden">{caption}</caption>
         <thead>
           <tr>
-            {head.map((label) => <th key={label} scope="col">{label}</th>)}
+            {head.map((label, index) => <th key={label} scope="col" className={numeric.includes(index) ? "cell-num" : undefined}>{label}</th>)}
             <th scope="col"><span className="visually-hidden">{c.actions}</span></th>
           </tr>
         </thead>
@@ -42,10 +48,12 @@ function SupplierLine({ row, ...access }: Access & { row: SupplierRow }) {
   return (
     <tr data-archived={row.archived}>
       <th scope="row">{row.name} {row.archived && <ArchivedTag />}</th>
-      <td>{row.activeEquipment}</td>
+      <td className="cell-num" data-label={c.activeEquipment}>{row.activeEquipment}</td>
       <td className="cell-actions">
-        {access.canWrite && !row.archived && <RenameSupplierDialog target={row} />}
-        <ArchiveControl kind="supplier" archived={row.archived} target={row} {...access} />
+        <div className="row-actions">
+          {access.canWrite && !row.archived && <RenameSupplierDialog target={row} />}
+          <ArchiveControl kind="supplier" archived={row.archived} target={row} {...access} />
+        </div>
       </td>
     </tr>
   );
@@ -53,7 +61,7 @@ function SupplierLine({ row, ...access }: Access & { row: SupplierRow }) {
 
 export function SuppliersTable({ rows, ...access }: Access & { rows: readonly SupplierRow[] }) {
   return (
-    <TableShell caption={t.suppliersCaption} head={[c.supplier, c.activeEquipment]}>
+    <TableShell caption={t.suppliersCaption} head={[c.supplier, c.activeEquipment]} numeric={[1]}>
       {rows.map((row) => <SupplierLine key={row.id} row={row} {...access} />)}
     </TableShell>
   );
@@ -63,12 +71,14 @@ function AssetTypeLine({ row, ...access }: Access & { row: AssetTypeRow }) {
   return (
     <tr data-archived={row.archived}>
       <th scope="row">{row.name} {row.archived && <ArchivedTag />}</th>
-      <td>{row.meterLabel}</td>
-      <td>{row.intervalText}</td>
-      <td>{row.activeEquipment}</td>
+      <td data-label={c.meter}>{row.meterLabel}</td>
+      <td data-label={c.interval}>{row.intervalText}</td>
+      <td className="cell-num" data-label={c.activeEquipment}>{row.activeEquipment}</td>
       <td className="cell-actions">
-        {access.canWrite && !row.archived && <EditAssetTypeDialog target={row} />}
-        <ArchiveControl kind="assetType" archived={row.archived} target={row} {...access} />
+        <div className="row-actions">
+          {access.canWrite && !row.archived && <EditAssetTypeDialog target={row} />}
+          <ArchiveControl kind="assetType" archived={row.archived} target={row} {...access} />
+        </div>
       </td>
     </tr>
   );
@@ -76,7 +86,7 @@ function AssetTypeLine({ row, ...access }: Access & { row: AssetTypeRow }) {
 
 export function AssetTypesTable({ rows, ...access }: Access & { rows: readonly AssetTypeRow[] }) {
   return (
-    <TableShell caption={t.assetTypesCaption} head={[c.assetType, c.meter, c.interval, c.activeEquipment]}>
+    <TableShell caption={t.assetTypesCaption} head={[c.assetType, c.meter, c.interval, c.activeEquipment]} numeric={[3]}>
       {rows.map((row) => <AssetTypeLine key={row.id} row={row} {...access} />)}
     </TableShell>
   );
@@ -86,8 +96,9 @@ const orDash = (value: string | number | null): string => value?.toString() ?? t
 
 function BrandModelCell({ row }: { row: EquipmentRow }) {
   return (
-    <td title={row.observations ?? undefined}>
+    <td title={row.observations ?? undefined} data-label={c.brandModel}>
       {orDash(row.brandModel)}
+      {row.serialNumber !== null && <span className="cell-sub cell-stack">{t.serialPrefix} {row.serialNumber}</span>}
       {row.observations !== null && <span className="cell-sub cell-note">{row.observations}</span>}
     </td>
   );
@@ -98,26 +109,27 @@ type EquipmentLineProps = Access & { readonly row: EquipmentRow; readonly option
 function EquipmentLine({ row, options, ...access }: EquipmentLineProps) {
   return (
     <tr data-archived={row.archived}>
-      <th scope="row" className="cell-code">{row.internalCode} {row.archived && <ArchivedTag />}</th>
-      <td>{row.supplierName ?? t.unknownParent}</td>
-      <td>{row.assetTypeName ?? t.unknownParent}</td>
+      <th scope="row" className="cell-code cell-id">{row.internalCode}</th>
+      <td data-label={c.assetType}>{row.assetTypeName ?? t.unknownParent}</td>
+      <td data-label={c.supplier}>{row.supplierName ?? t.unknownParent}</td>
       <BrandModelCell row={row} />
-      <td>{orDash(row.year)}</td>
-      <td>{orDash(row.serialNumber)}</td>
-      <td>{orDash(row.batteryQuantity)}</td>
+      <td className="cell-num" data-label={c.year}>{orDash(row.year)}</td>
+      <td data-label={c.status}><StatusPill archived={row.archived} /></td>
       <td className="cell-actions">
-        {access.canWrite && !row.archived && <EditEquipmentDialog target={row} options={options} />}
-        <ArchiveControl kind="equipment" archived={row.archived} target={{ id: row.id, name: row.internalCode }} {...access} />
+        <div className="row-actions">
+          {access.canWrite && !row.archived && <EditEquipmentDialog target={row} options={options} />}
+          <ArchiveControl kind="equipment" archived={row.archived} target={{ id: row.id, name: row.internalCode }} {...access} />
+        </div>
       </td>
     </tr>
   );
 }
 
-const EQUIPMENT_HEAD = [c.internalCode, c.supplier, c.assetType, c.brandModel, c.year, c.serialNumber, c.batteries];
+const EQUIPMENT_HEAD = [c.internalCode, c.assetType, c.supplier, c.brandModel, c.year, c.status];
 
 export function EquipmentTable({ rows, options, ...access }: Access & { rows: readonly EquipmentRow[]; options: EquipmentOptions }) {
   return (
-    <TableShell caption={t.equipmentCaption} head={EQUIPMENT_HEAD}>
+    <TableShell caption={t.equipmentCaption} head={EQUIPMENT_HEAD} numeric={[4]}>
       {rows.map((row) => <EquipmentLine key={row.id} row={row} options={options} {...access} />)}
     </TableShell>
   );

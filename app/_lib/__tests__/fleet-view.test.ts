@@ -8,8 +8,15 @@ import {
   canCreateEquipment,
   countActiveEquipment,
   equipmentFormValues,
+  filterEquipment,
+  fleetHref,
   fleetToggleHref,
   intervalText,
+  knownId,
+  paginate,
+  parseFleetTab,
+  pageWindow,
+  parsePage,
   supplierOptions,
 } from "../fleet-view";
 
@@ -143,5 +150,95 @@ describe("fleetToggleHref", () => {
   it("leads to the other view", () => {
     expect(fleetToggleHref(false)).toBe("/fleet?archived=1");
     expect(fleetToggleHref(true)).toBe("/fleet");
+  });
+});
+
+describe("parseFleetTab", () => {
+  it("accepts the three tabs and falls back to equipment", () => {
+    expect(parseFleetTab("suppliers")).toBe("suppliers");
+    expect(parseFleetTab("asset-types")).toBe("asset-types");
+    expect(parseFleetTab("equipment")).toBe("equipment");
+    expect(parseFleetTab("nope")).toBe("equipment");
+    expect(parseFleetTab(undefined)).toBe("equipment");
+    expect(parseFleetTab(["suppliers"])).toBe("equipment");
+  });
+});
+
+describe("filterEquipment", () => {
+  const rows = buildEquipmentRows(
+    [
+      equipment("e1", "GRÚA-01", "s1", "a1", { brand: "Marca", model: "Ñandú 2", serialNumber: "SN-77" }),
+      equipment("e2", "CAM-02", "s2", "a2", { brand: "Otra", model: "X" }),
+    ],
+    [supplier("s1", "Proveedor Uno"), supplier("s2", "Proveedor Dos")],
+    [assetType("a1", "Grúa"), assetType("a2", "Camión")],
+  );
+  const none = { q: "", supplierId: null, typeId: null };
+
+  it("returns everything without filters", () => {
+    expect(filterEquipment(rows, none)).toHaveLength(2);
+  });
+
+  it("searches code, brand, model, serial, supplier and type ignoring case and accents", () => {
+    for (const q of ["grua-01", "marca", "ñandú", "sn-77", "proveedor dos", "camion"]) {
+      expect(filterEquipment(rows, { ...none, q }).length).toBeGreaterThan(0);
+    }
+    expect(filterEquipment(rows, { ...none, q: "camion" }).map((r) => r.id)).toEqual(["e2"]);
+    expect(filterEquipment(rows, { ...none, q: "zzz" })).toEqual([]);
+  });
+
+  it("filters by supplier and by type", () => {
+    expect(filterEquipment(rows, { ...none, supplierId: "s2" }).map((r) => r.id)).toEqual(["e2"]);
+    expect(filterEquipment(rows, { ...none, typeId: "a1" }).map((r) => r.id)).toEqual(["e1"]);
+    expect(filterEquipment(rows, { q: "", supplierId: "s1", typeId: "a2" })).toEqual([]);
+  });
+});
+
+describe("knownId", () => {
+  const options = [{ id: "s1", name: "A" }];
+  it("keeps a known id and ignores anything else", () => {
+    expect(knownId("s1", options)).toBe("s1");
+    expect(knownId("other", options)).toBeNull();
+    expect(knownId(undefined, options)).toBeNull();
+    expect(knownId(["s1"], options)).toBeNull();
+  });
+});
+
+describe("parsePage and paginate", () => {
+  const items = Array.from({ length: 45 }, (_, index) => index);
+  it("parses a page number, defaulting to 1", () => {
+    expect(parsePage("3")).toBe(3);
+    expect(parsePage("0")).toBe(1);
+    expect(parsePage("x")).toBe(1);
+    expect(parsePage(undefined)).toBe(1);
+  });
+  it("slices 20 rows per page and reports the range", () => {
+    const page = paginate(items, 2);
+    expect(page.items).toHaveLength(20);
+    expect(page).toMatchObject({ page: 2, pages: 3, total: 45, from: 21, to: 40 });
+  });
+  it("clamps out-of-range pages", () => {
+    expect(paginate(items, 99)).toMatchObject({ page: 3, from: 41, to: 45 });
+    expect(paginate([], 5)).toMatchObject({ page: 1, pages: 1, total: 0, from: 0, to: 0 });
+  });
+});
+
+describe("pageWindow", () => {
+  it("shows at most five numbers around the current page", () => {
+    expect(pageWindow(1, 3)).toEqual([1, 2, 3]);
+    expect(pageWindow(1, 10)).toEqual([1, 2, 3, 4, 5]);
+    expect(pageWindow(5, 10)).toEqual([3, 4, 5, 6, 7]);
+    expect(pageWindow(10, 10)).toEqual([6, 7, 8, 9, 10]);
+  });
+});
+
+describe("fleetHref", () => {
+  it("omits defaults and keeps the other params", () => {
+    expect(fleetHref({})).toBe("/fleet");
+    expect(fleetHref({ tab: "suppliers", archived: true })).toBe("/fleet?tab=suppliers&archived=1");
+    expect(fleetHref({ tab: "equipment", q: "a b", supplierId: "s1", typeId: "t1", page: 2 })).toBe(
+      "/fleet?q=a+b&supplier=s1&type=t1&page=2",
+    );
+    expect(fleetHref({ page: 1 })).toBe("/fleet");
   });
 });
