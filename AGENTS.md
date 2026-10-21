@@ -34,6 +34,7 @@ These conventions apply to every change, human or agent.
 - Domain code is developed with strict TDD: RED (a failing test observed first), GREEN, then REFACTOR. Record the RED and GREEN evidence in the feature document.
 - Unit tests live in `__tests__` folders and run with `pnpm test`. They need no Docker and use in-memory fakes placed next to the adapters they replace.
 - Database tests are `test/db/**/*.db.test.ts`. They run with `pnpm test:db`, need Docker, and create an ephemeral database for each run.
+- End-to-end tests are `e2e/specs/*.spec.ts` (Playwright, ADR-0009). They run with `pnpm test:e2e` (builds first; `pnpm test:e2e:only` skips the build), need Docker, and create an ephemeral database and login for each run. A change that alters a screen, a label, a role or a flow updates its end-to-end tests in the same change.
 - Test data is synthetic. Never load test data into the development database.
 
 ## Data, secrets and documents
@@ -53,7 +54,7 @@ These conventions apply to every change, human or agent.
 - Use work-unit commits. Each commit is one reviewable unit, with its tests and documentation alongside the behavior it describes.
 - Do not add AI attribution or `Co-Authored-By` trailers to commits or pull requests.
 - Pull request titles follow Conventional Commits. Descriptions are written in Latin American Spanish with these sections: Contexto, Problemática, Qué cambia, Por qué, Observaciones, Alcances and Pruebas.
-- CI must pass before a change is merged. CI runs the `verify` job (lint, typecheck, test, build) and the `database` job (migrations and `test:db`) from `.github/workflows/ci.yml`.
+- CI must pass before a change is merged. CI runs the `verify` job (lint, typecheck, test, build), the `database` job (migrations and `test:db`) and the `e2e` job (Playwright) from `.github/workflows/ci.yml`.
 - Pushing, opening pull requests and merging are decisions for the maintainer.
 
 ## Cost
@@ -79,6 +80,7 @@ Before reporting a change as done, run:
 
 - `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm build`, always.
 - `pnpm test:db` when the change touches the database and Docker is running.
+- `pnpm test:e2e` when the change touches a screen, a flow, a role or a permission and Docker is running (CI runs it as the `e2e` job).
 
 ## Language and documentation
 

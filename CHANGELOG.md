@@ -6,6 +6,7 @@ All notable changes to this project are documented in this file. The format foll
 
 ### Added
 
+- End-to-end tests (issue 36, ADR-0009): Playwright against the compiled app with an ephemeral database, a restricted login and a synthetic world of five users; suites for sign-in and session, navigation per role, dashboard, organization, fleet, users and the mobile view; `pnpm test:e2e`; and an `e2e` job in CI that uploads the report on failure.
 - App shell and dashboard (`p0-10`): sidebar with icons and sections, top bar with an account menu and a mobile drawer, shared page, card, table and status-pill styles (tables become stacked cards below 640px), a dashboard at `/` with totals and distribution bars from the existing list use cases, and the fleet screen reorganized into tabs with search, filters and pagination for equipment.
 - First deploy (`p0-09`, ADR-0008): Neon Free and Vercel Hobby, migrated from the maintainer machine; the web app uses only the restricted login.
 - First deploy preparation (`p0-09`, ADR-0008): `DATABASE_POOLER=transaction` makes the container use one connection and no prepared statements behind a transaction pooler, and the free-tier limits of Neon and Vercel are recorded.
