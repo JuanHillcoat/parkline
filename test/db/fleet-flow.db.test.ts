@@ -10,6 +10,7 @@ import type { Actor } from "../../src/shared/domain/ports/access-policy";
 import type { AuditLog } from "../../src/shared/domain/ports/audit-log";
 import type { Result } from "../../src/shared/domain/result";
 import { createPostgresFleetTx } from "../../src/fleet/infrastructure/postgres-fleet-tx";
+import { PostgresOperationDirectory } from "../../src/organization/infrastructure/postgres-operation-directory";
 import { createContainer, type Container } from "../../src/shared/infrastructure/container";
 
 const MIGRATIONS_DIR = resolve(import.meta.dirname, "../../db/migrations");
@@ -228,7 +229,7 @@ describe("fleet through the container as parkline_app", () => {
     const [foreign] = await owner<{ id: string }[]>`
       insert into suppliers (tenant_id, name) values (${tenant?.id ?? ""}, 'FOREIGN SUPPLIER') returning id`;
     const attempt = app.begin(async (tx) => {
-      const { suppliers, equipment } = createPostgresFleetTx(tx);
+      const { suppliers, equipment } = createPostgresFleetTx(tx, (handle) => new PostgresOperationDirectory(handle));
       await suppliers.rename(fx.supplier.tenantId, fx.supplier.id, "Renamed In Transaction");
       return equipment.update({ ...fx.equipment, supplierId: foreign?.id ?? "" });
     });

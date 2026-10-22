@@ -8,13 +8,19 @@ import type { FleetDeps } from "../../fleet/application/deps";
 import { ArchiveAssetType } from "../../fleet/application/use-cases/archive-asset-type";
 import { ArchiveEquipment } from "../../fleet/application/use-cases/archive-equipment";
 import { ArchiveSupplier } from "../../fleet/application/use-cases/archive-supplier";
+import { AssignEquipment } from "../../fleet/application/use-cases/assign-equipment";
+import { CorrectAssignment } from "../../fleet/application/use-cases/correct-assignment";
 import { CreateAssetType } from "../../fleet/application/use-cases/create-asset-type";
 import { CreateEquipment } from "../../fleet/application/use-cases/create-equipment";
 import { CreateSupplier } from "../../fleet/application/use-cases/create-supplier";
+import { EndAssignment } from "../../fleet/application/use-cases/end-assignment";
 import { ListAssetTypes } from "../../fleet/application/use-cases/list-asset-types";
 import { ListEquipment } from "../../fleet/application/use-cases/list-equipment";
+import { ListEquipmentAssignments } from "../../fleet/application/use-cases/list-equipment-assignments";
 import { ListSuppliers } from "../../fleet/application/use-cases/list-suppliers";
+import { MoveEquipment } from "../../fleet/application/use-cases/move-equipment";
 import { RenameSupplier } from "../../fleet/application/use-cases/rename-supplier";
+import { ReplaceEquipment } from "../../fleet/application/use-cases/replace-equipment";
 import { RestoreAssetType } from "../../fleet/application/use-cases/restore-asset-type";
 import { RestoreEquipment } from "../../fleet/application/use-cases/restore-equipment";
 import { RestoreSupplier } from "../../fleet/application/use-cases/restore-supplier";
@@ -56,6 +62,7 @@ import { RestoreOperation } from "../../organization/application/use-cases/resto
 import { RestoreSite } from "../../organization/application/use-cases/restore-site";
 import { UpdateOperation } from "../../organization/application/use-cases/update-operation";
 import { createPostgresOrganizationTx } from "../../organization/infrastructure/postgres-organization-tx";
+import { PostgresOperationDirectory } from "../../organization/infrastructure/postgres-operation-directory";
 import { PostgresScopeDirectory } from "../../organization/infrastructure/postgres-scope-directory";
 import type { AccessPolicy } from "../domain/ports/access-policy";
 import type { AuditLog } from "../domain/ports/audit-log";
@@ -118,14 +125,25 @@ const organizationUseCases = (deps: OrganizationDeps) => ({
 const fleetDeps = (sql: Sql, options: ContainerOptions, accessPolicy: AccessPolicy): FleetDeps => ({
   unitOfWork: new PostgresUnitOfWork(sql, (handle) => {
     const audit = new PostgresAuditLog(handle);
-    return createPostgresFleetTx(handle, options.wrapAudit?.(audit) ?? audit);
+    // Implemented by organization, handed to fleet as the shared port only (ADR-0005).
+    const operations = (tx: typeof handle) => new PostgresOperationDirectory(tx);
+    return createPostgresFleetTx(handle, operations, options.wrapAudit?.(audit) ?? audit);
   }),
   clock: new SystemClock(),
   ids: new UuidIdGenerator(),
   accessPolicy,
 });
 
-const fleetUseCases = (deps: FleetDeps) => ({
+const assignmentUseCases = (deps: FleetDeps) => ({
+  assignEquipment: new AssignEquipment(deps),
+  correctAssignment: new CorrectAssignment(deps),
+  endAssignment: new EndAssignment(deps),
+  listEquipmentAssignments: new ListEquipmentAssignments(deps),
+  moveEquipment: new MoveEquipment(deps),
+  replaceEquipment: new ReplaceEquipment(deps),
+});
+
+const catalogUseCases = (deps: FleetDeps) => ({
   archiveAssetType: new ArchiveAssetType(deps),
   archiveEquipment: new ArchiveEquipment(deps),
   archiveSupplier: new ArchiveSupplier(deps),
@@ -142,6 +160,8 @@ const fleetUseCases = (deps: FleetDeps) => ({
   updateAssetType: new UpdateAssetType(deps),
   updateEquipment: new UpdateEquipment(deps),
 });
+
+const fleetUseCases = (deps: FleetDeps) => ({ ...catalogUseCases(deps), ...assignmentUseCases(deps) });
 
 const identityUseCases = (deps: IdentityDeps) => ({
   install: new InstallTenantAdmin(deps),
