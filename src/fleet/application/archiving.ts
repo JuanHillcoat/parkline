@@ -50,12 +50,22 @@ export const changeArchive = <T extends ArchivableRow>(
   verb: ArchiveVerb,
   input: ArchiveInput,
 ): Promise<Result<T, DomainError>> =>
-  whenActive(input.actor, () =>
-    deps.unitOfWork.run(async (tx) => {
-      const prepared = await prepare(deps, subject, input, tx);
-      return prepared.ok ? commit(deps, subject, verb, input.actor, { tx, ...prepared.value }) : prepared;
-    }),
-  );
+  whenActive(input.actor, () => deps.unitOfWork.run((tx) => archiveWithin(deps, subject, verb, input, tx)));
+
+/**
+ * The same change inside a unit of work the caller already opened: a replacement retires its outgoing
+ * equipment this way, so the archive rules and the audit entry are those of a normal archive.
+ */
+export const archiveWithin = async <T extends ArchivableRow>(
+  deps: FleetDeps,
+  subject: ArchiveSubject<T>,
+  verb: ArchiveVerb,
+  input: ArchiveInput,
+  tx: FleetTx,
+): Promise<Result<T, DomainError>> => {
+  const prepared = await prepare(deps, subject, input, tx);
+  return prepared.ok ? commit(deps, subject, verb, input.actor, { tx, ...prepared.value }) : prepared;
+};
 
 const prepare = async <T extends ArchivableRow>(
   deps: FleetDeps,

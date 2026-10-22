@@ -1,0 +1,66 @@
+# P0-08 Equipment assignments with validity, moves, replacement and spares
+
+- Branch: `feat/p0-08-equipment-assignments`
+- Issue: #43
+- Source of truth: `docs/00-analisis-inicial.md` (section 7, "Asignación con vigencia"), `docs/adr/0006-organization-model.md`, `docs/adr/0007-fleet-catalogs.md` (D5, D6), `docs/adr/0005-cross-module-authorization.md`, the two screen sketches the maintainer keeps outside the repository
+- Status: design approved, in progress
+
+## Specs
+
+- S1 "desde que fecha hasta que fecha estuvo el equipo. Eso es trazabilidad sobre los equipos, la necesito"
+- S2 "permitir ambas" (a past date and corrections of an assignment already recorded, with a mandatory reason and audited; nothing is physically deleted).
+- S3 "Hay veces que una operacion da de baja una maquina y justo otra operacion requeire una de esas mismas caracteristicas entonces ese equipo pasa a estar operativo en otra operacion, habria que contemplar la posibilidad de mover equipos tambien."
+- S4 "O un equipo viejo cuando viene uno nuenvo pasa a muleto..." and "cuando un equipo se reemplaza deberia pasarse a muleto a no ser que el proveedor retire el equipo. Tomaria 2 caminos. 1. Pasarlo automaticamente a muleto y luego hacer la baja manual. 2. Lanzar una pregunta: ¿Desea dejar el equipo como muleto o darlo de baja?... elegi vos que es lo mas apropiado" (decision: path 2).
+- S5 "la idea es hacer algo similar eso en toda la app. el login y la paleta de colores que ya tenemos se respeta": the board shows operation, site and state (Activo, Muleto); the equipment detail has a Historial tab.
+- S6 "cada issue, cada implementacion, cada feature nueva debe contar con todos los test, e2e, db": unit, database and end-to-end tests ship with every task.
+- S7 Real cost of $0; synthetic test data only.
+- S8 "al dar de alta un equipo se daba la posibilidad de subir una imagen representativa del equipo, eso no lo vi aca. La logica de ese repositorio de surdev es bastante acertada, deberiamos seguirla aca." Handled in its own issue (#44) after this feature; the detail page of D10 leaves the place of the photo and shows a neutral placeholder.
+- S9 "Para cuando entremos en lo que es orden de reparaciones, ordenes de trabajo presupuestos facturas literalmente tenemso que replicar esa logica. Funcionaba perfecto..." Tracked in issue #45; nothing of that phase is built here.
+
+## Objective
+
+Every equipment can be assigned to an operation (and, through it, a site) for a period, moved to another operation, replaced by another equipment that leaves it as a spare or retired, and corrected afterwards, with the full history visible. Equipment visibility follows the assignment, which fixes D6 of ADR-0007.
+
+## Design decisions (approved by the maintainer on 2026-10-21)
+
+- D1 Assignment: `equipment_assignments(id, tenant_id, equipment_id, business_unit_id, operation_id, site_id, kind, valid_from, valid_to, reason, created_by, created_at)`. `kind` is `active` or `spare` (muleto). The site and the division are copied from the operation when the assignment is made, so the history stays true after an operation is edited. Dates are whole days, both ends inclusive; `valid_to` null means open.
+- D2 No overlap: one equipment has at most one assignment at any day, enforced by a Postgres exclusion constraint on `daterange(valid_from, coalesce(valid_to, 'infinity'), '[]')` per equipment, besides the use case check that gives the typed error. Contiguous assignments are valid (a move to the day after).
+- D3 Operations (use cases): `AssignEquipment` (first or later assignment, to an operation, with a kind and a start day), `MoveEquipment` (closes the open assignment the day before the new start and opens the new one in another operation, atomically), `ReplaceEquipment` (below), `EndAssignment` (closes the open one with a day and a reason; the equipment stays unassigned and available), `CorrectAssignment` (changes the days, operation or kind of an existing assignment, keeping the no-overlap rule). Nothing is physically deleted.
+- D4 Dates and reasons: past dates are allowed (S2). Moving, replacing, ending and correcting need a mandatory reason; a first assignment needs one only when its start is in the past. Reasons are stored in the audit entry and in the row.
+- D5 Replacement (S4): the actor picks the incoming equipment and the day; the incoming one is assigned as `active` to the operation, and the outgoing one MUST be resolved in the same step: **Dejarlo como muleto** (preselected: its assignment becomes `spare` in the same operation from the day) or **Darlo de baja** (its assignment ends the day before and the equipment is archived with the reason; offered only to actors holding `catalog.archive`, who today are fleet analysts). There is no default that skips the choice. One transaction for both equipment.
+- D6 Visibility: equipment is visible to an actor whose scope covers the operation of its open assignment (tenant, division, operation or site scope). Equipment with no open assignment is visible only to tenant-wide readers. The fleet use cases get the position from the assignment; the lists keep returning only what the actor may see.
+- D7 Blocks: an equipment with an open assignment cannot be archived (`has_open_assignment`); an archived equipment cannot be assigned; an operation or site that is archived cannot receive a new assignment (`parent_archived`); an operation with open assignments cannot be archived (`has_open_assignments`), both with their typed errors and messages.
+- D8 Authorization: `catalog.write` at the position of the target operation (and of the source operation when moving); archive in a replacement also needs `catalog.archive`. Authorization runs before any lookup that would reveal existence (see issue 16). Revisit when more roles may assign.
+- D9 Audit: new sensitive actions `fleet.assignment.move`, `fleet.assignment.replace`, `fleet.assignment.end` and `fleet.assignment.correct` (in `SENSITIVE_AUDIT_ACTIONS` and in the trigger, a new migration); `fleet.assignment.create` is not sensitive unless backdated, in which case it carries the reason as well.
+- D10 Screens (S5): the equipment list (the Equipos tab of `/fleet`) gains columns Operación, Sitio and a state pill (Activo, Muleto, Sin asignar); a detail page `/fleet/equipment/<id>` with the information cards, the current location with the actions (Asignar, Mover, Reemplazar, Cerrar asignación) and a Historial tab with the timeline of assignments (from, to, operation, site, kind, reason, who). Only the actions the actor may do are shown.
+
+## Scope (authorized)
+
+In: migration `0010` (table, exclusion constraint, grants without delete, sensitive actions in the trigger), domain, use cases, in-memory and Postgres adapters, the visibility change of D6, the screens of D10, copy, ADR-0010, README, AGENTS, CHANGELOG, and all three levels of tests.
+Out: hours and meters, maintenance, repair orders, costs and rates, importing the daily board, the company logo, deleting records loaded by mistake, supplier contacts.
+
+## Tasks
+
+- [x] T1 (S1-S4, S6) Domain and use cases of the `fleet` module with in-memory adapters (strict TDD): assignment entity and rules, no overlap, assign, move, replace, end, correct, history query, the blocks that belong to fleet (an equipment with an open assignment cannot be archived; an archived equipment cannot be assigned; an archived operation cannot receive an assignment, read through a new shared-kernel `OperationDirectory` port), authorization before lookup, audit with the new sensitive actions. Unit tests.
+- [ ] T2 (S1, S2, S6) Migration `0010`, Postgres adapters and transaction, sensitive actions in the trigger, container wiring. Database tests (schema, exclusion constraint, grants, trigger, flows as `parkline_app` with races).
+- [ ] T3 (S5, S6) The organization side of D7 (an operation with open assignments cannot be archived, through a shared-kernel port that fleet implements), the visibility change of D6 and the fleet lists with operation, site and state; the Equipos tab columns. Unit and database tests.
+- [ ] T4 (S5, S6) Equipment detail page with Historial and the action dialogs (assign, move, replace with the mandatory choice, end, correct). Unit tests of the view helpers.
+- [ ] T5 (S6) End-to-end tests: assign, move, replace with muleto and with baja, end, correct, history, blocks, permissions per role, scoped visibility, mobile view. Update the existing fleet suites.
+- [ ] T6 (S7) ADR-0010, README, AGENTS (current state), CHANGELOG, this document's evidence.
+
+## Acceptance criteria
+
+- A person can read, for any equipment, the full sequence of operations and sites with from and to days, the kind and the reasons.
+- Two overlapping assignments of one equipment are impossible, from the use case and from the database.
+- Replacing an equipment forces the muleto-or-baja choice and does both changes atomically.
+- A scoped manager or supervisor sees the equipment of their operation and no other.
+- Unit, database and end-to-end tests of every task pass; the three CI jobs pass; no secrets and no real data are committed.
+
+## Log
+
+- L1 2026-10-21 "desde que fecha hasta que fecha estuvo el equipo. Eso es trazabilidad sobre los equipos, la necesito"
+- 2026-10-21 "permitir ambas... Hay veces que una operacion da de baja una maquina y justo otra operacion requeire una de esas mismas caracteristicas entonces ese equipo pasa a estar operativo en otra operacion, habria que contemplar la posibilidad de mover equipos tambien. O un equipo viejo cuando viene uno nuenvo pasa a muleto..."
+- 2026-10-21 "cuando un equipo se reemplaza deberia pasarse a muleto a no ser que el proveedor retire el equipo. Tomaria 2 caminos. 1. Pasarlo automaticamente a muleto y luego hacer la baja manual. 2. Lanzar una pregunta: ¿Desea dejar el equipo como muleto o darlo de baja?... elegi vos que es lo mas apropiado". Decision: path 2 (D5), because whether the supplier withdraws the equipment is a real-world fact the system cannot know, and path 1 leaves a silent risk: a forgotten manual baja leaves a ghost spare.
+- 2026-10-21 Design D1 to D10 written.
+- 2026-10-21 "Si apruebo el diseño, algo que no te dije en el proyecto de surdev se daba la posibilidad de al dar de alta un equipo subir una imagen representativa del equipo, eso no lo vi aca. La logica de ese repositorio de surdev es bastante acertada, deberiamos seguirla aca. Para cuando entremos en lo que es orden de reparaciones, ordenes de trabajo presupuestos facturas literalmente tenemso que replicar esa logica. Funcionaba perfecto... Ahora si, avancemos con tu diseño propuesto... mergea en orden todo lo que haya, cuando este todo en main actualiza y crea la neuva rama". Design D1 to D10 approved as proposed. The equipment image became issue #44 and the repair-order phase issue #45.
+- 2026-10-21 T1 done (route: one delegated writer, because it is one large unit of behavior: domain, five use cases, the history query and about 2,000 lines with their tests; the parent verifies). RED: domain suites failed to load before the code existed; application suites failed with stubs that threw (92 failing tests in seven files) before the use cases; the sensitive-actions list test failed with the four actions removed. Built: day value object, overlap rules, `Assignment`, `AssignEquipment`, `MoveEquipment`, `ReplaceEquipment` (required `outgoing: spare | retire`, same transaction, archive through the existing engine), `EndAssignment`, `CorrectAssignment`, `ListEquipmentAssignments`; `ArchiveEquipment` refuses an open assignment; shared-kernel port `OperationDirectory`; four new sensitive actions. Parent re-run: `pnpm lint`, `pnpm typecheck` clean, `pnpm test` 979 passed, `pnpm build` clean. `pnpm test:db`: 7 expected failures, all the drift between the TypeScript list of sensitive actions and the database trigger (audit-hardening drift and reason tests, and the fleet-schema tests that pin four fleet actions and the new assignment actions); T2 adds the migration and updates those tests. Decisions of the writer: replace takes the operation of the outgoing equipment's open assignment (no separate operation input, so the dialog opens from the outgoing equipment); a new `operation_archived` error (the code `parent_archived` is mapped to supplier and asset type copy); a missing row answers forbidden unless the actor holds the permission tenant-wide (same pattern as issue 16); `fleet.assignment.create` stays out of the sensitive list and stores its reason when given; the Postgres transaction has a temporary stub (reads empty, writes throw) until T2. Risk: item 3 (the shared archive engine was refactored into `archiveWithin` and equipment archive now also checks assignments) and item 1 later with the migration of T2.

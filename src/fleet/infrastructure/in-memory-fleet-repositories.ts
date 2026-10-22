@@ -1,4 +1,5 @@
 import { nameKey } from "../../shared/domain/catalog-name";
+import type { AssignmentRepository, AssignmentWrite } from "../application/ports/assignment-repository";
 import type {
   AssetTypeRepository,
   EquipmentAdd,
@@ -8,7 +9,9 @@ import type {
   SetEquipmentArchivedAt,
   SupplierRepository,
 } from "../application/ports/repositories";
+import type { Assignment } from "../domain/assignment";
 import type { AssetType, Equipment, Supplier } from "../domain/entities";
+import { overlapsAny } from "../domain/periods";
 import { compareByCode, compareByName } from "./row-order";
 
 /** The data of one in-memory fleet database. A transaction works on a copy. */
@@ -16,9 +19,10 @@ export type FleetState = {
   suppliers: Supplier[];
   assetTypes: AssetType[];
   equipment: Equipment[];
+  assignments: Assignment[];
 };
 
-export const emptyState = (): FleetState => ({ suppliers: [], assetTypes: [], equipment: [] });
+export const emptyState = (): FleetState => ({ suppliers: [], assetTypes: [], equipment: [], assignments: [] });
 
 type Row = { readonly id: string; readonly tenantId: string; readonly name: string; readonly archivedAt: Date | null };
 
@@ -201,5 +205,52 @@ export class InMemoryEquipmentRepository implements EquipmentRepository {
         e.supplierId === equipment.supplierId &&
         nameKey(e.internalCode) === nameKey(equipment.internalCode),
     );
+  }
+}
+
+/** Newest first: by start day descending, then id, so the order is total. */
+const compareNewestFirst = (a: Assignment, b: Assignment): number =>
+  a.validFrom < b.validFrom ? 1 : a.validFrom > b.validFrom ? -1 : a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+
+export class InMemoryAssignmentRepository implements AssignmentRepository {
+  constructor(private readonly state: FleetState) {}
+
+  findById(tenantId: string, id: string): Promise<Assignment | null> {
+    return Promise.resolve(byId(this.state.assignments, tenantId, id));
+  }
+
+  findOpen(tenantId: string, equipmentId: string): Promise<Assignment | null> {
+    const found = this.ofEquipment(tenantId, equipmentId).find((a) => a.validTo === null);
+    return Promise.resolve(found ?? null);
+  }
+
+  listByEquipment(tenantId: string, equipmentId: string): Promise<readonly Assignment[]> {
+    return Promise.resolve(this.ofEquipment(tenantId, equipmentId).sort(compareNewestFirst));
+  }
+
+  /** Mirrors the exclusion constraint: no two periods of one equipment share a day. */
+  add(assignment: Assignment): Promise<AssignmentWrite> {
+    if (this.state.assignments.some((existing) => existing.id === assignment.id)) throw new Error("unique violation on id");
+    if (this.collides(assignment)) return Promise.resolve("overlap");
+    this.state.assignments.push(assignment);
+    return Promise.resolve("stored");
+  }
+
+  update(assignment: Assignment): Promise<AssignmentWrite> {
+    const rows = this.state.assignments;
+    const index = rows.findIndex((a) => a.tenantId === assignment.tenantId && a.id === assignment.id);
+    if (index < 0) throw new Error(`update of a missing row ${assignment.id}`);
+    if (this.collides(assignment, assignment.id)) return Promise.resolve("overlap");
+    rows[index] = assignment;
+    return Promise.resolve("stored");
+  }
+
+  private ofEquipment(tenantId: string, equipmentId: string): Assignment[] {
+    return inTenant(this.state.assignments, tenantId).filter((a) => a.equipmentId === equipmentId);
+  }
+
+  private collides(assignment: Assignment, ignoreId?: string): boolean {
+    const others = this.ofEquipment(assignment.tenantId, assignment.equipmentId).filter((a) => a.id !== ignoreId);
+    return overlapsAny(assignment, others);
   }
 }

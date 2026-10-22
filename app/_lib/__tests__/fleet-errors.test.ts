@@ -2,23 +2,34 @@ import { describe, expect, it } from "vitest";
 import { ForbiddenError } from "../../../src/identity/domain/authorizer";
 import {
   AlreadyArchivedError,
+  AssignmentOverlapError,
   ArchivedError,
   HasActiveEquipmentError,
+  HasOpenAssignmentError,
   InternalCodeTakenError,
+  InvalidAssignmentKindError,
   InvalidBatteryQuantityError,
+  InvalidDayError,
   InvalidInternalCodeError,
   InvalidMeterKindError,
   InvalidNameError,
+  InvalidPeriodError,
   InvalidPreventiveIntervalError,
   InvalidTextError,
   InvalidYearError,
   NameTakenError,
   NoChangesError,
+  NoOpenAssignmentError,
   NotArchivedError,
+  OpenAssignmentError,
+  OperationArchivedError,
+  OutgoingChoiceRequiredError,
   ParentArchivedError,
   PreventiveIntervalNotAllowedError,
   ReasonRequiredError,
   ReasonTooLongError,
+  SameEquipmentError,
+  SameOperationError,
 } from "../../../src/fleet/domain/errors";
 import { NotFoundError } from "../../../src/shared/domain/domain-error";
 import { copy } from "../copy";
@@ -43,6 +54,17 @@ const cases = [
   ["invalid_year", new InvalidYearError("bad year")],
   ["invalid_battery_quantity", new InvalidBatteryQuantityError("bad batteries")],
   ["invalid_text", new InvalidTextError("The brand has at most 120 characters", "brand")],
+  ["invalid_day", new InvalidDayError("bad day")],
+  ["invalid_period", new InvalidPeriodError("bad period")],
+  ["invalid_assignment_kind", new InvalidAssignmentKindError()],
+  ["outgoing_required", new OutgoingChoiceRequiredError()],
+  ["same_equipment", new SameEquipmentError()],
+  ["same_operation", new SameOperationError()],
+  ["assignment_overlap", new AssignmentOverlapError("period overlaps a1")],
+  ["open_assignment_exists", new OpenAssignmentError("Equipment e1 already has an open assignment")],
+  ["no_open_assignment", new NoOpenAssignmentError("Equipment e1 has no open assignment")],
+  ["has_open_assignment", new HasOpenAssignmentError("Equipment e1 still has an open assignment")],
+  ["operation_archived", new OperationArchivedError("Operation op1 is archived")],
   ["not_found", new NotFoundError("Equipment", "e1")],
   ["forbidden", new ForbiddenError("catalog.write")],
 ] as const;
@@ -53,7 +75,7 @@ describe("errorMessage for the fleet codes", () => {
     const message = errorMessage(error);
     expect(message).not.toBe(GENERIC_ERROR);
     expect(message).not.toBe(copy.errors.checkForm);
-    expect(message).not.toMatch(/_key|bad |The brand|Equipment e1|Supplier still/);
+    expect(message).not.toMatch(/_key|bad |The brand|Equipment e1|Supplier still|period overlaps|Operation op1/);
   });
 
   it("uses a distinct message for each code", () => {
@@ -64,6 +86,11 @@ describe("errorMessage for the fleet codes", () => {
   it("tells the user what to do first when a block applies", () => {
     expect(errorMessage(new HasActiveEquipmentError("x"))).toContain("Da de baja primero sus equipos");
     expect(errorMessage(new ParentArchivedError("x"))).toContain("proveedor");
+  });
+
+  it("tells the user what to do first when an assignment blocks", () => {
+    expect(errorMessage(new HasOpenAssignmentError("x"))).toContain("Ciérrala primero");
+    expect(errorMessage(new OpenAssignmentError("x"))).toContain("vigente");
   });
 
   it("names the offending field for invalid text", () => {

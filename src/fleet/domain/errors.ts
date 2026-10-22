@@ -121,3 +121,81 @@ export class NameTakenError extends ConflictError {
 export class InternalCodeTakenError extends ConflictError {
   readonly code: string = "internal_code_taken";
 }
+
+/** A calendar day that is not a real `YYYY-MM-DD` date. `field` names the offending input. */
+export class InvalidDayError extends ValidationError {
+  readonly code: string = "invalid_day";
+
+  constructor(message: string, field = "day") {
+    super(message, field);
+  }
+}
+
+/** The end of an assignment is before its start, or a closing day falls before the period starts. */
+export class InvalidPeriodError extends ValidationError {
+  readonly code: string = "invalid_period";
+
+  constructor(message: string, field = "day") {
+    super(message, field);
+  }
+}
+
+export class InvalidAssignmentKindError extends ValidationError {
+  readonly code: string = "invalid_assignment_kind";
+
+  constructor() {
+    super("The assignment kind is active or spare", "kind");
+  }
+}
+
+/** A replacement must say what happens to the outgoing equipment: spare or retire. There is no default. */
+export class OutgoingChoiceRequiredError extends ValidationError {
+  readonly code: string = "outgoing_required";
+
+  constructor() {
+    super("Choose what happens to the replaced equipment: spare or retire", "outgoing");
+  }
+}
+
+/** An equipment cannot replace itself. */
+export class SameEquipmentError extends ValidationError {
+  readonly code: string = "same_equipment";
+
+  constructor() {
+    super("The incoming and the outgoing equipment must be different", "incomingEquipmentId");
+  }
+}
+
+/** A move goes to another operation. */
+export class SameOperationError extends ValidationError {
+  readonly code: string = "same_operation";
+
+  constructor() {
+    super("The equipment is already in that operation", "operationId");
+  }
+}
+
+/** The period overlaps another assignment of the same equipment (both ends inclusive). */
+export class AssignmentOverlapError extends ConflictError {
+  readonly code: string = "assignment_overlap";
+}
+
+/** The equipment already has an open assignment: move it, replace it or end it instead. */
+export class OpenAssignmentError extends ConflictError {
+  readonly code: string = "open_assignment_exists";
+}
+
+/** The equipment has no open assignment to move, end or replace. */
+export class NoOpenAssignmentError extends ConflictError {
+  readonly code: string = "no_open_assignment";
+}
+
+/** An equipment with an open assignment cannot be archived: end its assignment first. */
+export class HasOpenAssignmentError extends ConflictError {
+  readonly code: string = "has_open_assignment";
+}
+
+/** The operation (or its site or division) is archived: it cannot receive an assignment. */
+export class OperationArchivedError extends ConflictError {
+  readonly code: string = "operation_archived";
+}

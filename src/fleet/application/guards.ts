@@ -27,6 +27,22 @@ export const whenActive = <T>(
 export const authorize = (policy: AccessPolicy, actor: Actor, permission: string): Result<string, DomainError> =>
   policy.check(actor, permission, { tenantId: actor.tenantId });
 
+/**
+ * The answer for a row that is not there. When authorization needs the row's position it cannot run
+ * before the lookup; to keep ids from being probed, a missing row answers exactly like a row the actor
+ * cannot reach (forbidden) unless the actor holds the permission tenant-wide, who could act on any row
+ * and may be told the typed `error` (same pattern as issue 16 in the organization module).
+ */
+export const missingRow = (
+  policy: AccessPolicy,
+  actor: Actor,
+  permission: string,
+  error: DomainError,
+): Result<never, DomainError> => {
+  const tenantWide = policy.check(actor, permission, { tenantId: actor.tenantId });
+  return tenantWide.ok ? err(error) : tenantWide;
+};
+
 /** D6: fleet rows sit at the tenant, so only a tenant-wide `catalog.read` sees them; scoped readers see none. */
 export const canReadFleet = (policy: AccessPolicy, actor: Actor): boolean =>
   policy.check(actor, "catalog.read", { tenantId: actor.tenantId }).ok;
