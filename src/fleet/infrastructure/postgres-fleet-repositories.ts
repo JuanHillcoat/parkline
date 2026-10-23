@@ -231,6 +231,18 @@ export class PostgresAssetTypeRepository implements AssetTypeRepository {
 export class PostgresEquipmentRepository implements EquipmentRepository {
   constructor(private readonly sql: TransactionSql) {}
 
+  /**
+   * NO KEY UPDATE, the lock `PostgresAssignmentRepository` takes before it writes: it does not block the
+   * key-share locks the foreign keys of other tables take. One statement per row, in sorted id order, so
+   * the order does not depend on the plan of a multi-row query.
+   */
+  async lock(tenantId: string, ids: readonly string[]): Promise<void> {
+    if (!isUuid(tenantId)) return;
+    for (const id of [...new Set(ids.map((value) => value.toLowerCase()))].filter(isUuid).sort()) {
+      await this.sql`select 1 from equipments where tenant_id = ${tenantId} and id = ${id} for no key update`;
+    }
+  }
+
   private get columns() {
     return this.sql`id, tenant_id, supplier_id, asset_type_id, internal_code, brand, model, year, serial_number, battery_quantity, observations, archived_at`;
   }

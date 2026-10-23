@@ -52,6 +52,12 @@ export type EquipmentAdd = "added" | "internal_code_taken";
 export type EquipmentUpdate = "updated" | "internal_code_taken";
 
 export interface EquipmentRepository {
+  /**
+   * Locks the equipment rows until the transaction ends, in id order whatever the order given, so two
+   * transactions that lock the same pair never wait for each other in a cycle. A writer that decides on
+   * the archived state or the open assignment of an equipment locks it first and reads afterwards.
+   */
+  lock(tenantId: string, ids: readonly string[]): Promise<void>;
   findById(tenantId: string, id: string): Promise<Equipment | null>;
   /** The ACTIVE equipment of the supplier whose internal code has this key. */
   findByInternalCode(tenantId: string, supplierId: string, key: string): Promise<Equipment | null>;

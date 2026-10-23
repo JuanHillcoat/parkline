@@ -3,7 +3,7 @@ import type { Actor } from "../../../shared/domain/ports/access-policy";
 import { ok, type Result } from "../../../shared/domain/result";
 import type { Assignment } from "../../domain/assignment";
 import { parseDay } from "../../domain/day";
-import { authorizeOpen, closedOn, recordAssignmentAudit, saveAssignment, type Source } from "../assignment-support";
+import { authorizeOpenLocked, closedOn, recordAssignmentAudit, saveAssignment, type Source } from "../assignment-support";
 import { assignmentSnapshot } from "../audit";
 import type { FleetDeps } from "../deps";
 import { whenActive } from "../guards";
@@ -30,7 +30,7 @@ export class EndAssignment {
   }
 
   private async end(tx: FleetTx, input: EndAssignmentInput): Promise<Result<Assignment, DomainError>> {
-    const source = await authorizeOpen(tx, this.deps, input.actor, input.equipmentId);
+    const source = await authorizeOpenLocked(tx, this.deps, input.actor, input.equipmentId);
     if (!source.ok) return source;
     const closed = this.close(source.value, input);
     if (!closed.ok) return closed;

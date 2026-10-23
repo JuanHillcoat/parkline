@@ -43,7 +43,10 @@ export const missingRow = (
   return tenantWide.ok ? err(error) : tenantWide;
 };
 
-/** D6: fleet rows sit at the tenant, so only a tenant-wide `catalog.read` sees them; scoped readers see none. */
+/**
+ * Suppliers and asset types sit at the tenant, so only a tenant-wide `catalog.read` sees them. Equipment is
+ * the exception: its visibility follows its open assignment (see `visibleEquipment`).
+ */
 export const canReadFleet = (policy: AccessPolicy, actor: Actor): boolean =>
   policy.check(actor, "catalog.read", { tenantId: actor.tenantId }).ok;
 

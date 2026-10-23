@@ -26,6 +26,7 @@ import { RestoreEquipment } from "../../fleet/application/use-cases/restore-equi
 import { RestoreSupplier } from "../../fleet/application/use-cases/restore-supplier";
 import { UpdateAssetType } from "../../fleet/application/use-cases/update-asset-type";
 import { UpdateEquipment } from "../../fleet/application/use-cases/update-equipment";
+import { PostgresAssignmentDirectory } from "../../fleet/infrastructure/postgres-assignment-directory";
 import { createPostgresFleetTx } from "../../fleet/infrastructure/postgres-fleet-tx";
 import type { IdentityDeps } from "../../identity/application/deps";
 import { IdentityAccessPolicy } from "../../identity/application/identity-access-policy";
@@ -96,7 +97,9 @@ const identityDeps = (sql: Sql, options: ContainerOptions): IdentityDeps => ({
 const organizationDeps = (sql: Sql, options: ContainerOptions, accessPolicy: AccessPolicy): OrganizationDeps => ({
   unitOfWork: new PostgresUnitOfWork(sql, (handle) => {
     const audit = new PostgresAuditLog(handle);
-    return createPostgresOrganizationTx(handle, options.wrapAudit?.(audit) ?? audit);
+    // Implemented by fleet, handed to organization as the shared port only (ADR-0005).
+    const assignments = (tx: typeof handle) => new PostgresAssignmentDirectory(tx);
+    return createPostgresOrganizationTx(handle, assignments, options.wrapAudit?.(audit) ?? audit);
   }),
   clock: new SystemClock(),
   ids: new UuidIdGenerator(),

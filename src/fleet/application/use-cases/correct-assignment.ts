@@ -46,14 +46,30 @@ export class CorrectAssignment {
 
   private async correct(tx: FleetTx, input: CorrectAssignmentInput): Promise<Result<Assignment, DomainError>> {
     const { actor } = input;
-    const current = await tx.assignments.findById(actor.tenantId, input.assignmentId);
-    if (current === null) return this.missing(input);
-    const role = authorizeAssignment(this.deps, actor, current);
-    if (!role.ok) return role;
+    const found = await this.readLocked(tx, input);
+    if (!found.ok) return found;
+    const { current, role } = found.value;
     const place = await this.place(tx, input, current);
     if (!place.ok) return place;
     const next = this.build(input, current, place.value);
-    return next.ok ? this.apply(tx, { actor, role: role.value, current, next: next.value }) : next;
+    return next.ok ? this.apply(tx, { actor, role, current, next: next.value }) : next;
+  }
+
+  /**
+   * Reads the assignment, authorizes, locks its equipment and reads it again, so the correction is decided
+   * on committed data (authorization first: a refused actor never waits on a lock).
+   */
+  private async readLocked(tx: FleetTx, input: CorrectAssignmentInput): Promise<Result<{ current: Assignment; role: string }, DomainError>> {
+    const { actor, assignmentId } = input;
+    const first = await tx.assignments.findById(actor.tenantId, assignmentId);
+    if (first === null) return this.missing(input);
+    const allowed = authorizeAssignment(this.deps, actor, first);
+    if (!allowed.ok) return allowed;
+    await tx.equipment.lock(actor.tenantId, [first.equipmentId]);
+    const current = await tx.assignments.findById(actor.tenantId, assignmentId);
+    if (current === null) return this.missing(input);
+    const role = authorizeAssignment(this.deps, actor, current);
+    return role.ok ? ok({ current, role: role.value }) : role;
   }
 
   private missing(input: CorrectAssignmentInput): Result<never, DomainError> {

@@ -76,6 +76,23 @@ export const authorizeOpen = async (
   return role.ok ? ok({ open, role: role.value }) : role;
 };
 
+/**
+ * `authorizeOpen` under the equipment row lock: authorize first (a refused actor never waits on a lock and
+ * learns nothing from contention), lock the equipment, then read the open assignment again so the decision
+ * is made on what concurrent writers committed. The same rule as assign, archive and replace.
+ */
+export const authorizeOpenLocked = async (
+  tx: FleetTx,
+  deps: FleetDeps,
+  actor: Actor,
+  equipmentId: string,
+): Promise<Result<Source, DomainError>> => {
+  const first = await authorizeOpen(tx, deps, actor, equipmentId);
+  if (!first.ok) return first;
+  await tx.equipment.lock(actor.tenantId, [equipmentId]);
+  return authorizeOpen(tx, deps, actor, equipmentId);
+};
+
 /** An archived operation (or one whose site or division is archived) cannot receive an assignment. */
 export const requireActiveOperation = (op: OperationInfo): Result<OperationInfo, DomainError> =>
   op.archivedAt === null ? ok(op) : err(new OperationArchivedError(`Operation ${op.id} is archived`));

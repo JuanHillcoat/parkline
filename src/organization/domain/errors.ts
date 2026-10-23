@@ -53,6 +53,11 @@ export class HasActiveOperationsError extends ConflictError {
   readonly code: string = "has_active_operations";
 }
 
+/** An operation with open equipment assignments cannot be archived: they are ended or moved first. */
+export class HasOpenAssignmentsError extends ConflictError {
+  readonly code: string = "has_open_assignments";
+}
+
 /** The division or the site of the operation is archived (D4). */
 export class ParentArchivedError extends ConflictError {
   readonly code: string = "parent_archived";

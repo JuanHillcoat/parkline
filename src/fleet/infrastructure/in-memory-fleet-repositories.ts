@@ -143,6 +143,11 @@ export class InMemoryAssetTypeRepository implements AssetTypeRepository {
 export class InMemoryEquipmentRepository implements EquipmentRepository {
   constructor(private readonly state: FleetState) {}
 
+  /** The in-memory unit of work is single-threaded: nothing to lock. */
+  lock(): Promise<void> {
+    return Promise.resolve();
+  }
+
   findById(tenantId: string, id: string): Promise<Equipment | null> {
     return Promise.resolve(byId(this.state.equipment, tenantId, id));
   }
@@ -222,6 +227,10 @@ export class InMemoryAssignmentRepository implements AssignmentRepository {
   findOpen(tenantId: string, equipmentId: string): Promise<Assignment | null> {
     const found = this.ofEquipment(tenantId, equipmentId).find((a) => a.validTo === null);
     return Promise.resolve(found ?? null);
+  }
+
+  listOpen(tenantId: string): Promise<readonly Assignment[]> {
+    return Promise.resolve(inTenant(this.state.assignments, tenantId).filter((a) => a.validTo === null));
   }
 
   listByEquipment(tenantId: string, equipmentId: string): Promise<readonly Assignment[]> {

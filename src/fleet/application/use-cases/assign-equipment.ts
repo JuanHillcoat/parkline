@@ -64,9 +64,13 @@ export class AssignEquipment {
     return reason.ok ? ok({ kind: kind.value, day: day.value, reason: reason.value }) : reason;
   }
 
-  /** The equipment exists in the tenant, is active and has no open assignment. */
+  /**
+   * The equipment exists in the tenant, is active and has no open assignment. The row is locked FIRST, so
+   * the archived state and the open assignment read afterwards are those a concurrent archive committed.
+   */
   private async requireFreeEquipment(tx: FleetTx, input: AssignEquipmentInput): Promise<Result<void, DomainError>> {
     const { tenantId } = input.actor;
+    await tx.equipment.lock(tenantId, [input.equipmentId]);
     const equipment = await tx.equipment.findById(tenantId, input.equipmentId);
     if (equipment === null) return err(new NotFoundError("Equipment", input.equipmentId));
     if (equipment.archivedAt !== null) return archivedRow("Equipment", equipment.id);

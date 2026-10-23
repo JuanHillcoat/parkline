@@ -1,4 +1,5 @@
 import type { OrganizationTx } from "../application/ports/organization-tx";
+import type { AssignmentDirectory } from "../../shared/domain/ports/assignment-directory";
 import type { AuditLog } from "../../shared/domain/ports/audit-log";
 import type { UnitOfWork } from "../../shared/domain/ports/unit-of-work";
 import { InMemoryUnitOfWork, type Transaction } from "../../shared/infrastructure/in-memory-unit-of-work";
@@ -10,10 +11,14 @@ import {
   type OrganizationState,
 } from "./in-memory-organization-repositories";
 
-const txOver = (state: OrganizationState, audit: AuditLog): OrganizationTx => ({
+/** The directory of a store built without one: no operation has open assignments. */
+const NO_ASSIGNMENTS: AssignmentDirectory = { countOpen: () => Promise.resolve(0) };
+
+const txOver = (state: OrganizationState, audit: AuditLog, assignments: AssignmentDirectory): OrganizationTx => ({
   businessUnits: new InMemoryBusinessUnitRepository(state),
   operations: new InMemoryOperationRepository(state),
   sites: new InMemorySiteRepository(state),
+  assignments,
   audit,
 });
 
@@ -27,7 +32,10 @@ const txOver = (state: OrganizationState, audit: AuditLog): OrganizationTx => ({
 export class InMemoryOrganizationStore {
   private committed: OrganizationState = emptyState();
 
-  constructor(private readonly audit: AuditLog) {}
+  constructor(
+    private readonly audit: AuditLog,
+    private readonly assignments: AssignmentDirectory = NO_ASSIGNMENTS,
+  ) {}
 
   unitOfWork(): UnitOfWork<OrganizationTx> {
     return new InMemoryUnitOfWork<OrganizationTx>(() => this.begin());
@@ -35,13 +43,13 @@ export class InMemoryOrganizationStore {
 
   /** Runs a read against the committed state and discards any change it makes. */
   read<T>(work: (tx: OrganizationTx) => Promise<T>): Promise<T> {
-    return work(txOver(structuredClone(this.committed), this.audit));
+    return work(txOver(structuredClone(this.committed), this.audit, this.assignments));
   }
 
   private begin(): Transaction<OrganizationTx> {
     const working = structuredClone(this.committed);
     return {
-      tx: txOver(working, this.audit),
+      tx: txOver(working, this.audit, this.assignments),
       commit: () => {
         this.committed = working;
         return Promise.resolve();

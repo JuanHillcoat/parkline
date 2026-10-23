@@ -69,7 +69,7 @@ export class ReplaceEquipment {
   }
 
   private async replace(tx: FleetTx, input: ReplaceEquipmentInput): Promise<Result<ReplaceOutcome, DomainError>> {
-    const source = await authorizeOpen(tx, this.deps, input.actor, input.outgoingEquipmentId);
+    const source = await this.lockedSource(tx, input);
     if (!source.ok) return source;
     const plan = this.plan(input, source.value);
     if (!plan.ok) return plan;
@@ -77,6 +77,19 @@ export class ReplaceEquipment {
     if (!archive.ok) return archive;
     const op = await this.activeOperation(tx, input.actor, source.value.open.operationId);
     return op.ok ? this.apply({ tx, input, source: source.value, plan: plan.value, op: op.value }) : op;
+  }
+
+  /**
+   * Authorizes against the open assignment of the outgoing equipment, then locks both equipment rows
+   * together (the repository sorts the ids, so two replaces over the same pair never wait in a cycle) and
+   * reads the open assignment again: what the plan is built on is what a concurrent writer left committed.
+   */
+  private async lockedSource(tx: FleetTx, input: ReplaceEquipmentInput): Promise<Result<Source, DomainError>> {
+    const { actor, incomingEquipmentId, outgoingEquipmentId } = input;
+    const first = await authorizeOpen(tx, this.deps, actor, outgoingEquipmentId);
+    if (!first.ok) return first;
+    await tx.equipment.lock(actor.tenantId, [incomingEquipmentId, outgoingEquipmentId]);
+    return authorizeOpen(tx, this.deps, actor, outgoingEquipmentId);
   }
 
   private plan(input: ReplaceEquipmentInput, source: Source): Result<Plan, DomainError> {

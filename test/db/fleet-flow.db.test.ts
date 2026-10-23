@@ -1,10 +1,12 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import postgres, { type Sql } from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { migrate } from "../../scripts/migrate";
 import { toActor } from "../../src/identity/application/actor-mapper";
+import { createRoleAssignment } from "../../src/identity/domain/role-assignment";
 import type { Role } from "../../src/identity/domain/role";
+import { PostgresRoleAssignmentRepository } from "../../src/identity/infrastructure/postgres-role-assignment-repository";
 import { ScryptPasswordHasher } from "../../src/identity/infrastructure/scrypt-password-hasher";
 import type { Actor } from "../../src/shared/domain/ports/access-policy";
 import type { AuditLog } from "../../src/shared/domain/ports/audit-log";
@@ -349,5 +351,102 @@ describe("fleet races", () => {
       oneWins(attempts);
       expect(await orphans()).toHaveLength(0);
     }
+  });
+});
+
+describe("equipment visibility follows the open assignment (D6) through the container as parkline_app", () => {
+  /** A user with one role over one scope (not the tenant): the tenant assignment is swapped, as the Users page does. */
+  async function scopedStaff(email: string, role: Role, type: "business_unit" | "operation" | "site", scopeId: string): Promise<Actor> {
+    const signed = must(await c.identity.signIn.execute({ email: "admin@example.test", password: PASSWORD }));
+    const context = must(await c.identity.authenticate.execute({ token: signed.token }));
+    const user = must(await c.identity.createUser.execute({ actor: context, email, displayName: "Scoped Staff", password: PASSWORD, role }));
+    await app.begin(async (handle) => {
+      const repository = new PostgresRoleAssignmentRepository(handle);
+      await repository.deactivate(adminActor.tenantId, must(createRoleAssignment({ userId: user.id, role, scope: { type: "tenant", id: adminActor.tenantId } })));
+      await repository.add(adminActor.tenantId, must(createRoleAssignment({ userId: user.id, role, scope: { type, id: scopeId } })));
+    });
+    return signInActor(email);
+  }
+
+  /** Two divisions with one site and one operation each; three equipment: in the first, in the second, unassigned. */
+  async function structure() {
+    const n = String((counter += 1));
+    const o = c.organization;
+    const org = async (label: string, cost: number) => {
+      const division = must(await o.createBusinessUnit.execute({ actor: adminActor, name: `Vis ${label} Division ${n}` }));
+      const site = must(await o.createSite.execute({ actor: adminActor, name: `Vis ${label} Site ${n}` }));
+      const costCenter = String(5000 + cost + Number(n) * 2).padStart(4, "0");
+      const operation = must(
+        await o.createOperation.execute({ actor: adminActor, businessUnitId: division.id, siteId: site.id, name: `Vis ${label} Operation ${n}`, costCenter }),
+      );
+      return { division, site, operation };
+    };
+    const [first, second] = [await org("A", 0), await org("B", 1)];
+    const placed = (await fixture(`VisA ${n}`)).equipment;
+    const other = (await fixture(`VisB ${n}`)).equipment;
+    const idle = (await fixture(`VisC ${n}`)).equipment;
+    const day = new Date().toISOString().slice(0, 10);
+    const put = (equipmentId: string, operationId: string) =>
+      f().assignEquipment.execute({ actor: analyst, equipmentId, operationId, kind: "active", day });
+    must(await put(placed.id, first.operation.id));
+    must(await put(other.id, second.operation.id));
+    return { n, first, second, placed, other, idle };
+  }
+
+  const idsOf = async (actor: Actor, includeArchived?: boolean): Promise<string[]> =>
+    must(await f().listEquipment.execute({ actor, includeArchived })).map((e) => e.id);
+
+  it("shows division, operation and site scoped readers only the equipment placed in their scope, and a tenant-wide reader everything", async () => {
+    const s = await structure();
+    const manager = await scopedStaff(`vis.manager.${s.n}@example.test`, "manager", "business_unit", s.first.division.id);
+    const supervisor = await scopedStaff(`vis.supervisor.${s.n}@example.test`, "supervisor", "operation", s.second.operation.id);
+    const siteViewer = await scopedStaff(`vis.viewer.${s.n}@example.test`, "viewer", "site", s.first.site.id);
+    const mine = new Set([s.placed.id, s.other.id, s.idle.id]);
+    const inMine = async (actor: Actor) => (await idsOf(actor)).filter((id) => mine.has(id));
+    expect(await inMine(manager)).toEqual([s.placed.id]);
+    expect(await inMine(supervisor)).toEqual([s.other.id]);
+    expect(await inMine(siteViewer)).toEqual([s.placed.id]);
+    expect((await inMine(viewer)).sort()).toEqual([s.placed.id, s.other.id, s.idle.id].sort());
+  });
+
+  it("returns the current assignment summary, null for an equipment that is not placed", async () => {
+    const s = await structure();
+    const rows = must(await f().listEquipment.execute({ actor: viewer }));
+    const placed = rows.find((e) => e.id === s.placed.id);
+    const idle = rows.find((e) => e.id === s.idle.id);
+    expect(placed?.assignment).toEqual({
+      operationId: s.first.operation.id, siteId: s.first.site.id, businessUnitId: s.first.division.id,
+      kind: "active", validFrom: new Date().toISOString().slice(0, 10),
+    });
+    expect(idle?.assignment).toBeNull();
+  });
+
+  it("stops showing an equipment to a scoped reader when its assignment ends or it moves elsewhere", async () => {
+    const s = await structure();
+    const manager = await scopedStaff(`vis.mover.${s.n}@example.test`, "manager", "business_unit", s.first.division.id);
+    expect(await idsOf(manager)).toContain(s.placed.id);
+    const day = new Date().toISOString().slice(0, 10);
+    must(await f().moveEquipment.execute({ actor: analyst, equipmentId: s.placed.id, operationId: s.second.operation.id, day: new Date(Date.now() + 86_400_000).toISOString().slice(0, 10), reason: "Pedido" }));
+    expect(await idsOf(manager)).not.toContain(s.placed.id);
+    must(await f().endAssignment.execute({ actor: analyst, equipmentId: s.other.id, day, reason: "Fin" }));
+    const supervisor = await scopedStaff(`vis.ended.${s.n}@example.test`, "supervisor", "operation", s.second.operation.id);
+    expect((await idsOf(supervisor)).includes(s.other.id)).toBe(false);
+    expect(await idsOf(viewer)).toContain(s.other.id);
+  });
+
+  it("never lets a scoped reader learn about archived equipment, even when it asks for archived rows", async () => {
+    const s = await structure();
+    const analystInDivision = await scopedStaff(`vis.analyst.${s.n}@example.test`, "fleet_analyst", "business_unit", s.first.division.id);
+    must(await f().archiveEquipment.execute({ ...asAnalyst("Baja"), id: s.idle.id }));
+    expect(await idsOf(analystInDivision, true)).not.toContain(s.idle.id);
+    expect(await idsOf(analyst, true)).toContain(s.idle.id);
+    expect(await idsOf(analyst)).not.toContain(s.idle.id);
+  });
+
+  it("shows another tenant nothing, through the real adapters", async () => {
+    const s = await structure();
+    const [tenant] = await owner<{ id: string }[]>`insert into tenants (id, name) values (gen_random_uuid(), 'Other Visibility Tenant') returning id`;
+    const outsider: Actor = { userId: randomUUID(), tenantId: tenant?.id ?? "", active: true, grants: [{ role: "viewer", scopeType: "operation", scopeId: s.first.operation.id }] };
+    expect(must(await f().listEquipment.execute({ actor: outsider }))).toEqual([]);
   });
 });

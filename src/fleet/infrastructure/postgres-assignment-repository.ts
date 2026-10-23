@@ -88,6 +88,13 @@ export class PostgresAssignmentRepository implements AssignmentRepository {
     return rows[0] ? toAssignment(rows[0]) : null;
   }
 
+  async listOpen(tenantId: string): Promise<readonly Assignment[]> {
+    if (!isUuid(tenantId)) return [];
+    const rows = await this.sql<AssignmentRow[]>`
+      select ${COLUMNS(this.sql)} from equipment_assignments where tenant_id = ${tenantId} and valid_to is null`;
+    return rows.map(toAssignment);
+  }
+
   async listByEquipment(tenantId: string, equipmentId: string): Promise<readonly Assignment[]> {
     if (!isUuid(tenantId) || !isUuid(equipmentId)) return [];
     const rows = await this.sql<AssignmentRow[]>`

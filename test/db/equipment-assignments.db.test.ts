@@ -6,7 +6,9 @@ import { migrate } from "../../scripts/migrate";
 import { toActor } from "../../src/identity/application/actor-mapper";
 import type { Role } from "../../src/identity/domain/role";
 import { ScryptPasswordHasher } from "../../src/identity/infrastructure/scrypt-password-hasher";
+import { PostgresAssignmentDirectory } from "../../src/fleet/infrastructure/postgres-assignment-directory";
 import { PostgresAssignmentRepository } from "../../src/fleet/infrastructure/postgres-assignment-repository";
+import { PostgresEquipmentRepository } from "../../src/fleet/infrastructure/postgres-fleet-repositories";
 import { createPostgresFleetTx } from "../../src/fleet/infrastructure/postgres-fleet-tx";
 import { PostgresOperationDirectory } from "../../src/organization/infrastructure/postgres-operation-directory";
 import type { Actor } from "../../src/shared/domain/ports/access-policy";
@@ -476,6 +478,72 @@ describe("assignment flows through the container as parkline_app", () => {
     });
   });
 
+  it("blocks the archive of an operation with an open assignment until the assignment is ended (D7)", async () => {
+    const org = await operationFixture("OrgBlock");
+    const eq = await equipmentFixture("OrgBlock");
+    must(await assign(eq.id, org.operation.id));
+    const blocked = await c.organization.archiveOperation.execute({ actor: analyst, id: org.operation.id, reason: "Closed" });
+    expect(code(blocked)).toBe("has_open_assignments");
+    const row = await owner`select archived_at from operations where id = ${org.operation.id}`;
+    expect(row[0]?.archived_at).toBeNull();
+    const none = await owner`select 1 from audit_log where entity_id = ${org.operation.id} and action = 'organization.archive'`;
+    expect(none).toHaveLength(0);
+    must(await f().endAssignment.execute({ actor: analyst, equipmentId: eq.id, day: today(), reason: "Done" }));
+    must(await c.organization.archiveOperation.execute({ actor: analyst, id: org.operation.id, reason: "Closed for good" }));
+    const audited = await owner<{ reason: string }[]>`
+      select reason from audit_log where entity_id = ${org.operation.id} and action = 'organization.archive'`;
+    expect(audited.map((a) => a.reason)).toEqual(["Closed for good"]);
+  });
+
+  it("counts only the open assignments of that operation, and restoring an operation is not blocked", async () => {
+    const [target, other] = [await operationFixture("OrgCount"), await operationFixture("OrgCountOther")];
+    const [moved, kept] = [await equipmentFixture("OrgCountA"), await equipmentFixture("OrgCountB")];
+    must(await assign(kept.id, other.operation.id));
+    must(await assign(moved.id, target.operation.id, { day: "2026-01-01", reason: "Backfill" }));
+    must(await f().endAssignment.execute({ actor: analyst, equipmentId: moved.id, day: "2026-01-31", reason: "Done" }));
+    must(await c.organization.archiveOperation.execute({ actor: analyst, id: target.operation.id, reason: "Closed" }));
+    expect(code(await c.organization.archiveOperation.execute({ actor: analyst, id: other.operation.id, reason: "Closed" }))).toBe("has_open_assignments");
+    must(await c.organization.restoreOperation.execute({ actor: analyst, id: target.operation.id, reason: "Back" }));
+    must(await assign(moved.id, target.operation.id, { day: "2026-03-01", reason: "Again" }));
+    expect(code(await c.organization.archiveOperation.execute({ actor: analyst, id: target.operation.id, reason: "Closed" }))).toBe("has_open_assignments");
+  });
+
+  it("answers a role that may not archive before it counts anything", async () => {
+    const org = await operationFixture("OrgAuth");
+    const eq = await equipmentFixture("OrgAuth");
+    must(await assign(eq.id, org.operation.id));
+    expect(code(await c.organization.archiveOperation.execute({ actor: adminActor, id: org.operation.id, reason: "Closed" }))).toBe("forbidden");
+  });
+
+  it("counts open assignments for the organization through the fleet adapter, per tenant and per operation", async () => {
+    const org = await operationFixture("Directory2");
+    const eq = await equipmentFixture("Directory2");
+    must(await assign(eq.id, org.operation.id));
+    const [other] = await owner<{ id: string }[]>`insert into tenants (id, name) values (gen_random_uuid(), 'Counted Tenant') returning id`;
+    await app.begin(async (tx) => {
+      const directory = new PostgresAssignmentDirectory(tx);
+      expect(await directory.countOpen(adminActor.tenantId, org.operation.id)).toBe(1);
+      expect(await directory.countOpen(other?.id ?? "", org.operation.id)).toBe(0);
+      expect(await directory.countOpen(adminActor.tenantId, "not-a-uuid")).toBe(0);
+      expect(await directory.countOpen("not-a-uuid", org.operation.id)).toBe(0);
+      expect(await directory.countOpen(adminActor.tenantId, randomUUID())).toBe(0);
+      const repository = new PostgresAssignmentRepository(tx);
+      expect((await repository.listOpen(adminActor.tenantId)).map((a) => a.equipmentId)).toContain(eq.id);
+      expect(await repository.listOpen(other?.id ?? "")).toEqual([]);
+      expect(await repository.listOpen("not-a-uuid")).toEqual([]);
+    });
+  });
+
+  it("locks equipment rows by id list without failing on duplicates, malformed ids or another tenant", async () => {
+    const eq = await equipmentFixture("LockList");
+    await app.begin(async (tx) => {
+      const equipment = new PostgresEquipmentRepository(tx);
+      await equipment.lock(adminActor.tenantId, [eq.id, eq.id.toUpperCase(), "not-a-uuid", randomUUID()]);
+      await equipment.lock("not-a-uuid", [eq.id]);
+      await equipment.lock(adminActor.tenantId, []);
+    });
+  });
+
   it("reports the operation with its parents", async () => {
     const org = await operationFixture("Directory");
     await app.begin(async (tx) => {
@@ -574,6 +642,23 @@ describe("assignment races", () => {
     return { wait, open };
   };
 
+  const newAssignment = (equipmentId: string, org: Org, validFrom: string) => ({
+    id: randomUUID(), tenantId: adminActor.tenantId, equipmentId, businessUnitId: org.division.id, operationId: org.operation.id,
+    siteId: org.site.id, kind: "active" as const, validFrom, validTo: null, reason: null, createdBy: adminActor.userId, createdAt: new Date(),
+  });
+
+  const count = async (rows: PromiseLike<{ n: number }[]>): Promise<number> => (await rows)[0]?.n ?? -1;
+  const openOnArchivedOperation = (operationId: string) =>
+    count(owner<{ n: number }[]>`
+      select count(*)::int as n from equipment_assignments a join operations o on o.id = a.operation_id
+      where a.operation_id = ${operationId} and a.valid_to is null and o.archived_at is not null`);
+  const openOnArchivedEquipment = (equipmentId: string) =>
+    count(owner<{ n: number }[]>`
+      select count(*)::int as n from equipment_assignments a join equipments e on e.id = a.equipment_id
+      where a.equipment_id = ${equipmentId} and a.valid_to is null and e.archived_at is not null`);
+  const openCount = (equipmentId: string) =>
+    count(owner<{ n: number }[]>`select count(*)::int as n from equipment_assignments where equipment_id = ${equipmentId} and valid_to is null`);
+
   it("two concurrent assigns of one equipment give one ok and one typed conflict, over several rounds", async () => {
     for (let round = 0; round < 8; round += 1) {
       const org = await operationFixture(`RaceAssign ${String(round)}`);
@@ -646,16 +731,169 @@ describe("assignment races", () => {
     expect(code(await archiving)).toBe("ok");
   });
 
-  it("an assign races the archive of its operation, over several rounds: a row exists exactly when the assign answered ok", async () => {
+  it("an assign races the archive of its operation, over several rounds: one wins, never an open assignment on an archived operation", async () => {
     for (let round = 0; round < 8; round += 1) {
       const org = await operationFixture(`RaceArchive ${String(round)}`);
       const eq = await equipmentFixture(`RaceArchive ${String(round)}`);
       const assigning = c.fleet.assignEquipment.execute({ actor: analyst, equipmentId: eq.id, operationId: org.operation.id, kind: "active", day: today() });
       const archiving = c.organization.archiveOperation.execute({ actor: analyst, id: org.operation.id, reason: "Closed" });
       const [assigned, archived] = await Promise.all([assigning, archiving]);
-      expect(code(archived)).toBe("ok");
-      expect(["ok", "operation_archived"]).toContain(code(assigned));
+      const pair = `${code(assigned)}/${code(archived)}`;
+      expect(["ok/has_open_assignments", "operation_archived/ok"], pair).toContain(pair);
       expect(await stored(eq.id)).toHaveLength(code(assigned) === "ok" ? 1 : 0);
+      expect(await openOnArchivedOperation(org.operation.id)).toBe(0);
+    }
+  });
+
+  it("an archive of the operation waits for an uncommitted assign and then refuses because of its assignment", async () => {
+    const org = await operationFixture("LockAssign2");
+    const eq = await equipmentFixture("LockAssign2");
+    const gate = latch();
+    const inserted = latch();
+    const holder = app.begin(async (tx) => {
+      expect((await new PostgresOperationDirectory(tx).find(adminActor.tenantId, org.operation.id))?.archivedAt).toBeNull();
+      const result = await new PostgresAssignmentRepository(tx).add(newAssignment(eq.id, org, "2026-01-01"));
+      inserted.open();
+      await gate.wait;
+      return result;
+    });
+    await inserted.wait;
+    const archiving = c.organization.archiveOperation.execute({ actor: analyst, id: org.operation.id, reason: "Closed" });
+    await waitForLockWait();
+    gate.open();
+    expect(await holder).toBe("stored");
+    expect(code(await archiving)).toBe("has_open_assignments");
+    expect(await openOnArchivedOperation(org.operation.id)).toBe(0);
+  });
+
+  it("an archive of the equipment waits for a transaction that holds its lock and then sees the assignment it stored", async () => {
+    const org = await operationFixture("LockEqArchive");
+    const eq = await equipmentFixture("LockEqArchive");
+    const gate = latch();
+    const inserted = latch();
+    const holder = app.begin(async (tx) => {
+      const result = await new PostgresAssignmentRepository(tx).add(newAssignment(eq.id, org, "2026-01-01"));
+      inserted.open();
+      await gate.wait;
+      return result;
+    });
+    await inserted.wait;
+    const archiving = c.fleet.archiveEquipment.execute({ actor: analyst, id: eq.id, reason: "Baja" });
+    await waitForLockWait();
+    gate.open();
+    expect(await holder).toBe("stored");
+    expect(code(await archiving)).toBe("has_open_assignment");
+    expect(await openOnArchivedEquipment(eq.id)).toBe(0);
+  });
+
+  it("an assign waits for an uncommitted archive of the equipment and then re-reads it as archived", async () => {
+    const org = await operationFixture("LockEqAssign");
+    const eq = await equipmentFixture("LockEqAssign");
+    const gate = latch();
+    const updated = latch();
+    const archiver = owner.begin(async (tx) => {
+      await tx`update equipments set archived_at = now() where id = ${eq.id}`;
+      updated.open();
+      await gate.wait;
+    });
+    await updated.wait;
+    const assigning = c.fleet.assignEquipment.execute({ actor: analyst, equipmentId: eq.id, operationId: org.operation.id, kind: "active", day: today() });
+    await waitForLockWait();
+    gate.open();
+    await archiver;
+    expect(code(await assigning)).toBe("archived");
+    expect(await stored(eq.id)).toHaveLength(0);
+    expect(await openOnArchivedEquipment(eq.id)).toBe(0);
+  });
+
+  /**
+   * A writer that holds the equipment lock and has ended the open assignment but not committed yet: the
+   * use case under test authorizes, waits for the lock, and must then read what that writer committed.
+   */
+  const withUncommittedEnd = async (equipmentId: string, run: () => Promise<unknown>): Promise<void> => {
+    const gate = latch();
+    const updated = latch();
+    const holder = owner.begin(async (tx) => {
+      await tx`select id from equipments where id = ${equipmentId} for no key update`;
+      await tx`update equipment_assignments set valid_to = '2026-02-01'::date where equipment_id = ${equipmentId} and valid_to is null`;
+      updated.open();
+      await gate.wait;
+    });
+    await updated.wait;
+    const waiting = run();
+    await waitForLockWait();
+    gate.open();
+    await holder;
+    await waiting;
+  };
+
+  it("an end waits for a writer holding the equipment lock and then finds no open assignment", async () => {
+    const org = await operationFixture("LockEnd");
+    const eq = await equipmentFixture("LockEnd");
+    must(await c.fleet.assignEquipment.execute({ actor: analyst, equipmentId: eq.id, operationId: org.operation.id, kind: "active", day: "2026-01-10", reason: "Backfill" }));
+    let answer = "";
+    await withUncommittedEnd(eq.id, async () => {
+      answer = code(await c.fleet.endAssignment.execute({ actor: analyst, equipmentId: eq.id, day: "2026-03-01", reason: "Fin" }));
+    });
+    expect(answer).toBe("no_open_assignment");
+    expect((await stored(eq.id)).map((r) => [r.valid_from, r.valid_to])).toEqual([["2026-01-10", "2026-02-01"]]);
+  });
+
+  it("a move waits for a writer holding the equipment lock and then finds no open assignment", async () => {
+    const [a, b] = [await operationFixture("LockMoveA"), await operationFixture("LockMoveB")];
+    const eq = await equipmentFixture("LockMove");
+    must(await c.fleet.assignEquipment.execute({ actor: analyst, equipmentId: eq.id, operationId: a.operation.id, kind: "active", day: "2026-01-10", reason: "Backfill" }));
+    let answer = "";
+    await withUncommittedEnd(eq.id, async () => {
+      answer = code(await c.fleet.moveEquipment.execute({ actor: analyst, equipmentId: eq.id, operationId: b.operation.id, day: "2026-03-01", reason: "Traslado" }));
+    });
+    expect(answer).toBe("no_open_assignment");
+    expect(await stored(eq.id)).toHaveLength(1);
+  });
+
+  it("a correction waits for a writer holding the equipment lock and keeps what that writer committed (no lost update)", async () => {
+    const org = await operationFixture("LockCorrect");
+    const eq = await equipmentFixture("LockCorrect");
+    const first = must(await c.fleet.assignEquipment.execute({ actor: analyst, equipmentId: eq.id, operationId: org.operation.id, kind: "active", day: "2026-01-10", reason: "Backfill" }));
+    let answer = "";
+    await withUncommittedEnd(eq.id, async () => {
+      answer = code(await c.fleet.correctAssignment.execute({ actor: analyst, assignmentId: first.id, reason: "Inicio", validFrom: "2026-01-12" }));
+    });
+    expect(answer).toBe("ok");
+    expect((await stored(eq.id)).map((r) => [r.valid_from, r.valid_to])).toEqual([["2026-01-12", "2026-02-01"]]);
+  });
+
+  it("an assign races the archive of its equipment, over several rounds: never an open assignment on an archived equipment", async () => {
+    for (let round = 0; round < 8; round += 1) {
+      const org = await operationFixture(`RaceEqArchive ${String(round)}`);
+      const eq = await equipmentFixture(`RaceEqArchive ${String(round)}`);
+      const assigning = c.fleet.assignEquipment.execute({ actor: analyst, equipmentId: eq.id, operationId: org.operation.id, kind: "active", day: today() });
+      const archiving = c.fleet.archiveEquipment.execute({ actor: analyst, id: eq.id, reason: "Baja" });
+      const [assigned, archived] = await Promise.all([assigning, archiving]);
+      const pair = `${code(assigned)}/${code(archived)}`;
+      expect(["ok/has_open_assignment", "archived/ok"], pair).toContain(pair);
+      expect(await stored(eq.id)).toHaveLength(code(assigned) === "ok" ? 1 : 0);
+      expect(await openOnArchivedEquipment(eq.id)).toBe(0);
+    }
+  });
+
+  it("two replaces that swap the same pair of equipment never deadlock and never leave half a change, over several rounds", async () => {
+    for (let round = 0; round < 8; round += 1) {
+      const org = await operationFixture(`Swap ${String(round)}`);
+      const [first, second] = [await equipmentFixture(`SwapA ${String(round)}`), await equipmentFixture(`SwapB ${String(round)}`)];
+      const place = (equipmentId: string) =>
+        c.fleet.assignEquipment.execute({ actor: analyst, equipmentId, operationId: org.operation.id, kind: "active", day: "2026-01-01", reason: "Backfill" });
+      must(await place(first.id));
+      if (round % 2 === 1) must(await place(second.id));
+      const replace = (outgoing: string, incoming: string) =>
+        c.fleet.replaceEquipment.execute({ actor: analyst, incomingEquipmentId: incoming, outgoingEquipmentId: outgoing, day: "2026-03-01", outgoing: "spare", reason: "Swap" });
+      const rowsBefore = (await stored(first.id)).length + (await stored(second.id)).length;
+      const results = outcomes(await Promise.allSettled([replace(first.id, second.id), replace(second.id, first.id)]));
+      for (const result of results) expect(result, results.join(",")).toMatch(/^(ok|open_assignment_exists|no_open_assignment|assignment_overlap)$/);
+      expect(results.filter((r) => r === "ok").length).toBeLessThanOrEqual(1);
+      for (const id of [first.id, second.id]) expect(await openCount(id)).toBeLessThanOrEqual(1);
+      const rowsAfter = (await stored(first.id)).length + (await stored(second.id)).length;
+      expect(rowsAfter, results.join(",")).toBe(rowsBefore + (results.includes("ok") ? 2 : 0));
     }
   });
 });

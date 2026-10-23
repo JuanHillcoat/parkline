@@ -6,7 +6,7 @@ import { parseDay, previousDay } from "../../domain/day";
 import { SameOperationError } from "../../domain/errors";
 import {
   addAssignment,
-  authorizeOpen,
+  authorizeOpenLocked,
   authorizeOperation,
   closedOn,
   openAssignment,
@@ -54,7 +54,7 @@ export class MoveEquipment {
   private async move(tx: FleetTx, input: MoveEquipmentInput): Promise<Result<MoveOutcome, DomainError>> {
     const target = await authorizeOperation(tx, this.deps, input.actor, input.operationId);
     if (!target.ok) return target;
-    const source = await authorizeOpen(tx, this.deps, input.actor, input.equipmentId);
+    const source = await authorizeOpenLocked(tx, this.deps, input.actor, input.equipmentId);
     if (!source.ok) return source;
     const plan = this.plan(input, source.value, target.value);
     return plan.ok ? this.apply(tx, { input, target: target.value, source: source.value, plan: plan.value }) : plan;

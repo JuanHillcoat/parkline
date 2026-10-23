@@ -171,6 +171,13 @@ export class PostgresBusinessUnitRepository implements BusinessUnitRepository {
 export class PostgresOperationRepository implements OperationRepository {
   constructor(private readonly sql: TransactionSql) {}
 
+  async lock(tenantId: string, id: string, mode: ParentLock): Promise<void> {
+    if (!isUuid(tenantId) || !isUuid(id)) return;
+    await (mode === "share"
+      ? this.sql`select 1 from operations where tenant_id = ${tenantId} and id = ${id} for share`
+      : this.sql`select 1 from operations where tenant_id = ${tenantId} and id = ${id} for update`);
+  }
+
   async findById(tenantId: string, id: string): Promise<Operation | null> {
     if (!isUuid(tenantId) || !isUuid(id)) return null;
     const rows = await this.sql<OperationRow[]>`

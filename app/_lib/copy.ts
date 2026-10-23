@@ -404,6 +404,7 @@ const es = {
       invalid_role: "Elige un rol válido.",
       archived: "Está dada de baja. Reactívala para poder modificarla.",
       has_active_operations: "No se puede dar de baja: tiene operaciones activas. Da de baja primero sus operaciones.",
+      has_open_assignments: "No se puede dar de baja: tiene equipos asignados. Termina o mueve primero sus equipos.",
       parent_archived: "No se puede reactivar: su división o su sitio están dados de baja.",
       already_archived: "Ya está dada de baja. Recarga la página.",
       not_archived: "Ya está activa. Recarga la página.",

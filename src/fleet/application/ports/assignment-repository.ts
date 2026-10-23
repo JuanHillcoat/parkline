@@ -11,6 +11,8 @@ export interface AssignmentRepository {
   findById(tenantId: string, id: string): Promise<Assignment | null>;
   /** The assignment of the equipment with no end, if any. */
   findOpen(tenantId: string, equipmentId: string): Promise<Assignment | null>;
+  /** Every open assignment of the tenant (one per equipment at most), in no particular order. */
+  listOpen(tenantId: string): Promise<readonly Assignment[]>;
   /** Every assignment of the equipment, newest first (by start day, then id). */
   listByEquipment(tenantId: string, equipmentId: string): Promise<readonly Assignment[]>;
   add(assignment: Assignment): Promise<AssignmentWrite>;

@@ -84,7 +84,11 @@ export const equipmentSubject: ArchiveSubject<Equipment> = {
   label: "Equipment",
   find: (tx, tenantId, id) => tx.equipment.findById(tenantId, id),
   check: async (tx, verb, row) => {
-    if (verb === "archive") return requireNoOpenAssignment(await tx.assignments.findOpen(row.tenantId, row.id), row.id);
+    if (verb === "archive") {
+      // The same row lock an assign takes, BEFORE the open assignment is read: either order then sees the other's commit.
+      await tx.equipment.lock(row.tenantId, [row.id]);
+      return requireNoOpenAssignment(await tx.assignments.findOpen(row.tenantId, row.id), row.id);
+    }
     const parents = await loadActiveParents(tx, row.tenantId, row.supplierId, row.assetTypeId);
     if (!parents.ok) return parents;
     const same = await tx.equipment.findByInternalCode(row.tenantId, row.supplierId, nameKey(row.internalCode));
