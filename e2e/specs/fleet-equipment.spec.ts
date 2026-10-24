@@ -61,8 +61,9 @@ test.describe("creating equipment", () => {
     const row = rowOf(page, "C-043");
     await expect(row).toContainText("ACME RENTAL");
     await expect(row).toContainText("FORKLIFT");
-    await expect(row).toContainText(copy.common.active);
-    await expect(row.getByRole("cell", { name: copy.fleet.noValue })).toHaveCount(2);
+    // No assignment yet (P0-08 T4): the state is "Sin asignar" and operation and site are dashes too.
+    await expect(row).toContainText(copy.fleet.state.unassigned);
+    await expect(row.getByRole("cell", { name: copy.fleet.noValue })).toHaveCount(4);
     await expect(tabLink(page, "equipment")).toContainText("1");
   });
 

@@ -129,6 +129,14 @@ export class PostgresSupplierRepository implements SupplierRepository {
     return rows[0] ? toSupplier(rows[0]) : null;
   }
 
+  async findManyByIds(tenantId: string, ids: readonly string[]): Promise<readonly Supplier[]> {
+    const valid = ids.filter(isUuid);
+    if (!isUuid(tenantId) || valid.length === 0) return [];
+    const rows = await this.sql<SupplierRow[]>`
+      select id, tenant_id, name, archived_at from suppliers where tenant_id = ${tenantId} and id in ${this.sql(valid)}`;
+    return rows.map(toSupplier);
+  }
+
   async findByName(tenantId: string, key: string): Promise<Supplier | null> {
     if (!isUuid(tenantId)) return null;
     const rows = await this.sql<SupplierRow[]>`
@@ -182,6 +190,15 @@ export class PostgresAssetTypeRepository implements AssetTypeRepository {
       select id, tenant_id, name, meter_kind, preventive_interval_hours, archived_at
       from asset_types where tenant_id = ${tenantId} and id = ${id}`;
     return rows[0] ? toAssetType(rows[0]) : null;
+  }
+
+  async findManyByIds(tenantId: string, ids: readonly string[]): Promise<readonly AssetType[]> {
+    const valid = ids.filter(isUuid);
+    if (!isUuid(tenantId) || valid.length === 0) return [];
+    const rows = await this.sql<AssetTypeRow[]>`
+      select id, tenant_id, name, meter_kind, preventive_interval_hours, archived_at
+      from asset_types where tenant_id = ${tenantId} and id in ${this.sql(valid)}`;
+    return rows.map(toAssetType);
   }
 
   async findByName(tenantId: string, key: string): Promise<AssetType | null> {

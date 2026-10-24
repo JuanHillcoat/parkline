@@ -49,8 +49,18 @@ export const buildKpis = (counts: Partial<Record<KpiKey, number>>): Kpi[] =>
     return count === undefined ? [] : [{ key, count, href }];
   });
 
-/** True when something could be read and all of it is empty: the moment to show the first steps. */
-export const hasNoData = (kpis: readonly Kpi[]): boolean => kpis.length > 0 && kpis.every((kpi) => kpi.count === 0);
+type Emptiness = { readonly ignoreEquipment?: boolean };
+
+/**
+ * True when something could be read and all of it is empty: the moment to show the first steps. A scoped
+ * reader sees only the equipment placed in its scope, and nobody registers equipment there, so for it the
+ * equipment card says nothing about an empty system: `ignoreEquipment` leaves it out of the test (and the
+ * first steps never appear because of equipment alone).
+ */
+export const hasNoData = (kpis: readonly Kpi[], { ignoreEquipment = false }: Emptiness = {}): boolean => {
+  const counted = ignoreEquipment ? kpis.filter((kpi) => kpi.key !== "equipment") : kpis;
+  return counted.length > 0 && counted.every((kpi) => kpi.count === 0);
+};
 
 type Group = { readonly label: string; readonly count: number };
 

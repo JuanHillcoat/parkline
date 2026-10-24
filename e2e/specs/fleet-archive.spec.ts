@@ -108,7 +108,8 @@ test.describe("archiving as a fleet analyst", () => {
     await gotoFleet(page, "equipment", "archived=1");
     await changeArchiveState(page, "U-1", "restore", "Archived by mistake");
     await gotoFleet(page);
-    await expect(rowOf(page, "U-1")).toContainText(copy.common.active);
+    // An equipment with no open assignment shows "Sin asignar" since P0-08 T4 (it used to show "Activo").
+    await expect(rowOf(page, "U-1")).toContainText(copy.fleet.state.unassigned);
   });
 
   test("restoring needs a reason as well", async ({ page }) => {
@@ -167,7 +168,8 @@ test.describe("archiving as a fleet analyst", () => {
     await gotoFleet(page, "equipment", "archived=1");
     await changeArchiveState(page, "U-1", "restore", REASON);
     await gotoFleet(page);
-    await expect(rowOf(page, "U-1")).toContainText(copy.common.active);
+    // An equipment with no open assignment shows "Sin asignar" since P0-08 T4 (it used to show "Activo").
+    await expect(rowOf(page, "U-1")).toContainText(copy.fleet.state.unassigned);
   });
 
   test("an archived supplier cannot receive new equipment", async ({ page }) => {
@@ -286,15 +288,19 @@ for (const role of ["manager", "supervisor"] as const) {
       await seedMixedFleet();
     });
 
-    test("has no Flota entry and sees the restricted message instead of data", async ({ page }) => {
+    // Since P0-08 T4 a scoped reader opens /fleet (equipment is visible by its assignment, D6) but sees only
+    // the Equipos tab and no write or archive control; the unassigned unit P-1 is invisible to it.
+    test("has the Flota entry, no catalog tabs, no controls and does not see an unassigned unit", async ({ page }) => {
       await page.goto("/");
-      await expect(page.getByRole("complementary").getByRole("link", { name: copy.nav.home })).toBeVisible();
-      await expect(page.getByRole("complementary").getByRole("link", { name: copy.nav.fleet })).toHaveCount(0);
-      await page.goto("/fleet");
-      await expect(page.getByRole("heading", { name: copy.fleet.restrictedTitle })).toBeVisible();
-      await expect(page.getByText(copy.fleet.restrictedText)).toBeVisible();
+      await expect(page.getByRole("complementary").getByRole("link", { name: copy.nav.fleet })).toBeVisible();
+      await gotoFleet(page);
+      await expect(page.getByRole("heading", { name: copy.fleet.restrictedTitle })).toHaveCount(0);
       await expect(page.getByText("P-1")).toHaveCount(0);
+      await expect(page.getByText(copy.fleet.emptyScoped)).toBeVisible();
       await expect(page.getByRole("table")).toHaveCount(0);
+      await expect(page.getByRole("navigation", { name: copy.fleet.tabsLabel })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: d.newEquipment.trigger })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: d.newSupplier.trigger })).toHaveCount(0);
     });
   });
 }

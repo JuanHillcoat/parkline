@@ -102,6 +102,13 @@ describe("hasNoData", () => {
   it("is false when nothing could be read, so no first steps are shown", () => {
     expect(hasNoData(buildKpis({}))).toBe(false);
   });
+
+  it("ignores the equipment card for a scoped reader: zero visible equipment is not an empty system", () => {
+    const scoped = { ignoreEquipment: true };
+    expect(hasNoData(buildKpis({ equipment: 0 }), scoped)).toBe(false);
+    expect(hasNoData(buildKpis({ equipment: 0, operations: 1, sites: 1 }), scoped)).toBe(false);
+    expect(hasNoData(buildKpis({ equipment: 4, divisions: 0, operations: 0 }), scoped)).toBe(true);
+  });
 });
 
 describe("dropUnknowableCounts", () => {

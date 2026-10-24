@@ -16,8 +16,9 @@ const VISIBLE: Readonly<Record<RoleKey, readonly Entry[]>> = {
   admin: [FLEET, USERS, ORGANIZATION],
   fleet_analyst: [FLEET, ORGANIZATION],
   viewer: [FLEET, ORGANIZATION],
-  manager: [ORGANIZATION], // scoped to a division: no fleet (company-wide readers only), no user admin
-  supervisor: [ORGANIZATION], // scoped to an operation
+  // Scoped readers have Flota since P0-08 T4: equipment is visible by its assignment (D6); no user admin.
+  manager: [FLEET, ORGANIZATION], // scoped to a division
+  supervisor: [FLEET, ORGANIZATION], // scoped to an operation
 };
 
 const RESTRICTED_TITLE: Readonly<Record<Route, string>> = {

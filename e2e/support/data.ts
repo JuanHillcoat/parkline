@@ -34,7 +34,7 @@ async function deleteTestOrganization(sql: Sql, ids: WorldFile["ids"]): Promise<
 
 /**
  * Deletes everything a suite created: users other than the world's (with their sessions and
- * assignments), the failed sign-in counters, equipments, asset types, suppliers, operations,
+ * assignments), the failed sign-in counters, equipment assignments, equipments, asset types, suppliers, operations,
  * sites and divisions, in foreign-key order.
  */
 export async function resetCatalogs(): Promise<void> {
@@ -43,6 +43,7 @@ export async function resetCatalogs(): Promise<void> {
     const { ids } = readWorld();
     await deleteTestUsers(sql);
     await sql`delete from sign_in_attempts`;
+    await sql`delete from equipment_assignments`;
     await sql`delete from equipments`;
     await sql`delete from asset_types`;
     await sql`delete from suppliers`;
@@ -66,6 +67,15 @@ export type EquipmentSeed = {
   readonly year?: number;
 };
 
+/** Today is the default start day: a past day would need a reason, a future one hides nothing. */
+export type AssignmentSeed = {
+  readonly equipmentId: string;
+  readonly operationId: string;
+  readonly kind?: "active" | "spare";
+  readonly day?: string;
+  readonly reason?: string;
+};
+
 export type OperationSeed = { division: string; site: string; name: string; costCenter: string };
 
 export type Seeder = {
@@ -75,6 +85,7 @@ export type Seeder = {
   readonly supplier: (name: string) => Promise<string>;
   readonly assetType: (name: string, meterKind?: string, intervalHours?: number | null) => Promise<string>;
   readonly equipment: (input: EquipmentSeed) => Promise<string>;
+  readonly assign: (input: AssignmentSeed) => Promise<void>;
   readonly close: () => Promise<void>;
 };
 
@@ -118,6 +129,25 @@ function fleetSeeds(c: Container, actor: Actor) {
   };
 }
 
+const today = (): string => new Date().toISOString().slice(0, 10);
+
+function assignmentSeeds(c: Container, actor: Actor) {
+  return {
+    assign: async (input: AssignmentSeed) => {
+      must(
+        await c.fleet.assignEquipment.execute({
+          actor,
+          equipmentId: input.equipmentId,
+          operationId: input.operationId,
+          kind: input.kind ?? "active",
+          day: input.day ?? today(),
+          reason: input.reason ?? null,
+        }),
+      );
+    },
+  };
+}
+
 /**
  * Opens a seeder that creates rows through the use cases as the world's administrator, so audit
  * entries, normalization and validation are the real ones. Always `close()` it.
@@ -127,5 +157,5 @@ export async function openSeeder(): Promise<Seeder> {
   const c = createContainer(sql);
   const session = must(await c.identity.signIn.execute({ email: WORLD_USERS.admin.email, password: passwordOf("admin") }));
   const actor = toActor(must(await c.identity.authenticate.execute({ token: session.token })));
-  return { ...organizationSeeds(c, actor), ...fleetSeeds(c, actor), close: () => sql.end() };
+  return { ...organizationSeeds(c, actor), ...fleetSeeds(c, actor), ...assignmentSeeds(c, actor), close: () => sql.end() };
 }

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { AssignmentSummary, EquipmentListItem } from "../../../src/fleet/application/equipment-visibility";
 import type { AssetType, Equipment, Supplier } from "../../../src/fleet/domain/entities";
 import {
   assetTypeOptions,
@@ -9,10 +10,15 @@ import {
   countActiveEquipment,
   equipmentFormValues,
   filterEquipment,
+  listOrEmpty,
   fleetHref,
   fleetToggleHref,
+  assetTypeNamesOf,
   intervalText,
   knownId,
+  operationOptions,
+  parseEquipmentState,
+  supplierNamesOf,
   paginate,
   parseFleetTab,
   pageWindow,
@@ -52,6 +58,23 @@ const units = [
   equipment("e2", "C-043", "s1", "a2"),
   equipment("e3", "EQ-0003", "s2", "a1", { archivedAt: GONE }),
 ];
+
+const here: AssignmentSummary = { operationId: "o1", siteId: "si1", businessUnitId: "b1", kind: "active", validFrom: "2026-01-10" };
+const asItem = (e: Equipment, assignment: AssignmentSummary | null = null): EquipmentListItem => ({
+  ...e,
+  supplier: { id: e.supplierId, name: suppliers.find((s) => s.id === e.supplierId)?.name ?? "?" },
+  assetType: {
+    id: e.assetTypeId,
+    name: types.find((t) => t.id === e.assetTypeId)?.name ?? "?",
+    meterKind: types.find((t) => t.id === e.assetTypeId)?.meterKind ?? "none",
+  },
+  assignment,
+});
+const items = units.map((unit) => asItem(unit));
+const places = {
+  operations: [{ id: "o1", name: "OPERATION ONE" }],
+  sites: [{ id: "si1", name: "SITE ONE" }],
+};
 
 describe("intervalText", () => {
   it("shows the interval with the unit of the meter", () => {
@@ -93,9 +116,9 @@ describe("buildSupplierRows and buildAssetTypeRows", () => {
 });
 
 describe("buildEquipmentRows", () => {
-  const rows = buildEquipmentRows(units, suppliers, types);
+  const rows = buildEquipmentRows(items, places);
 
-  it("resolves the supplier and the asset type by id", () => {
+  it("takes the supplier and the asset type names from the item itself", () => {
     expect(rows[0]).toMatchObject({ internalCode: "EQ-0001", supplierName: "SUPPLIER A", assetTypeName: "FORKLIFT" });
   });
 
@@ -104,10 +127,57 @@ describe("buildEquipmentRows", () => {
     expect(rows[1]?.brandModel).toBeNull();
   });
 
-  it("keeps the archived flag and leaves unknown parents as null", () => {
+  it("keeps the archived flag", () => {
     expect(rows[2]?.archived).toBe(true);
-    const lonely = buildEquipmentRows([equipment("e9", "EQ-0009", "gone", "gone")], suppliers, types);
-    expect(lonely[0]).toMatchObject({ supplierName: null, assetTypeName: null });
+  });
+
+  it("maps the open assignment to a state, an operation and a site", () => {
+    const [active, spare, idle] = buildEquipmentRows(
+      [
+        asItem(units[0] as Equipment, here),
+        asItem(units[1] as Equipment, { ...here, kind: "spare" }),
+        asItem(units[2] as Equipment),
+      ],
+      places,
+    );
+    expect(active).toMatchObject({ state: "active", operationId: "o1", operationName: "OPERATION ONE", siteName: "SITE ONE" });
+    expect(spare).toMatchObject({ state: "spare", operationId: "o1" });
+    expect(idle).toMatchObject({ state: "unassigned", operationId: null, operationName: null, siteName: null });
+  });
+
+  it("leaves a name null when the organization list does not carry it", () => {
+    const [row] = buildEquipmentRows([asItem(units[0] as Equipment, { ...here, operationId: "gone", siteId: "gone" })], places);
+    expect(row).toMatchObject({ state: "active", operationId: "gone", operationName: null, siteName: null });
+  });
+});
+
+describe("names carried by the items", () => {
+  it("build the supplier and asset type filter options without the catalogs, unique and sorted", () => {
+    const more = [...items, asItem(equipment("e4", "EQ-4", "s2", "a2"))];
+    expect(supplierNamesOf(more)).toEqual([{ id: "s1", name: "SUPPLIER A" }, { id: "s2", name: "SUPPLIER B" }]);
+    expect(assetTypeNamesOf(more)).toEqual([{ id: "a1", name: "FORKLIFT" }, { id: "a2", name: "PALLET JACK" }]);
+    expect(supplierNamesOf([])).toEqual([]);
+  });
+});
+
+describe("operationOptions", () => {
+  it("offers the operations that are not archived", () => {
+    const rows = [
+      { id: "o1", name: "OPERATION ONE", archivedAt: null },
+      { id: "o2", name: "OLD", archivedAt: GONE },
+    ];
+    expect(operationOptions(rows)).toEqual([{ id: "o1", name: "OPERATION ONE" }]);
+  });
+});
+
+describe("parseEquipmentState", () => {
+  it("accepts the three states and ignores anything else", () => {
+    expect(parseEquipmentState("active")).toBe("active");
+    expect(parseEquipmentState("spare")).toBe("spare");
+    expect(parseEquipmentState("unassigned")).toBe("unassigned");
+    expect(parseEquipmentState("nope")).toBeNull();
+    expect(parseEquipmentState(undefined)).toBeNull();
+    expect(parseEquipmentState(["active"])).toBeNull();
   });
 });
 
@@ -165,18 +235,23 @@ describe("parseFleetTab", () => {
 });
 
 describe("filterEquipment", () => {
+  const named = (item: EquipmentListItem): EquipmentListItem => ({
+    ...item,
+    supplier: { id: item.supplierId, name: item.supplierId === "s1" ? "Proveedor Uno" : "Proveedor Dos" },
+    assetType: { id: item.assetTypeId, name: item.assetTypeId === "a1" ? "Grúa" : "Camión", meterKind: "hours" },
+  });
   const rows = buildEquipmentRows(
     [
-      equipment("e1", "GRÚA-01", "s1", "a1", { brand: "Marca", model: "Ñandú 2", serialNumber: "SN-77" }),
-      equipment("e2", "CAM-02", "s2", "a2", { brand: "Otra", model: "X" }),
+      named(asItem(equipment("e1", "GRÚA-01", "s1", "a1", { brand: "Marca", model: "Ñandú 2", serialNumber: "SN-77" }), here)),
+      named(asItem(equipment("e2", "CAM-02", "s2", "a2", { brand: "Otra", model: "X" }), { ...here, operationId: "o2", kind: "spare" })),
+      named(asItem(equipment("e3", "VAC-03", "s2", "a1"))),
     ],
-    [supplier("s1", "Proveedor Uno"), supplier("s2", "Proveedor Dos")],
-    [assetType("a1", "Grúa"), assetType("a2", "Camión")],
+    { operations: [], sites: [] },
   );
-  const none = { q: "", supplierId: null, typeId: null };
+  const none = { q: "", supplierId: null, typeId: null, operationId: null, state: null };
 
   it("returns everything without filters", () => {
-    expect(filterEquipment(rows, none)).toHaveLength(2);
+    expect(filterEquipment(rows, none)).toHaveLength(3);
   });
 
   it("searches code, brand, model, serial, supplier and type ignoring case and accents", () => {
@@ -188,9 +263,36 @@ describe("filterEquipment", () => {
   });
 
   it("filters by supplier and by type", () => {
-    expect(filterEquipment(rows, { ...none, supplierId: "s2" }).map((r) => r.id)).toEqual(["e2"]);
-    expect(filterEquipment(rows, { ...none, typeId: "a1" }).map((r) => r.id)).toEqual(["e1"]);
-    expect(filterEquipment(rows, { q: "", supplierId: "s1", typeId: "a2" })).toEqual([]);
+    expect(filterEquipment(rows, { ...none, supplierId: "s2" }).map((r) => r.id)).toEqual(["e2", "e3"]);
+    expect(filterEquipment(rows, { ...none, typeId: "a1" }).map((r) => r.id)).toEqual(["e1", "e3"]);
+    expect(filterEquipment(rows, { ...none, supplierId: "s1", typeId: "a2" })).toEqual([]);
+  });
+
+  it("filters by operation: equipment without an assignment never matches", () => {
+    expect(filterEquipment(rows, { ...none, operationId: "o1" }).map((r) => r.id)).toEqual(["e1"]);
+    expect(filterEquipment(rows, { ...none, operationId: "o2" }).map((r) => r.id)).toEqual(["e2"]);
+  });
+
+  it("filters by state", () => {
+    expect(filterEquipment(rows, { ...none, state: "active" }).map((r) => r.id)).toEqual(["e1"]);
+    expect(filterEquipment(rows, { ...none, state: "spare" }).map((r) => r.id)).toEqual(["e2"]);
+    expect(filterEquipment(rows, { ...none, state: "unassigned" }).map((r) => r.id)).toEqual(["e3"]);
+  });
+
+  it("never matches an archived row against a state: its pill is De baja, not a state", () => {
+    const archived = buildEquipmentRows(
+      [named(asItem(equipment("e4", "OLD-04", "s1", "a1", { archivedAt: new Date("2026-01-01T00:00:00Z") })))],
+      { operations: [], sites: [] },
+    );
+    const all = [...rows, ...archived];
+    expect(filterEquipment(all, none).map((r) => r.id)).toContain("e4");
+    expect(filterEquipment(all, { ...none, state: "unassigned" }).map((r) => r.id)).toEqual(["e3"]);
+    expect(filterEquipment(archived, { ...none, state: "unassigned" })).toEqual([]);
+  });
+
+  it("combines every filter with the search", () => {
+    expect(filterEquipment(rows, { ...none, state: "spare", operationId: "o2", q: "cam" }).map((r) => r.id)).toEqual(["e2"]);
+    expect(filterEquipment(rows, { ...none, state: "spare", operationId: "o1" })).toEqual([]);
   });
 });
 
@@ -240,5 +342,20 @@ describe("fleetHref", () => {
       "/fleet?q=a+b&supplier=s1&type=t1&page=2",
     );
     expect(fleetHref({ page: 1 })).toBe("/fleet");
+  });
+
+  it("keeps the operation and state filters, and drops them when empty", () => {
+    expect(fleetHref({ operationId: "o1", state: "spare", page: 3 })).toBe("/fleet?operation=o1&state=spare&page=3");
+    expect(fleetHref({ operationId: null, state: null })).toBe("/fleet");
+  });
+});
+
+describe("listOrEmpty", () => {
+  it("gives the rows of a successful list", () => {
+    expect(listOrEmpty({ ok: true, value: ["a", "b"] })).toEqual(["a", "b"]);
+  });
+
+  it("gives an empty list for a failed one, so the board shows blank names instead of failing", () => {
+    expect(listOrEmpty({ ok: false, error: new Error("organization unavailable") })).toEqual([]);
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ActorContext } from "../../../src/identity/application/actor-context";
-import { canReadCatalog, canViewFleet } from "../catalog-access";
+import { canReadCatalog, canViewFleet, canViewFleetCatalogs } from "../catalog-access";
 
 const actor = (roles: readonly { role: string; active: boolean }[], active = true): ActorContext =>
   ({
@@ -28,17 +28,33 @@ const scoped = (type: string, role = "viewer", active = true, userActive = true)
   }) as unknown as ActorContext;
 
 describe("canViewFleet", () => {
-  it("is true only for a catalog reader with company-wide scope (decision D6)", () => {
+  it("is true for a catalog reader at any scope: equipment is visible by its assignment (D6)", () => {
     expect(canViewFleet(scoped("tenant"))).toBe(true);
     expect(canViewFleet(scoped("tenant", "fleet_analyst"))).toBe(true);
-    expect(canViewFleet(scoped("business_unit"))).toBe(false);
-    expect(canViewFleet(scoped("operation"))).toBe(false);
-    expect(canViewFleet(scoped("site"))).toBe(false);
+    expect(canViewFleet(scoped("business_unit"))).toBe(true);
+    expect(canViewFleet(scoped("operation"))).toBe(true);
+    expect(canViewFleet(scoped("site"))).toBe(true);
   });
 
   it("is false for an inactive assignment or user, or an empty actor", () => {
     expect(canViewFleet(scoped("tenant", "viewer", false))).toBe(false);
     expect(canViewFleet(scoped("tenant", "viewer", true, false))).toBe(false);
     expect(canViewFleet(actor([]))).toBe(false);
+  });
+});
+
+describe("canViewFleetCatalogs", () => {
+  it("is true only for a catalog reader with company-wide scope: suppliers and asset types stay tenant-wide", () => {
+    expect(canViewFleetCatalogs(scoped("tenant"))).toBe(true);
+    expect(canViewFleetCatalogs(scoped("tenant", "fleet_analyst"))).toBe(true);
+    expect(canViewFleetCatalogs(scoped("business_unit"))).toBe(false);
+    expect(canViewFleetCatalogs(scoped("operation"))).toBe(false);
+    expect(canViewFleetCatalogs(scoped("site"))).toBe(false);
+  });
+
+  it("is false for an inactive assignment or user, or an empty actor", () => {
+    expect(canViewFleetCatalogs(scoped("tenant", "viewer", false))).toBe(false);
+    expect(canViewFleetCatalogs(scoped("tenant", "viewer", true, false))).toBe(false);
+    expect(canViewFleetCatalogs(actor([]))).toBe(false);
   });
 });

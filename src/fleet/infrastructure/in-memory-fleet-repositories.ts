@@ -83,6 +83,10 @@ export class InMemorySupplierRepository implements SupplierRepository {
     return Promise.resolve(byId(this.state.suppliers, tenantId, id));
   }
 
+  findManyByIds(tenantId: string, ids: readonly string[]): Promise<readonly Supplier[]> {
+    return Promise.resolve(inTenant(this.state.suppliers, tenantId).filter((s) => ids.includes(s.id)));
+  }
+
   findByName(tenantId: string, key: string): Promise<Supplier | null> {
     const found = active(this.state.suppliers, tenantId).find((s) => nameKey(s.name) === key);
     return Promise.resolve(found ?? null);
@@ -116,6 +120,10 @@ export class InMemoryAssetTypeRepository implements AssetTypeRepository {
 
   findById(tenantId: string, id: string): Promise<AssetType | null> {
     return Promise.resolve(byId(this.state.assetTypes, tenantId, id));
+  }
+
+  findManyByIds(tenantId: string, ids: readonly string[]): Promise<readonly AssetType[]> {
+    return Promise.resolve(inTenant(this.state.assetTypes, tenantId).filter((t) => ids.includes(t.id)));
   }
 
   findByName(tenantId: string, key: string): Promise<AssetType | null> {

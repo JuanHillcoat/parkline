@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { copy } from "../../_lib/copy";
-import type { AssetTypeRow, EquipmentRow, SupplierRow } from "../../_lib/fleet-view";
+import type { AssetTypeRow, EquipmentRow, EquipmentState, SupplierRow } from "../../_lib/fleet-view";
 import { EditEquipmentDialog, type EquipmentOptions } from "./equipment-dialogs";
 import { ArchiveDialog, EditAssetTypeDialog, RenameSupplierDialog, type FleetKind } from "./fleet-dialogs";
 
@@ -9,8 +9,16 @@ const c = t.columns;
 
 export type Access = { readonly canWrite: boolean; readonly canArchive: boolean };
 
-function StatusPill({ archived }: { archived: boolean }) {
-  return <span className={archived ? "badge badge-neutral" : "badge badge-ok"}>{archived ? copy.common.archivedTag : copy.common.active}</span>;
+const STATE_BADGE: Readonly<Record<EquipmentState, string>> = {
+  active: "badge badge-ok",
+  spare: "badge badge-warn",
+  unassigned: "badge badge-neutral",
+};
+
+/** Archived equipment keeps its "De baja" pill; otherwise the pill shows where it stands (Activo, Muleto, Sin asignar). */
+function EquipmentStatePill({ row }: { row: EquipmentRow }) {
+  if (row.archived) return <ArchivedTag />;
+  return <span className={STATE_BADGE[row.state]}>{t.state[row.state]}</span>;
 }
 
 function ArchivedTag() {
@@ -110,11 +118,13 @@ function EquipmentLine({ row, options, ...access }: EquipmentLineProps) {
   return (
     <tr data-archived={row.archived}>
       <th scope="row" className="cell-code cell-id">{row.internalCode}</th>
-      <td data-label={c.assetType}>{row.assetTypeName ?? t.unknownParent}</td>
-      <td data-label={c.supplier}>{row.supplierName ?? t.unknownParent}</td>
+      <td data-label={c.assetType}>{row.assetTypeName}</td>
+      <td data-label={c.supplier}>{row.supplierName}</td>
+      <td data-label={c.operation}>{orDash(row.operationName)}</td>
+      <td data-label={c.site}>{orDash(row.siteName)}</td>
       <BrandModelCell row={row} />
       <td className="cell-num" data-label={c.year}>{orDash(row.year)}</td>
-      <td data-label={c.status}><StatusPill archived={row.archived} /></td>
+      <td data-label={c.status}><EquipmentStatePill row={row} /></td>
       <td className="cell-actions">
         <div className="row-actions">
           {access.canWrite && !row.archived && <EditEquipmentDialog target={row} options={options} />}
@@ -125,11 +135,11 @@ function EquipmentLine({ row, options, ...access }: EquipmentLineProps) {
   );
 }
 
-const EQUIPMENT_HEAD = [c.internalCode, c.assetType, c.supplier, c.brandModel, c.year, c.status];
+const EQUIPMENT_HEAD = [c.internalCode, c.assetType, c.supplier, c.operation, c.site, c.brandModel, c.year, c.status];
 
 export function EquipmentTable({ rows, options, ...access }: Access & { rows: readonly EquipmentRow[]; options: EquipmentOptions }) {
   return (
-    <TableShell caption={t.equipmentCaption} head={EQUIPMENT_HEAD} numeric={[4]}>
+    <TableShell caption={t.equipmentCaption} head={EQUIPMENT_HEAD} numeric={[6]}>
       {rows.map((row) => <EquipmentLine key={row.id} row={row} options={options} {...access} />)}
     </TableShell>
   );

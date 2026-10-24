@@ -72,6 +72,14 @@ async function staff(email: string, role: Role): Promise<Actor> {
   return signInActor(email);
 }
 
+/** A user with one role over one scope (division or operation), signed in. */
+async function scopedStaff(email: string, role: Role, scope: { type: string; id: string }): Promise<Actor> {
+  const signed = must(await c.identity.signIn.execute({ email: "admin@example.test", password: PASSWORD }));
+  const context = must(await c.identity.authenticate.execute({ token: signed.token }));
+  must(await c.identity.createUser.execute({ actor: context, email, displayName: "Synthetic Scoped", password: PASSWORD, role, scope }));
+  return signInActor(email);
+}
+
 type PgError = { code?: string; message: string; constraint_name?: string };
 const failure = (run: PromiseLike<unknown>): Promise<PgError | null> =>
   Promise.resolve(run).then(
@@ -418,6 +426,26 @@ describe("assignment flows through the container as parkline_app", () => {
     expect(archived[0]?.archived_at).not.toBeNull();
     const actions = await owner<{ action: string }[]>`select action from audit_log where entity_id = ${outgoing.id} order by id`;
     expect(actions.map((a) => a.action)).toContain("fleet.archive");
+  });
+
+  it("gives a scoped reader the supplier and asset type names of its equipment, which it cannot read from the catalogs", async () => {
+    const [mine, other] = [await operationFixture("NamesMine"), await operationFixture("NamesOther")];
+    const [here, there] = [await equipmentFixture("NamesHere"), await equipmentFixture("NamesThere")];
+    must(await assign(here.id, mine.operation.id, { day: "2026-01-01", reason: "Backfill" }));
+    must(await assign(there.id, other.operation.id, { day: "2026-01-01", reason: "Backfill" }));
+    const n = next();
+    const supervisor = await scopedStaff(`supervisor.names${n}@example.test`, "supervisor", { type: "operation", id: mine.operation.id });
+    const manager = await scopedStaff(`manager.names${n}@example.test`, "manager", { type: "business_unit", id: mine.division.id });
+
+    const supplierRows = await owner<{ name: string }[]>`select name from suppliers where id = ${here.supplierId}`;
+    const typeRows = await owner<{ name: string }[]>`select name from asset_types where id = ${here.assetTypeId}`;
+    const [supplierName, typeName] = [supplierRows[0]?.name ?? "", typeRows[0]?.name ?? ""];
+    for (const reader of [supervisor, manager]) {
+      const rows = must(await c.fleet.listEquipment.execute({ actor: reader }));
+      expect(rows.map((row) => row.id)).toEqual([here.id]);
+      expect(rows[0]?.supplier).toEqual({ id: here.supplierId, name: supplierName });
+      expect(rows[0]?.assetType).toEqual({ id: here.assetTypeId, name: typeName, meterKind: "hours" });
+    }
   });
 
   it("ends an open assignment and corrects an existing one; history is newest first", async () => {

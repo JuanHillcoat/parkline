@@ -2,7 +2,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { copy } from "../../app/_lib/copy";
 import { openSeeder, resetCatalogs, type Seeder } from "../support/data";
 import { setArchived, setWorldOrganizationArchived } from "../support/users-flows";
-import { WORLD_USERS, storageStatePath } from "../support/world";
+import { WORLD_USERS, readWorld, storageStatePath } from "../support/world";
 
 const t = copy.home;
 
@@ -298,7 +298,7 @@ test.describe("dashboard for scoped users", () => {
       test.use({ storageState: storageStatePath(key) });
       test.beforeEach(resetCatalogs);
 
-      test("shows no equipment, supplier or asset type cards and no distributions", async ({ page }) => {
+      test("shows no supplier or asset type cards and no distributions, only the equipment it can see", async ({ page }) => {
         const seeder = await openSeeder();
         try {
           await seedEquipmentBySupplier(seeder, [2]);
@@ -307,18 +307,44 @@ test.describe("dashboard for scoped users", () => {
         }
         await page.goto("/");
         await expect(page.getByRole("heading", { level: 1, name: t.greeting(WORLD_USERS[key].displayName) })).toBeVisible();
-        for (const label of [t.kpi.equipment, t.kpi.suppliers, t.kpi.assetTypes]) {
+        for (const label of [t.kpi.suppliers, t.kpi.assetTypes]) {
           await expect(kpiCard(page, label)).toHaveCount(0);
         }
+        // Equipment now follows its assignment (D6): two unassigned units are invisible to a scoped reader,
+        // so its card is the true count of what it sees (zero), not the company total.
+        await expectKpi(page, "equipment", 0, "/fleet");
         await expect(page.getByRole("progressbar")).toHaveCount(0);
         await expect(distributionCard(page, t.distribution.bySupplier)).toHaveCount(0);
       });
 
-      test("shows only the organization counts it can read, never a false zero", async ({ page }) => {
+      test("counts the equipment placed in its scope and no other, still without suppliers or distributions", async ({ page }) => {
+        const seeder = await openSeeder();
+        try {
+          const { assetType, suppliers } = await seedEquipmentBySupplier(seeder, [3]);
+          const other = await seeder.equipment({ supplierId: suppliers[0] ?? "", assetTypeId: assetType, internalCode: "ELSEWHERE-1" });
+          const division = await seeder.division("Dash other");
+          const site = await seeder.site("Dash other site");
+          const operation = await seeder.operation({ division, site, name: "Dash other op", costCenter: "7001" });
+          await seeder.assign({ equipmentId: other, operationId: operation });
+          const mine = await seeder.equipment({ supplierId: suppliers[0] ?? "", assetTypeId: assetType, internalCode: "MINE-1" });
+          await seeder.assign({ equipmentId: mine, operationId: readWorld().ids.operation });
+        } finally {
+          await seeder.close();
+        }
+        await page.goto("/");
+        await expectKpi(page, "equipment", 1, "/fleet");
+        await expect(kpiCard(page, t.kpi.suppliers)).toHaveCount(0);
+        await expect(distributionCard(page, t.distribution.byAssetType)).toHaveCount(0);
+        await expect(page.getByRole("region", { name: t.firstSteps.title })).toHaveCount(0);
+      });
+
+      test("shows only the organization counts it can read, never a false zero, and no first steps", async ({ page }) => {
         await page.goto("/");
         await expect(kpiCard(page, t.kpi.operations)).toBeVisible();
         await expect(page.getByRole("region", { name: t.firstSteps.title })).toHaveCount(0);
-        const values = await page.locator(".kpi-value").allTextContents();
+        // The equipment card may be a true zero (nothing assigned in scope); every other card is at least 1.
+        const organizationCards = page.locator(".kpi-card").filter({ hasNot: page.getByText(t.kpi.equipment, { exact: true }) });
+        const values = await organizationCards.locator(".kpi-value").allTextContents();
         expect(values.length).toBeGreaterThan(0);
         expect(values.every((value) => parseInt(value, 10) >= 1)).toBe(true);
       });

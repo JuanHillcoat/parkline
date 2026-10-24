@@ -6,6 +6,12 @@ const t = copy.fleet;
 
 type TabsProps = { readonly active: FleetTab; readonly archived: boolean; readonly counts: Readonly<Record<FleetTab, number>> };
 
+const STATE_OPTIONS: readonly Option[] = [
+  { id: "active", name: t.state.active },
+  { id: "spare", name: t.state.spare },
+  { id: "unassigned", name: t.state.unassigned },
+];
+
 const TAB_LABELS: readonly (readonly [FleetTab, string])[] = [
   ["equipment", t.tabs.equipment],
   ["suppliers", t.tabs.suppliers],
@@ -44,12 +50,30 @@ type ToolbarProps = {
   readonly archived: boolean;
   readonly suppliers: readonly Option[];
   readonly types: readonly Option[];
+  readonly operations: readonly Option[];
 };
 
-const isFiltered = (f: EquipmentFilters): boolean => f.q !== "" || f.supplierId !== null || f.typeId !== null;
+const isFiltered = (f: EquipmentFilters): boolean =>
+  f.q !== "" || f.supplierId !== null || f.typeId !== null || f.operationId !== null || f.state !== null;
+
+function EquipmentSelects({ filters, suppliers, types, operations }: Omit<ToolbarProps, "archived">) {
+  return (
+    <>
+      <FilterSelect id="fleet-operation" name="operation" label={t.operationFilter} all={t.allOperations}
+        options={operations} value={filters.operationId} />
+      <FilterSelect id="fleet-state" name="state" label={t.stateFilter} all={t.allStates}
+        options={STATE_OPTIONS} value={filters.state} />
+      <FilterSelect id="fleet-supplier" name="supplier" label={t.supplierFilter} all={t.allSuppliers}
+        options={suppliers} value={filters.supplierId} />
+      <FilterSelect id="fleet-type" name="type" label={t.typeFilter} all={t.allTypes}
+        options={types} value={filters.typeId} />
+    </>
+  );
+}
 
 /** A GET form: submitting it rebuilds the query string and returns to the first page. */
-export function EquipmentToolbar({ filters, archived, suppliers, types }: ToolbarProps) {
+export function EquipmentToolbar({ archived, ...selects }: ToolbarProps) {
+  const { filters } = selects;
   return (
     <form className="toolbar" method="get" action="/fleet" role="search">
       {archived && <input type="hidden" name="archived" value="1" />}
@@ -58,10 +82,7 @@ export function EquipmentToolbar({ filters, archived, suppliers, types }: Toolba
         <input id="fleet-q" name="q" type="search" className="input" defaultValue={filters.q}
           placeholder={t.searchPlaceholder} autoComplete="off" />
       </div>
-      <FilterSelect id="fleet-supplier" name="supplier" label={t.supplierFilter} all={t.allSuppliers}
-        options={suppliers} value={filters.supplierId} />
-      <FilterSelect id="fleet-type" name="type" label={t.typeFilter} all={t.allTypes}
-        options={types} value={filters.typeId} />
+      <EquipmentSelects {...selects} />
       <div className="toolbar-actions">
         <button type="submit" className="btn btn-primary">{t.applyFilters}</button>
         {isFiltered(filters) && <a className="btn" href={fleetHref({ archived })}>{t.clearFilters}</a>}

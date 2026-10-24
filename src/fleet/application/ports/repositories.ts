@@ -27,6 +27,8 @@ export type ParentLock = "share" | "exclusive";
 export interface SupplierRepository {
   lock(tenantId: string, id: string, mode: ParentLock): Promise<void>;
   findById(tenantId: string, id: string): Promise<Supplier | null>;
+  /** The rows with these ids (archived ones too) in one read; unknown ids are simply absent. */
+  findManyByIds(tenantId: string, ids: readonly string[]): Promise<readonly Supplier[]>;
   findByName(tenantId: string, key: string): Promise<Supplier | null>;
   add(supplier: Supplier): Promise<boolean>;
   rename(tenantId: string, id: string, name: string): Promise<boolean>;
@@ -37,6 +39,8 @@ export interface SupplierRepository {
 export interface AssetTypeRepository {
   lock(tenantId: string, id: string, mode: ParentLock): Promise<void>;
   findById(tenantId: string, id: string): Promise<AssetType | null>;
+  /** The rows with these ids (archived ones too) in one read; unknown ids are simply absent. */
+  findManyByIds(tenantId: string, ids: readonly string[]): Promise<readonly AssetType[]>;
   findByName(tenantId: string, key: string): Promise<AssetType | null>;
   add(assetType: AssetType): Promise<boolean>;
   /** Replaces name, meter kind and interval of an existing asset type (it must exist); false when the name is taken. */

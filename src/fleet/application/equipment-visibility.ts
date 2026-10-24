@@ -2,6 +2,7 @@ import type { AccessPolicy, Actor } from "../../shared/domain/ports/access-polic
 import type { Assignment, AssignmentKind } from "../domain/assignment";
 import type { Day } from "../domain/day";
 import type { Equipment } from "../domain/entities";
+import type { MeterKind } from "../domain/values";
 import { positionOfAssignment } from "./assignment-support";
 import { canReadFleet } from "./guards";
 
@@ -14,8 +15,20 @@ export type AssignmentSummary = {
   readonly validFrom: Day;
 };
 
-/** An equipment as the list shows it: its own fields plus its open assignment, or null when it has none. */
-export type EquipmentListItem = Equipment & { readonly assignment: AssignmentSummary | null };
+/** The supplier and asset type of an equipment by name: a scoped reader cannot read those lists. */
+export type EquipmentNames = {
+  readonly supplier: { readonly id: string; readonly name: string };
+  readonly assetType: { readonly id: string; readonly name: string; readonly meterKind: MeterKind };
+};
+
+/**
+ * An equipment as the list shows it: its own fields, the names of its supplier and asset type and its open
+ * assignment, or null when it has none.
+ */
+export type EquipmentListItem = Equipment & EquipmentNames & { readonly assignment: AssignmentSummary | null };
+
+/** The equipment the actor may see, before the names and the assignment summary are attached. */
+export type VisibleEquipment = Equipment & { readonly assignment: AssignmentSummary | null };
 
 const summaryOf = (open: Assignment | undefined): AssignmentSummary | null =>
   open === undefined
@@ -39,7 +52,7 @@ export const visibleEquipment = (
   actor: Actor,
   rows: readonly Equipment[],
   open: readonly Assignment[],
-): readonly EquipmentListItem[] => {
+): readonly VisibleEquipment[] => {
   const wide = canReadFleet(policy, actor);
   const openOf = new Map(open.map((assignment) => [assignment.equipmentId, assignment]));
   return rows.flatMap((row) => {
