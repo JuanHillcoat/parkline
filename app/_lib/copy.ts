@@ -387,6 +387,18 @@ const es = {
       batteryQuantityHint: "Opcional. De 0 a 4.",
       observationsLabel: "Observaciones",
     },
+    imageField: {
+      label: "Imagen",
+      fileLabel: "Archivo de imagen",
+      hint: "Opcional. JPEG, PNG o WebP de hasta 500 KB. Si la foto es más grande, se reduce sola antes de enviarla.",
+      previewAlt: "Vista previa de la imagen elegida",
+      currentAlt: "Imagen actual del equipo",
+      none: "Este equipo todavía no tiene imagen.",
+      keep: "Conservar la imagen actual",
+      replace: "Reemplazar por otra imagen",
+      add: "Agregar una imagen",
+      remove: "Quitar la imagen",
+    },
     editEquipment: {
       trigger: "Editar",
       title: (code: string): string => `Editar ${code}`,

@@ -24,7 +24,7 @@ import {
   type DetailPlaces,
   type DetailTab,
 } from "../../../../_lib/equipment-detail-view";
-import { assetTypeOptions, buildEquipmentRows, listOrEmpty, supplierOptions } from "../../../../_lib/fleet-view";
+import { assetTypeOptions, buildEquipmentRows, equipmentImageUrl, listOrEmpty, supplierOptions } from "../../../../_lib/fleet-view";
 import { requireActor } from "../../../../_lib/session";
 import { EditEquipmentDialog, type EquipmentOptions } from "../../equipment-dialogs";
 import { ArchiveDialog } from "../../fleet-dialogs";
@@ -225,7 +225,7 @@ export default async function EquipmentDetailPage({ params, searchParams }: Prop
 function InfoTab({ item, places }: { item: EquipmentListItem; places: DetailPlaces }) {
   return (
     <div className="detail-grid">
-      <InfoCard rows={buildInfoRows(item)} />
+      <InfoCard rows={buildInfoRows(item)} imageUrl={equipmentImageUrl(item.id, item.imageHash)} />
       <LocationCard view={buildLocation(item, places)} />
       <MoreCard />
     </div>

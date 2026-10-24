@@ -4,7 +4,7 @@
 - Issue: #44 (and the first part of the refinement of the equipment registration)
 - Source of truth: issue #44, `docs/adr/0007-fleet-catalogs.md`, `docs/adr/0008-first-deploy.md` (free-tier limits), `docs/adr/0010-equipment-assignments.md`
 - Delivery strategy: ask-on-risk; test runner: `pnpm test`, `pnpm test:db`, `pnpm test:e2e`
-- Status: T1 done, T2 done and verified (uncommitted)
+- Status: T1 to T4 done; pull request pending
 
 ## Specs
 
@@ -38,8 +38,8 @@ Out: several images, documents, image editing beyond the client downscale, the c
 
 - [x] T1 (S1, S4) Brand and model required: domain, copy, forms, seeders and every test and e2e fixture. Route: delegated writer (many files). Commit: `8e07763`
 - [ ] T2 (S2, S3, S4) Image backend: shared image rules (TDD), migration `0011`, ports and adapters, create and update with the image, `GetEquipmentImage`, hash in the list item, database tests. Route: delegated writer. Commit: pending
-- [ ] T3 (S2, S3, S4) Image UI: route handler, dialogs with the client downscale, detail and thumbnail, end-to-end tests including roles, errors and mobile. Route: delegated writer. Commit: pending
-- [ ] T4 (S4) ADR-0011, README, AGENTS, CHANGELOG. Route: inline. Commit: pending
+- [x] T3 (S2, S3, S4) Image UI: route handler, dialogs with the client downscale, detail and thumbnail, end-to-end tests including roles, errors and mobile. Route: delegated writer. Commit: with T4
+- [x] T4 (S4) ADR-0011, README, AGENTS, CHANGELOG. Route: inline. Commit: with T3
 
 ## Log
 
@@ -47,3 +47,6 @@ Out: several images, documents, image editing beyond the client downscale, the c
 - 2026-10-24 Branch created from `main` (after PR #48). Engram is unavailable in this session: the mirror `odd/issue-44-equipment-image/tasks` is pending.
 - 2026-10-24 T1 done and committed as `8e07763` (route: delegated writer, because the fixtures of brand and model were spread over many files). RED: the domain test "requires a brand and a model" failed 1 of 56 before the code. Parent re-run: lint and typecheck clean, `pnpm test` 1066 passed. The writer ran `pnpm test:db` (309) and eight e2e specs (233 passed, 12.9 min). Its native review was declined by the maintainer.
 - 2026-10-24 T2 done (route: delegated writer, new table plus adapters plus shared rules): migration `0011_equipment_images.sql` (ASCII, composite foreign key, checks on type, size, length and sha256; `parkline_app` may select, insert, update and delete, truncate revoked), shared rules `src/shared/domain/image.ts` (magic bytes, 500 KB), `EquipmentImageRepository`, `CreateEquipment`/`UpdateEquipment` with the image and the hash in the audit entry, `GetEquipmentImage`, `imageHash` in the list without reading `data`. Decision beyond the plan: `UpdateEquipment` now takes the equipment row lock for every edit, like the other writers of one equipment. Strict TDD was applied to the image rules only (RED: module missing, then 10/10); the use-case and database tests were written after the code. Parent re-run: lint and typecheck clean, `pnpm test` 1093 passed, build clean, `pnpm test:db` 15 files and 327 tests passed (the writer had not repeated the full db run after fixing the migration-count assertions). Risk: item 1 (new table with persisted data).
+- 2026-10-24 T3 done (delegated writer, uncommitted): route handler `image/route.ts` (401/404 empty, 200 with safety headers, 304), `NewImageField`/`EditImageField` (keep, replace, remove), client downscale (pure rules in `app/_lib/image-downscale.ts`, thin glue in `browser-image.ts`), detail image and list thumbnail, `serverActions.bodySizeLimit` 2mb. Decision: an empty file only counts as chosen when the form carries `imageChosen=1` (the framework rewrites the name of an empty file input, so a nameless-file check failed in the browser). Checks: lint and typecheck clean, `pnpm test` 1126 passed, build clean, new e2e spec 41 tests x3 runs passed, group of five specs 173 passed.
+- 2026-10-24 T2 committed as `8ff20dc`; its native review (medium, 28 files, 1,117 lines) was APPROVED with three findings: one fixed (a database test for removing the image of an equipment that has none, a branch the use case short-circuits), two answered without change (a write that silently skips on a malformed id would hide a failed save; a helper type wider than its return, no behavior).
+- 2026-10-24 T3 and T4 done: route handler, dialogs (`app/_components/image-field.tsx`), client downscale (pure rules in `app/_lib/image-downscale.ts`), thumbnail and detail image, 41 end-to-end tests (`equipment-image.spec.ts`), ADR-0011, README, AGENTS, CHANGELOG. Parent re-run: lint and typecheck clean, `pnpm test` 1126 passed, build clean, full `pnpm test:e2e:only` 506 passed, 0 failed; no leftover database. The full `pnpm test:db` was last run after T2 (327 passed) and nothing under `src/` or `db/` changed since. Decision beyond the plan: a hidden `imageChosen` marker, because an untouched file input reaches a server action as an empty file with a non-empty name. Known untested: a file over 2 MB (the framework's generic failure), a downscale that ends after submitting. Risk: item 3 (`serverActions.bodySizeLimit` and a new public route add to contracts, none broken).

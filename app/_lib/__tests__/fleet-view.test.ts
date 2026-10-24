@@ -6,6 +6,7 @@ import {
   buildAssetTypeRows,
   buildEquipmentRows,
   buildSupplierRows,
+  equipmentImageUrl,
   canCreateEquipment,
   countActiveEquipment,
   equipmentFormValues,
@@ -116,8 +117,25 @@ describe("buildSupplierRows and buildAssetTypeRows", () => {
   });
 });
 
+describe("equipmentImageUrl", () => {
+  it("points to the image endpoint with the hash as a cache buster", () => {
+    expect(equipmentImageUrl("e1", "abc123")).toBe("/fleet/equipment/e1/image?v=abc123");
+  });
+
+  it("is null without an image", () => {
+    expect(equipmentImageUrl("e1", null)).toBeNull();
+  });
+});
+
 describe("buildEquipmentRows", () => {
   const rows = buildEquipmentRows(items, places);
+
+  it("carries the image address only for an equipment with an image", () => {
+    const unit = units[0] as Equipment;
+    const [withImage] = buildEquipmentRows([{ ...asItem(unit), imageHash: "h1" }], places);
+    expect(withImage?.imageUrl).toBe(`/fleet/equipment/${unit.id}/image?v=h1`);
+    expect(rows[0]?.imageUrl).toBeNull();
+  });
 
   it("takes the supplier and the asset type names from the item itself", () => {
     expect(rows[0]).toMatchObject({ internalCode: "EQ-0001", supplierName: "SUPPLIER A", assetTypeName: "FORKLIFT" });

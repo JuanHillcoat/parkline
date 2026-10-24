@@ -16,22 +16,25 @@ function DetailList({ rows }: { rows: readonly InfoRow[] }) {
   );
 }
 
-/** The photo is a neutral placeholder: the real image is a later issue (#44). */
-function PhotoPlaceholder() {
-  return (
-    <div className="photo-placeholder" role="img" aria-label={t.info.photoLabel}>
-      <span>{t.info.photoPending}</span>
-    </div>
-  );
+/** The photo of the equipment, or a neutral placeholder without one. The frame has a fixed aspect, so nothing shifts. */
+function Photo({ url }: { readonly url: string | null }) {
+  if (url === null) {
+    return (
+      <div className="photo-placeholder" role="img" aria-label={t.info.photoLabel}>
+        <span>{t.info.photoPending}</span>
+      </div>
+    );
+  }
+  return <img className="photo-image" src={url} alt={t.info.photoLabel} />;
 }
 
-export function InfoCard({ rows }: { rows: readonly InfoRow[] }) {
+export function InfoCard({ rows, imageUrl }: { rows: readonly InfoRow[]; imageUrl: string | null }) {
   return (
     <section className="card detail-card" aria-labelledby="detail-info-title">
       <h2 id="detail-info-title">{t.info.title}</h2>
       <div className="detail-card-body">
         <DetailList rows={rows} />
-        <PhotoPlaceholder />
+        <Photo url={imageUrl} />
       </div>
     </section>
   );
