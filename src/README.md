@@ -12,7 +12,7 @@ src/<module>/
   infrastructure/    adapters (Postgres, in-memory fakes)
   __tests__/
 src/shared/
-  domain/            shared kernel: Result, Money, domain errors
+  domain/            shared kernel: Result, Money, domain errors, image rules
   infrastructure/    shared adapters; container.ts is the composition root
 app/                 Next.js routes; they only call use cases
 ```

@@ -37,6 +37,7 @@ const item = (extra: Partial<EquipmentListItem> = {}): EquipmentListItem => ({
   supplier: { id: "s1", name: "SUPPLIER A" },
   assetType: { id: "a1", name: "FORKLIFT", meterKind: "hours" },
   assignment: null,
+  imageHash: null,
   ...extra,
 });
 

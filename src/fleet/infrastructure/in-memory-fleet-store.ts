@@ -7,6 +7,7 @@ import {
   emptyState,
   InMemoryAssignmentRepository,
   InMemoryAssetTypeRepository,
+  InMemoryEquipmentImageRepository,
   InMemoryEquipmentRepository,
   InMemorySupplierRepository,
   type FleetState,
@@ -17,6 +18,7 @@ const txOver = (state: FleetState, audit: AuditLog, operations: OperationDirecto
   assetTypes: new InMemoryAssetTypeRepository(state),
   equipment: new InMemoryEquipmentRepository(state),
   assignments: new InMemoryAssignmentRepository(state),
+  images: new InMemoryEquipmentImageRepository(state),
   operations,
   audit,
 });

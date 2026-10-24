@@ -4,7 +4,7 @@
 - Issue: #44 (and the first part of the refinement of the equipment registration)
 - Source of truth: issue #44, `docs/adr/0007-fleet-catalogs.md`, `docs/adr/0008-first-deploy.md` (free-tier limits), `docs/adr/0010-equipment-assignments.md`
 - Delivery strategy: ask-on-risk; test runner: `pnpm test`, `pnpm test:db`, `pnpm test:e2e`
-- Status: T1 pending
+- Status: T1 done, T2 done and verified (uncommitted)
 
 ## Specs
 
@@ -36,7 +36,7 @@ Out: several images, documents, image editing beyond the client downscale, the c
 
 ## Tasks
 
-- [ ] T1 (S1, S4) Brand and model required: domain, copy, forms, seeders and every test and e2e fixture. Route: delegated writer (many files). Commit: pending
+- [x] T1 (S1, S4) Brand and model required: domain, copy, forms, seeders and every test and e2e fixture. Route: delegated writer (many files). Commit: `8e07763`
 - [ ] T2 (S2, S3, S4) Image backend: shared image rules (TDD), migration `0011`, ports and adapters, create and update with the image, `GetEquipmentImage`, hash in the list item, database tests. Route: delegated writer. Commit: pending
 - [ ] T3 (S2, S3, S4) Image UI: route handler, dialogs with the client downscale, detail and thumbnail, end-to-end tests including roles, errors and mobile. Route: delegated writer. Commit: pending
 - [ ] T4 (S4) ADR-0011, README, AGENTS, CHANGELOG. Route: inline. Commit: pending
@@ -45,3 +45,5 @@ Out: several images, documents, image editing beyond the client downscale, the c
 
 - L1 2026-10-24 "Si pedilo como obligatorio, incorporemos el alta de imagen y sigamos con el siguiente paso logico"
 - 2026-10-24 Branch created from `main` (after PR #48). Engram is unavailable in this session: the mirror `odd/issue-44-equipment-image/tasks` is pending.
+- 2026-10-24 T1 done and committed as `8e07763` (route: delegated writer, because the fixtures of brand and model were spread over many files). RED: the domain test "requires a brand and a model" failed 1 of 56 before the code. Parent re-run: lint and typecheck clean, `pnpm test` 1066 passed. The writer ran `pnpm test:db` (309) and eight e2e specs (233 passed, 12.9 min). Its native review was declined by the maintainer.
+- 2026-10-24 T2 done (route: delegated writer, new table plus adapters plus shared rules): migration `0011_equipment_images.sql` (ASCII, composite foreign key, checks on type, size, length and sha256; `parkline_app` may select, insert, update and delete, truncate revoked), shared rules `src/shared/domain/image.ts` (magic bytes, 500 KB), `EquipmentImageRepository`, `CreateEquipment`/`UpdateEquipment` with the image and the hash in the audit entry, `GetEquipmentImage`, `imageHash` in the list without reading `data`. Decision beyond the plan: `UpdateEquipment` now takes the equipment row lock for every edit, like the other writers of one equipment. Strict TDD was applied to the image rules only (RED: module missing, then 10/10); the use-case and database tests were written after the code. Parent re-run: lint and typecheck clean, `pnpm test` 1093 passed, build clean, `pnpm test:db` 15 files and 327 tests passed (the writer had not repeated the full db run after fixing the migration-count assertions). Risk: item 1 (new table with persisted data).

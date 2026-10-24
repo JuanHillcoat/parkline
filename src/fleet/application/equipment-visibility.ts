@@ -1,3 +1,4 @@
+import type { FleetTx } from "./ports/fleet-tx";
 import type { AccessPolicy, Actor } from "../../shared/domain/ports/access-policy";
 import type { Assignment, AssignmentKind } from "../domain/assignment";
 import type { Day } from "../domain/day";
@@ -25,7 +26,12 @@ export type EquipmentNames = {
  * An equipment as the list shows it: its own fields, the names of its supplier and asset type and its open
  * assignment, or null when it has none.
  */
-export type EquipmentListItem = Equipment & EquipmentNames & { readonly assignment: AssignmentSummary | null };
+export type EquipmentListItem = Equipment &
+  EquipmentNames & {
+    readonly assignment: AssignmentSummary | null;
+    /** The sha256 of its image, or null without one. The bytes are never loaded with a list. */
+    readonly imageHash: string | null;
+  };
 
 /** The equipment the actor may see, before the names and the assignment summary are attached. */
 export type VisibleEquipment = Equipment & { readonly assignment: AssignmentSummary | null };
@@ -60,4 +66,20 @@ export const visibleEquipment = (
     const covered = placed !== undefined && policy.check(actor, "catalog.read", positionOfAssignment(placed)).ok;
     return wide || covered ? [{ ...row, assignment: summaryOf(placed) }] : [];
   });
+};
+
+/**
+ * The one equipment the actor may see, or null when it is missing or out of the actor's reach (the two are
+ * indistinguishable). Used by every by-id read so they all apply the same D6 rule.
+ */
+export const findVisibleEquipment = async (
+  tx: FleetTx,
+  policy: AccessPolicy,
+  actor: Actor,
+  id: string,
+): Promise<VisibleEquipment | null> => {
+  const row = await tx.equipment.findById(actor.tenantId, id);
+  const open = row === null ? null : await tx.assignments.findOpen(actor.tenantId, id);
+  const [visible] = row === null ? [] : visibleEquipment(policy, actor, [row], open === null ? [] : [open]);
+  return visible ?? null;
 };

@@ -4,6 +4,7 @@ import type { OperationDirectory } from "../../shared/domain/ports/operation-dir
 import { PostgresAuditLog } from "../../shared/infrastructure/postgres-audit-log";
 import type { FleetTx } from "../application/ports/fleet-tx";
 import { PostgresAssignmentRepository } from "./postgres-assignment-repository";
+import { PostgresEquipmentImageRepository } from "./postgres-equipment-image-repository";
 import {
   PostgresAssetTypeRepository,
   PostgresEquipmentRepository,
@@ -26,6 +27,7 @@ export const createPostgresFleetTx = (
   assetTypes: new PostgresAssetTypeRepository(handle),
   equipment: new PostgresEquipmentRepository(handle),
   assignments: new PostgresAssignmentRepository(handle),
+  images: new PostgresEquipmentImageRepository(handle),
   operations: operations(handle),
   audit,
 });

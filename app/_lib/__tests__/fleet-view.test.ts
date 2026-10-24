@@ -69,6 +69,7 @@ const asItem = (e: Equipment, assignment: AssignmentSummary | null = null): Equi
     meterKind: types.find((t) => t.id === e.assetTypeId)?.meterKind ?? "none",
   },
   assignment,
+  imageHash: null,
 });
 const items = units.map((unit) => asItem(unit));
 const places = {
