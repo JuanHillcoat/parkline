@@ -4,7 +4,7 @@ import { toActor } from "../../../../../src/identity/application/actor-mapper";
 import { getContainer } from "../../../../../src/shared/infrastructure/container";
 import { field, type ActionState } from "../../../../_lib/action-state";
 import { assignFields, correctFields, endFields, moveFields, replaceFields } from "../../../../_lib/assignment-form";
-import { equipmentFields } from "../../../../_lib/fleet-form";
+import { equipmentFields, imageChange } from "../../../../_lib/fleet-form";
 import { runMutation } from "../../../../_lib/run-action";
 
 const fleet = () => getContainer().fleet;
@@ -34,12 +34,14 @@ export async function correctAssignmentAction(_previous: ActionState, form: Form
 
 /** The same use cases as the board's edit, archive and restore, but they refresh the detail page. */
 export async function updateEquipmentFromDetailAction(_previous: ActionState, form: FormData): Promise<ActionState> {
+  const image = await imageChange(form);
   return runMutation(pathOf(form, "id"), (actor) =>
     fleet().updateEquipment.execute({
       actor: toActor(actor),
       id: field(form, "id"),
       reason: field(form, "reason"),
       ...equipmentFields(form),
+      image,
     }),
   );
 }

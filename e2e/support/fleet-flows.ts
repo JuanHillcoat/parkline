@@ -99,6 +99,9 @@ const setObservations = (dialog: Locator, value: string): Promise<void> =>
     field.value = text;
   }, value);
 
+/** Brand and model are required: the new equipment flows fill these unless a test gives its own (an empty string leaves it blank). */
+export const REQUIRED_TEXT_DEFAULTS = { brand: "MARCA", model: "MODELO" } as const;
+
 /** Fills the equipment form; only the fields that are given are touched. */
 export async function fillEquipment(dialog: Locator, v: EquipmentValues): Promise<void> {
   await fill(dialog, f.internalCodeLabel, v.code);
@@ -115,7 +118,7 @@ export async function fillEquipment(dialog: Locator, v: EquipmentValues): Promis
 export async function createEquipmentViaUi(page: Page, values: EquipmentValues): Promise<void> {
   await gotoFleet(page, "equipment");
   const dialog = await openDialog(page, t.newEquipment.trigger);
-  await fillEquipment(dialog, values);
+  await fillEquipment(dialog, { ...REQUIRED_TEXT_DEFAULTS, ...values });
   await submitDialog(dialog, t.newEquipment.submit);
   await expectDialogClosed(page);
 }

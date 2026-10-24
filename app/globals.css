@@ -1304,6 +1304,49 @@ dialog.dialog::backdrop {
   text-align: center;
 }
 
+.photo-image {
+  display: block;
+  flex: 0 1 180px;
+  width: 180px;
+  max-width: 100%;
+  aspect-ratio: 4 / 3;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--neutral-bg);
+  object-fit: cover;
+}
+
+/* Equipment image: list thumbnail and the previews of the dialogs (issue 44) */
+.id-with-thumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.thumb {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  background: var(--neutral-bg);
+  object-fit: cover;
+}
+
+.image-preview {
+  display: block;
+  width: 100%;
+  max-width: 220px;
+  aspect-ratio: 4 / 3;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--neutral-bg);
+  object-fit: cover;
+}
+
+.image-none {
+  margin: 0;
+}
+
 .location-none {
   color: var(--text);
   font-size: 17px;
@@ -1348,7 +1391,8 @@ dialog.dialog::backdrop {
     gap: 2px;
   }
 
-  .photo-placeholder {
+  .photo-placeholder,
+  .photo-image {
     flex: 1 1 100%;
     width: 100%;
   }

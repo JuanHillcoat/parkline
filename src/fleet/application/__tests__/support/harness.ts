@@ -20,6 +20,7 @@ import { CreateEquipment, type CreateEquipmentInput } from "../../use-cases/crea
 import { CreateSupplier } from "../../use-cases/create-supplier";
 import { ListAssetTypes } from "../../use-cases/list-asset-types";
 import { GetEquipment } from "../../use-cases/get-equipment";
+import { GetEquipmentImage } from "../../use-cases/get-equipment-image";
 import { ListEquipment } from "../../use-cases/list-equipment";
 import { ListSuppliers } from "../../use-cases/list-suppliers";
 import { RenameSupplier } from "../../use-cases/rename-supplier";
@@ -87,6 +88,7 @@ export const createHarness = () => {
     listAssetTypes: new ListAssetTypes(deps),
     listEquipment: new ListEquipment(deps),
     getEquipment: new GetEquipment(deps),
+    getEquipmentImage: new GetEquipmentImage(deps),
     assignEquipment: new AssignEquipment(deps),
     moveEquipment: new MoveEquipment(deps),
     replaceEquipment: new ReplaceEquipment(deps),
@@ -105,19 +107,19 @@ export const createHarness = () => {
     return result.value;
   };
 
-  /** The create input of an equipment with every optional field empty; override what a test needs. */
+  /** The create input of an equipment with a brand and a model and every optional field empty; override what a test needs. */
   const equipmentInput = (
     supplierId: string,
     assetTypeId: string,
     internalCode: string,
     overrides: Partial<CreateEquipmentInput> = {},
-  ): CreateEquipmentInput => ({
+  ): Omit<CreateEquipmentInput, "image"> => ({
     actor: admin,
     supplierId,
     assetTypeId,
     internalCode,
-    brand: null,
-    model: null,
+    brand: "Brand",
+    model: "Model",
     year: null,
     serialNumber: null,
     batteryQuantity: null,

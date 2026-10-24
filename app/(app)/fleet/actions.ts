@@ -6,7 +6,7 @@ import type { Actor } from "../../../src/shared/domain/ports/access-policy";
 import type { Result } from "../../../src/shared/domain/result";
 import { getContainer } from "../../../src/shared/infrastructure/container";
 import { field, type ActionState } from "../../_lib/action-state";
-import { assetTypeFields, equipmentFields } from "../../_lib/fleet-form";
+import { assetTypeFields, equipmentFields, imageChange, newImage } from "../../_lib/fleet-form";
 import { runMutation } from "../../_lib/run-action";
 
 const fleet = () => getContainer().fleet;
@@ -51,18 +51,21 @@ export async function updateAssetTypeAction(_previous: ActionState, form: FormDa
 }
 
 export async function createEquipmentAction(_previous: ActionState, form: FormData): Promise<ActionState> {
+  const image = await newImage(form);
   return runMutation(PATH, (actor) =>
-    fleet().createEquipment.execute({ actor: toActor(actor), ...equipmentFields(form) }),
+    fleet().createEquipment.execute({ actor: toActor(actor), ...equipmentFields(form), image }),
   );
 }
 
 export async function updateEquipmentAction(_previous: ActionState, form: FormData): Promise<ActionState> {
+  const image = await imageChange(form);
   return runMutation(PATH, (actor) =>
     fleet().updateEquipment.execute({
       actor: toActor(actor),
       id: field(form, "id"),
       reason: field(form, "reason"),
       ...equipmentFields(form),
+      image,
     }),
   );
 }

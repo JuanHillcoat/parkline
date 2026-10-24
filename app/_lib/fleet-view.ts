@@ -64,6 +64,8 @@ export type EquipmentRow = {
   readonly batteryQuantity: number | null;
   readonly observations: string | null;
   readonly archived: boolean;
+  /** The address of its image (the hash busts the cache when the image changes), or null without one. */
+  readonly imageUrl: string | null;
   readonly form: EquipmentFormValues;
 };
 
@@ -130,6 +132,10 @@ const placeOf = (item: EquipmentListItem, operations: Names, sites: Names) => ({
   siteName: sites.get(item.assignment?.siteId ?? "") ?? null,
 });
 
+/** Where the image endpoint serves an equipment image; the `v` parameter is its hash so a changed image is refetched. */
+export const equipmentImageUrl = (id: string, hash: string | null): string | null =>
+  hash === null ? null : `/fleet/equipment/${id}/image?v=${hash}`;
+
 const equipmentRow = (item: EquipmentListItem, operations: Names, sites: Names): EquipmentRow => ({
   id: item.id,
   internalCode: item.internalCode,
@@ -142,6 +148,7 @@ const equipmentRow = (item: EquipmentListItem, operations: Names, sites: Names):
   batteryQuantity: item.batteryQuantity,
   observations: item.observations,
   archived: item.archivedAt !== null,
+  imageUrl: equipmentImageUrl(item.id, item.imageHash),
   form: equipmentFormValues(item),
 });
 

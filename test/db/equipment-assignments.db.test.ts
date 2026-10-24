@@ -103,7 +103,7 @@ async function equipmentFixture(label: string) {
   return must(
     await c.fleet.createEquipment.execute({
       actor: adminActor, supplierId: supplier.id, assetTypeId: type.id, internalCode: `EQ-${n}`,
-      brand: null, model: null, year: null, serialNumber: null, batteryQuantity: null, observations: null,
+      brand: "Brand", model: "Model", year: null, serialNumber: null, batteryQuantity: null, observations: null,
     }),
   );
 }
@@ -915,6 +915,25 @@ describe("assignment races", () => {
     });
     expect(answer).toBe("ok");
     expect((await stored(eq.id)).map((r) => [r.valid_from, r.valid_to])).toEqual([["2026-01-12", "2026-02-01"]]);
+  });
+
+  it("an equipment stored without brand and model (before they were required) can still be assigned, archived and restored (D1)", async () => {
+    const org = await operationFixture("LegacyNull");
+    const base = await equipmentFixture("LegacyNull");
+    const [legacy] = await owner<{ id: string }[]>`
+      insert into equipments (tenant_id, supplier_id, asset_type_id, internal_code, brand, model)
+      values (${adminActor.tenantId}, ${base.supplierId}, ${base.assetTypeId}, 'LEGACY-NULL', null, null) returning id`;
+    const id = legacy?.id ?? "";
+    expect(code(await c.fleet.assignEquipment.execute({ actor: analyst, equipmentId: id, operationId: org.operation.id, kind: "active", day: today() }))).toBe("ok");
+    expect(code(await c.fleet.archiveEquipment.execute({ actor: analyst, id, reason: "Baja" }))).toBe("has_open_assignment");
+    must(await c.fleet.endAssignment.execute({ actor: analyst, equipmentId: id, day: today(), reason: "Fin" }));
+    must(await c.fleet.archiveEquipment.execute({ actor: analyst, id, reason: "Baja" }));
+    must(await c.fleet.restoreEquipment.execute({ actor: analyst, id, reason: "Volver" }));
+    const listed = must(await c.fleet.listEquipment.execute({ actor: analyst })).find((e) => e.id === id);
+    expect([listed?.brand, listed?.model]).toEqual([null, null]);
+    const [row] = await owner<{ brand: string | null; model: string | null; archived_at: Date | null }[]>`
+      select brand, model, archived_at from equipments where id = ${id}`;
+    expect(row).toEqual({ brand: null, model: null, archived_at: null });
   });
 
   it("an assign races the archive of its equipment, over several rounds: never an open assignment on an archived equipment", async () => {

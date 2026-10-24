@@ -114,10 +114,20 @@ function BrandModelCell({ row }: { row: EquipmentRow }) {
 
 type EquipmentLineProps = Access & { readonly row: EquipmentRow; readonly options: EquipmentOptions };
 
+/** A small lazy thumbnail beside the code; decorative, because the code beside it names the row. */
+function EquipmentId({ row }: { row: EquipmentRow }) {
+  return (
+    <span className="id-with-thumb">
+      {row.imageUrl !== null && <img className="thumb" src={row.imageUrl} alt="" width={40} height={40} loading="lazy" />}
+      <a href={`/fleet/equipment/${row.id}`}>{row.internalCode}</a>
+    </span>
+  );
+}
+
 function EquipmentLine({ row, options, ...access }: EquipmentLineProps) {
   return (
     <tr data-archived={row.archived}>
-      <th scope="row" className="cell-code cell-id"><a href={`/fleet/equipment/${row.id}`}>{row.internalCode}</a></th>
+      <th scope="row" className="cell-code cell-id"><EquipmentId row={row} /></th>
       <td data-label={c.assetType}>{row.assetTypeName}</td>
       <td data-label={c.supplier}>{row.supplierName}</td>
       <td data-label={c.operation}>{orDash(row.operationName)}</td>

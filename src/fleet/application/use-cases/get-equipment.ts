@@ -2,7 +2,7 @@ import { NotFoundError, type DomainError } from "../../../shared/domain/domain-e
 import type { Actor } from "../../../shared/domain/ports/access-policy";
 import { err, ok, type Result } from "../../../shared/domain/result";
 import { withNames } from "../equipment-names";
-import { visibleEquipment, type EquipmentListItem } from "../equipment-visibility";
+import { findVisibleEquipment, type EquipmentListItem } from "../equipment-visibility";
 import type { FleetDeps } from "../deps";
 import { whenActive } from "../guards";
 import type { FleetTx } from "../ports/fleet-tx";
@@ -23,10 +23,8 @@ export class GetEquipment {
   }
 
   private async get(tx: FleetTx, { actor, id }: GetEquipmentInput): Promise<Result<EquipmentListItem, DomainError>> {
-    const row = await tx.equipment.findById(actor.tenantId, id);
-    const open = row === null ? null : await tx.assignments.findOpen(actor.tenantId, id);
-    const [visible] = row === null ? [] : visibleEquipment(this.deps.accessPolicy, actor, [row], open === null ? [] : [open]);
-    if (visible === undefined) return err(new NotFoundError("Equipment", id));
+    const visible = await findVisibleEquipment(tx, this.deps.accessPolicy, actor, id);
+    if (visible === null) return err(new NotFoundError("Equipment", id));
     const [item] = await withNames(tx, actor.tenantId, [visible]);
     // `withNames` returns one row per row it is given or throws: a missing item is an invariant violation,
     // not a "not found" the caller could be told about.

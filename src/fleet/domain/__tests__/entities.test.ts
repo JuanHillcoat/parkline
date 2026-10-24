@@ -7,8 +7,8 @@ const equipment = {
   supplierId: "s1",
   assetTypeId: "a1",
   internalCode: " c-043 ",
-  brand: null,
-  model: null,
+  brand: "Brand X",
+  model: "Model Y",
   year: null,
   serialNumber: null,
   batteryQuantity: null,
@@ -65,7 +65,7 @@ describe("createAssetType", () => {
 describe("createEquipment", () => {
   it("normalizes the code, trims the optional text and starts active", () => {
     const result = createEquipment(
-      { ...equipment, brand: " Brand X ", model: "", serialNumber: " sn-1 ", observations: " ok ", year: 2020, batteryQuantity: 2 },
+      { ...equipment, brand: " Brand X ", model: " Model Y ", serialNumber: " sn-1 ", observations: " ok ", year: 2020, batteryQuantity: 2 },
       2026,
     );
     expect(result).toEqual({
@@ -73,8 +73,6 @@ describe("createEquipment", () => {
       value: {
         ...equipment,
         internalCode: "C-043",
-        brand: "Brand X",
-        model: null,
         serialNumber: "sn-1",
         observations: "ok",
         year: 2020,
@@ -106,6 +104,14 @@ describe("createEquipment", () => {
       "invalid_battery_quantity",
       "invalid_text",
     ]);
+  });
+
+  it("requires a brand and a model: blank or missing is rejected with the field", () => {
+    const rejected = [{ brand: null }, { brand: "  " }, { model: null }, { model: "" }].map((override) => {
+      const result = createEquipment({ ...equipment, ...override }, 2026);
+      return result.ok ? "ok" : `${result.error.code}:${result.error.field ?? ""}`;
+    });
+    expect(rejected).toEqual(["invalid_text:brand", "invalid_text:brand", "invalid_text:model", "invalid_text:model"]);
   });
 
   it("uses the injected current year for the year bound", () => {

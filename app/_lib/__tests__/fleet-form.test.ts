@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assetTypeFields, equipmentFields, optionalInteger, optionalText } from "../fleet-form";
+import { assetTypeFields, equipmentFields, imageChange, newImage, optionalInteger, optionalText } from "../fleet-form";
 
 const form = (entries: Record<string, string>): FormData => {
   const data = new FormData();
@@ -42,18 +42,69 @@ describe("assetTypeFields", () => {
 });
 
 describe("equipmentFields", () => {
-  it("converts numbers and blank optional text", () => {
+  it("converts numbers and blank optional text, and passes brand and model as typed", () => {
     const data = form({
-      supplierId: "s1", assetTypeId: "a1", internalCode: "c-043", brand: "", model: "M-1",
+      supplierId: "s1", assetTypeId: "a1", internalCode: "c-043", brand: " ", model: "M-1",
       year: "2020", serialNumber: " ", batteryQuantity: "2", observations: "",
     });
     expect(equipmentFields(data)).toEqual({
-      supplierId: "s1", assetTypeId: "a1", internalCode: "c-043", brand: null, model: "M-1",
+      supplierId: "s1", assetTypeId: "a1", internalCode: "c-043", brand: " ", model: "M-1",
       year: 2020, serialNumber: null, batteryQuantity: 2, observations: null,
     });
   });
 
   it("keeps an invalid year as NaN instead of hiding it", () => {
     expect(equipmentFields(form({ year: "abc" })).year).toBeNaN();
+  });
+});
+
+const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
+const withFile = (entries: Record<string, string>, file?: File): FormData => {
+  const data = form(entries);
+  if (file !== undefined) data.set("image", file);
+  return data;
+};
+const chosen = new File([PNG], "photo.png", { type: "image/png" });
+const noFile = new File([], "undefined", { type: "application/octet-stream" });
+
+describe("newImage", () => {
+  it("reads the bytes of the chosen file", async () => {
+    expect(await newImage(withFile({}, chosen))).toEqual(PNG);
+  });
+
+  it("treats an empty file input (an empty file the form does not mark as chosen) and a missing field as no image", async () => {
+    expect(await newImage(withFile({}, noFile))).toBeNull();
+    expect(await newImage(form({}))).toBeNull();
+    expect(await newImage(form({ image: "text" }))).toBeNull();
+  });
+
+  it("keeps a chosen file with no content empty, so the domain answers image_empty", async () => {
+    expect(await newImage(withFile({ imageChosen: "1" }, new File([], "empty.png")))).toEqual(new Uint8Array(0));
+  });
+});
+
+describe("imageChange", () => {
+  it("keeps the image by default, when the action is missing or unknown", async () => {
+    expect(await imageChange(withFile({}, chosen))).toEqual({ action: "keep" });
+    expect(await imageChange(withFile({ imageAction: "other" }, chosen))).toEqual({ action: "keep" });
+  });
+
+  it("keeps the image and ignores a file left in the input", async () => {
+    expect(await imageChange(withFile({ imageAction: "keep" }, chosen))).toEqual({ action: "keep" });
+  });
+
+  it("removes the image", async () => {
+    expect(await imageChange(form({ imageAction: "remove" }))).toEqual({ action: "remove" });
+  });
+
+  it("replaces the image with the bytes of the chosen file", async () => {
+    expect(await imageChange(withFile({ imageAction: "replace" }, chosen))).toEqual({ action: "replace", bytes: PNG });
+  });
+
+  it("turns a replacement with no file into an empty one, which the domain rejects", async () => {
+    const empty = { action: "replace", bytes: new Uint8Array(0) };
+    expect(await imageChange(withFile({ imageAction: "replace" }, noFile))).toEqual(empty);
+    expect(await imageChange(withFile({ imageAction: "replace", imageChosen: "1" }, noFile))).toEqual(empty);
+    expect(await imageChange(form({ imageAction: "replace" }))).toEqual(empty);
   });
 });

@@ -184,6 +184,7 @@ describe("CreateEquipment", () => {
     const codes: string[] = [];
     for (const override of [
       { internalCode: " " }, { internalCode: "9".repeat(41) }, { brand: "b".repeat(121) }, { model: "m".repeat(121) },
+      { brand: "  " }, { brand: null }, { model: "" }, { model: null },
       { year: 1949 }, { year: 2028 }, { serialNumber: "s".repeat(61) }, { batteryQuantity: 5 }, { observations: "o".repeat(501) },
     ]) {
       const result = await h.createEquipment.execute(h.equipmentInput(s.supplierA.id, s.forklift.id, "N-1", override));
@@ -191,6 +192,7 @@ describe("CreateEquipment", () => {
     }
     expect(codes).toEqual([
       "invalid_internal_code", "invalid_internal_code", "invalid_text", "invalid_text",
+      "invalid_text", "invalid_text", "invalid_text", "invalid_text",
       "invalid_year", "invalid_year", "invalid_text", "invalid_battery_quantity", "invalid_text",
     ]);
     expect(h.audit.entries).toHaveLength(before);

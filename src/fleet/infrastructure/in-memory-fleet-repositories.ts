@@ -1,4 +1,5 @@
 import { nameKey } from "../../shared/domain/catalog-name";
+import type { EquipmentImageRepository, StoredImage } from "../application/ports/equipment-image-repository";
 import type { AssignmentRepository, AssignmentWrite } from "../application/ports/assignment-repository";
 import type {
   AssetTypeRepository,
@@ -20,9 +21,11 @@ export type FleetState = {
   assetTypes: AssetType[];
   equipment: Equipment[];
   assignments: Assignment[];
+  /** Keyed by equipment id (one image per equipment). */
+  images: Map<string, StoredImage & { readonly tenantId: string }>;
 };
 
-export const emptyState = (): FleetState => ({ suppliers: [], assetTypes: [], equipment: [], assignments: [] });
+export const emptyState = (): FleetState => ({ suppliers: [], assetTypes: [], equipment: [], assignments: [], images: new Map() });
 
 type Row = { readonly id: string; readonly tenantId: string; readonly name: string; readonly archivedAt: Date | null };
 
@@ -269,5 +272,39 @@ export class InMemoryAssignmentRepository implements AssignmentRepository {
   private collides(assignment: Assignment, ignoreId?: string): boolean {
     const others = this.ofEquipment(assignment.tenantId, assignment.equipmentId).filter((a) => a.id !== ignoreId);
     return overlapsAny(assignment, others);
+  }
+}
+
+export class InMemoryEquipmentImageRepository implements EquipmentImageRepository {
+  constructor(private readonly state: FleetState) {}
+
+  find(tenantId: string, equipmentId: string): Promise<StoredImage | null> {
+    const row = this.state.images.get(equipmentId);
+    return Promise.resolve(row !== undefined && row.tenantId === tenantId ? row : null);
+  }
+
+  async findHash(tenantId: string, equipmentId: string): Promise<string | null> {
+    return (await this.find(tenantId, equipmentId))?.sha256 ?? null;
+  }
+
+  findHashes(tenantId: string, equipmentIds: readonly string[]): Promise<ReadonlyMap<string, string>> {
+    const hashes = new Map<string, string>();
+    for (const id of equipmentIds) {
+      const row = this.state.images.get(id);
+      if (row !== undefined && row.tenantId === tenantId) hashes.set(id, row.sha256);
+    }
+    return Promise.resolve(hashes);
+  }
+
+  /** Mirrors the composite foreign key: the equipment must exist in the tenant. */
+  upsert(tenantId: string, equipmentId: string, image: StoredImage): Promise<void> {
+    if (byId(this.state.equipment, tenantId, equipmentId) === null) throw new Error(`image of a missing equipment ${equipmentId}`);
+    this.state.images.set(equipmentId, { ...image, tenantId });
+    return Promise.resolve();
+  }
+
+  remove(tenantId: string, equipmentId: string): Promise<void> {
+    if (this.state.images.get(equipmentId)?.tenantId === tenantId) this.state.images.delete(equipmentId);
+    return Promise.resolve();
   }
 }

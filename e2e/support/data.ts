@@ -44,6 +44,7 @@ export async function resetCatalogs(): Promise<void> {
     await deleteTestUsers(sql);
     await sql`delete from sign_in_attempts`;
     await sql`delete from equipment_assignments`;
+    await sql`delete from equipment_images`;
     await sql`delete from equipments`;
     await sql`delete from asset_types`;
     await sql`delete from suppliers`;
@@ -91,6 +92,8 @@ export type Seeder = {
   readonly supplier: (name: string) => Promise<string>;
   readonly assetType: (name: string, meterKind?: string, intervalHours?: number | null) => Promise<string>;
   readonly equipment: (input: EquipmentSeed) => Promise<string>;
+  /** Sets (or replaces) the image of an equipment through the edit use case; `bytes` must be a valid JPEG, PNG or WebP. */
+  readonly equipmentImage: (equipmentId: string, bytes: Uint8Array) => Promise<void>;
   readonly assign: (input: AssignmentSeed) => Promise<void>;
   readonly move: (input: MoveSeed) => Promise<void>;
   readonly end: (input: EndSeed) => Promise<void>;
@@ -128,14 +131,34 @@ function fleetSeeds(c: Container, actor: Actor) {
           supplierId: input.supplierId,
           assetTypeId: input.assetTypeId,
           internalCode: input.internalCode,
-          brand: input.brand ?? null,
-          model: input.model ?? null,
+          brand: input.brand ?? "MARCA",
+          model: input.model ?? "MODELO",
           year: input.year ?? null,
           serialNumber: null,
           batteryQuantity: null,
           observations: null,
         }),
       ).id,
+    equipmentImage: async (equipmentId: string, bytes: Uint8Array) => {
+      const e = must(await c.fleet.getEquipment.execute({ actor, id: equipmentId }));
+      must(
+        await c.fleet.updateEquipment.execute({
+          actor,
+          id: e.id,
+          reason: "Seed image",
+          supplierId: e.supplierId,
+          assetTypeId: e.assetTypeId,
+          internalCode: e.internalCode,
+          brand: e.brand,
+          model: e.model,
+          year: e.year,
+          serialNumber: e.serialNumber,
+          batteryQuantity: e.batteryQuantity,
+          observations: e.observations,
+          image: { action: "replace", bytes },
+        }),
+      );
+    },
   };
 }
 

@@ -8,6 +8,7 @@ import {
   fillEquipment,
   gotoFleet,
   openDialog,
+  REQUIRED_TEXT_DEFAULTS,
   rowOf,
   seedBase,
   skipBrowserValidation,
@@ -34,7 +35,7 @@ async function submitNewEquipment(page: Page, values: EquipmentValues): Promise<
   await gotoFleet(page, "equipment");
   const dialog = await openDialog(page, d.newEquipment.trigger);
   await skipBrowserValidation(dialog);
-  await fillEquipment(dialog, { supplier: "ACME RENTAL", assetType: "FORKLIFT", ...values });
+  await fillEquipment(dialog, { supplier: "ACME RENTAL", assetType: "FORKLIFT", ...REQUIRED_TEXT_DEFAULTS, ...values });
   await submitDialog(dialog, d.newEquipment.submit);
   return dialog;
 }
@@ -55,7 +56,7 @@ test.describe("creating equipment", () => {
     await expect(page.getByRole("button", { name: d.newEquipment.trigger })).toHaveCount(0);
   });
 
-  test("registers a unit with only the required fields and shows dashes for the rest", async ({ page }) => {
+  test("registers a unit with only the required fields (brand and model included) and shows dashes for the rest", async ({ page }) => {
     await seedBaseFleet();
     await createEquipmentViaUi(page, { code: "c-043", supplier: "ACME RENTAL", assetType: "FORKLIFT" });
     const row = rowOf(page, "C-043");
@@ -63,7 +64,8 @@ test.describe("creating equipment", () => {
     await expect(row).toContainText("FORKLIFT");
     // No assignment yet (P0-08 T4): the state is "Sin asignar" and operation and site are dashes too.
     await expect(row).toContainText(copy.fleet.state.unassigned);
-    await expect(row.getByRole("cell", { name: copy.fleet.noValue })).toHaveCount(4);
+    await expect(row.getByRole("cell", { name: copy.fleet.noValue })).toHaveCount(3);
+    await expect(row).toContainText("MARCA MODELO");
     await expect(tabLink(page, "equipment")).toContainText("1");
   });
 
@@ -99,6 +101,29 @@ test.describe("creating equipment", () => {
     await expect(dialog.getByRole("alert")).toHaveCount(0);
     await expect(dialog.getByLabel(f.internalCodeLabel, { exact: true })).toBeFocused();
   });
+
+  test("marks brand and model as required in the browser", async ({ page }) => {
+    await seedBaseFleet();
+    await gotoFleet(page, "equipment");
+    const dialog = await openDialog(page, d.newEquipment.trigger);
+    await expect(dialog.getByLabel(f.brandLabel, { exact: true })).toHaveAttribute("required", "");
+    await expect(dialog.getByLabel(f.modelLabel, { exact: true })).toHaveAttribute("required", "");
+    await expect(dialog.getByLabel(f.yearLabel, { exact: true })).not.toHaveAttribute("required", "");
+  });
+
+  for (const [title, values] of [
+    ["without a brand", { brand: "" }],
+    ["with a blank brand", { brand: "   " }],
+    ["without a model", { model: "" }],
+    ["with a blank model", { model: "   " }],
+  ] as const) {
+    test(`rejects a new unit ${title}`, async ({ page }) => {
+      await seedBaseFleet();
+      const dialog = await submitNewEquipment(page, { code: "R-1", ...values });
+      await expect(dialog.getByRole("alert")).toHaveText("brand" in values ? byField.brand : byField.model);
+      await expect(dialog).toBeVisible();
+    });
+  }
 
   test("rejects a blank internal code and one longer than 40 characters", async ({ page }) => {
     await seedBaseFleet();
@@ -195,6 +220,28 @@ test.describe("editing equipment", () => {
     await expect(row).toContainText("OTHER RENTAL");
     await expect(row).toContainText("Hyster H60");
     await expect(row).toContainText("2020");
+  });
+
+  test("rejects an edit that leaves the model blank, and keeps both fields required", async ({ page }) => {
+    await gotoFleet(page, "equipment");
+    const dialog = await openDialog(page, d.editEquipment.trigger, rowOf(page, "E-1"));
+    await skipBrowserValidation(dialog);
+    await fill(dialog, f.modelLabel, "   ");
+    await fill(dialog, copy.common.reason, "Clearing the model");
+    await submitDialog(dialog, d.editEquipment.submit);
+    await expect(dialog.getByRole("alert")).toHaveText(byField.model);
+    await expect(dialog.getByLabel(f.brandLabel, { exact: true })).toHaveAttribute("required", "");
+    await expect(dialog.getByLabel(f.modelLabel, { exact: true })).toHaveAttribute("required", "");
+  });
+
+  test("rejects an edit that leaves the brand blank", async ({ page }) => {
+    await gotoFleet(page, "equipment");
+    const dialog = await openDialog(page, d.editEquipment.trigger, rowOf(page, "E-1"));
+    await skipBrowserValidation(dialog);
+    await fill(dialog, f.brandLabel, "");
+    await fill(dialog, copy.common.reason, "Clearing the brand");
+    await submitDialog(dialog, d.editEquipment.submit);
+    await expect(dialog.getByRole("alert")).toHaveText(byField.brand);
   });
 
   test("reports that there are no changes when nothing was modified", async ({ page }) => {

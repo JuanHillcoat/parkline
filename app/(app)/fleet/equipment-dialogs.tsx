@@ -1,3 +1,4 @@
+import { EditImageField, NewImageField } from "../../_components/image-field";
 import { ActionDialog, type DialogAction } from "../../_components/action-dialog";
 import { ReasonField, SelectField, TextField, type Option } from "../../_components/form-fields";
 import { copy } from "../../_lib/copy";
@@ -31,8 +32,8 @@ function DetailFields({ idPrefix, initial }: Pick<FieldsProps, "idPrefix" | "ini
   const t = copy.dialogs.equipmentFields;
   return (
     <>
-      <TextField id={`${idPrefix}-brand`} name="brand" label={t.brandLabel} initial={initial.brand} />
-      <TextField id={`${idPrefix}-model`} name="model" label={t.modelLabel} initial={initial.model} />
+      <TextField id={`${idPrefix}-brand`} name="brand" label={t.brandLabel} initial={initial.brand} required />
+      <TextField id={`${idPrefix}-model`} name="model" label={t.modelLabel} initial={initial.model} required />
       <TextField id={`${idPrefix}-year`} name="year" label={t.yearLabel} hint={t.yearHint}
         initial={initial.year} numeric={{ min: 1950, max: new Date().getFullYear() + 1 }} />
       <TextField id={`${idPrefix}-serial`} name="serialNumber" label={t.serialNumberLabel}
@@ -68,6 +69,7 @@ export function NewEquipmentDialog({ options }: { options: EquipmentOptions }) {
     <ActionDialog triggerLabel={t.trigger} triggerClassName="btn btn-primary" title={t.title}
       description={t.description} submitLabel={t.submit} action={createEquipmentAction}>
       <EquipmentFields idPrefix="new-equipment" options={options} initial={EMPTY} />
+      <NewImageField id="new-equipment-image" />
     </ActionDialog>
   );
 }
@@ -89,6 +91,7 @@ export function EditEquipmentDialog({ target, options, triggerClassName = "btn b
       description={t.description} submitLabel={t.submit} action={action}>
       <input type="hidden" name="id" value={target.id} />
       <EquipmentFields idPrefix={key} options={options} initial={target.form} />
+      <EditImageField id={`${key}-image`} currentUrl={target.imageUrl} />
       <ReasonField id={`${key}-reason`} placeholder={t.reasonPlaceholder} />
     </ActionDialog>
   );
