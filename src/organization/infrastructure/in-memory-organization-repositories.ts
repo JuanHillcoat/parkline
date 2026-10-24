@@ -116,6 +116,11 @@ export class InMemoryBusinessUnitRepository implements BusinessUnitRepository {
 export class InMemoryOperationRepository implements OperationRepository {
   constructor(private readonly state: OrganizationState) {}
 
+  /** The in-memory unit of work is single-threaded: nothing to lock. */
+  lock(): Promise<void> {
+    return Promise.resolve();
+  }
+
   findById(tenantId: string, id: string): Promise<Operation | null> {
     return Promise.resolve(byId(this.state.operations, tenantId, id));
   }

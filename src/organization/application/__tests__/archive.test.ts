@@ -4,6 +4,7 @@ import {
   AlreadyArchivedError,
   CostCenterTakenError,
   HasActiveOperationsError,
+  HasOpenAssignmentsError,
   NameTakenError,
   NotArchivedError,
   ParentArchivedError,
@@ -204,6 +205,44 @@ describe("blocks while operations are active (D3, D9)", () => {
     expect(!stillBlocked.ok && stillBlocked.error).toBeInstanceOf(HasActiveOperationsError);
     await h.archiveOperation.execute({ actor: h.analyst, id: s.planta.id, reason: "Error" });
     expect((await h.archiveSite.execute({ actor: h.analyst, id: s.patio.id, reason: "Error" })).ok).toBe(true);
+  });
+});
+
+describe("blocks while an operation has open assignments (D7 of P0-08)", () => {
+  it("refuses to archive an operation with open assignments, writing and auditing nothing", async () => {
+    const h = createHarness();
+    const s = await h.seedTenantA();
+    h.assignments.setOpen("t-a", s.mina1.id, 2);
+    const blocked = await h.archiveOperation.execute({ actor: h.analyst, id: s.mina1.id, reason: "Cierre" });
+    expect(!blocked.ok && blocked.error).toBeInstanceOf(HasOpenAssignmentsError);
+    expect(!blocked.ok && blocked.error.code).toBe("has_open_assignments");
+    expect(h.auditOf("organization.archive")).toHaveLength(0);
+    expect((await read(h, "operation", s.mina1.id))?.archivedAt).toBeNull();
+  });
+
+  it("archives it once the assignments are ended, and only counts its own assignments", async () => {
+    const h = createHarness();
+    const s = await h.seedTenantA();
+    h.assignments.setOpen("t-a", s.mina2.id, 1);
+    expect((await h.archiveOperation.execute({ actor: h.analyst, id: s.mina1.id, reason: "Cierre" })).ok).toBe(true);
+    h.assignments.setOpen("t-a", s.mina2.id, 0);
+    expect((await h.archiveOperation.execute({ actor: h.analyst, id: s.mina2.id, reason: "Cierre" })).ok).toBe(true);
+  });
+
+  it("authorizes before it counts: a refused actor never learns about open assignments", async () => {
+    const h = createHarness();
+    const s = await h.seedTenantA();
+    h.assignments.setOpen("t-a", s.mina1.id, 1);
+    const result = await h.archiveOperation.execute({ actor: h.admin, id: s.mina1.id, reason: "Cierre" });
+    expect(!result.ok && result.error.code).toBe("forbidden");
+  });
+
+  it("does not block restoring an operation", async () => {
+    const h = createHarness();
+    const s = await h.seedTenantA();
+    await h.archiveOperation.execute({ actor: h.analyst, id: s.mina1.id, reason: "Cierre" });
+    h.assignments.setOpen("t-a", s.mina1.id, 3);
+    expect((await h.restoreOperation.execute({ actor: h.analyst, id: s.mina1.id, reason: "Volver" })).ok).toBe(true);
   });
 });
 

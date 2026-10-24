@@ -1,14 +1,17 @@
 import { err, ok, type Result } from "../../shared/domain/result";
 import type { DomainError } from "../../shared/domain/domain-error";
 import type { BusinessUnit, Operation, Site } from "../domain/entities";
-import { AlreadyArchivedError, HasActiveOperationsError, NotArchivedError } from "../domain/errors";
+import {
+  AlreadyArchivedError,
+  HasActiveOperationsError,
+  HasOpenAssignmentsError,
+  NotArchivedError,
+} from "../domain/errors";
 import { nameKey } from "../domain/name";
 import type { ArchiveSubject, ArchiveVerb } from "./archiving";
 import { costCenterTaken, lockParents, nameTaken, parentArchived, requireFreeName } from "./guards";
 import type { OrganizationTx } from "./ports/organization-tx";
 import type { SetOperationArchivedAt } from "./ports/repositories";
-
-const done = Promise.resolve(ok(undefined));
 
 /** The write found the row already in the requested state: a concurrent archive or restore won. */
 const stateChanged = (label: string, id: string, archivedAt: Date | null): Result<void, DomainError> =>
@@ -88,8 +91,20 @@ const checkOperationRestore = async (tx: OrganizationTx, row: Operation): Promis
   return sameCode === null || sameCode.id === row.id ? ok(undefined) : costCenterTaken(row.costCenter);
 };
 
+/**
+ * P0-08 D7: an operation with open equipment assignments cannot be archived. The count runs after the
+ * exclusive lock on the operation row, which a concurrent assign (it holds the shared lock) serializes against.
+ */
+const checkOperationArchive = async (tx: OrganizationTx, row: Operation): Promise<Result<void, DomainError>> => {
+  await tx.operations.lock(row.tenantId, row.id, "exclusive");
+  const open = await tx.assignments.countOpen(row.tenantId, row.id);
+  return open === 0
+    ? ok(undefined)
+    : err(new HasOpenAssignmentsError(`Operation ${row.id} still has ${String(open)} open assignments`));
+};
+
 const operationCheck = (tx: OrganizationTx, verb: ArchiveVerb, row: Operation): Promise<Result<void, DomainError>> =>
-  verb === "archive" ? done : checkOperationRestore(tx, row);
+  verb === "archive" ? checkOperationArchive(tx, row) : checkOperationRestore(tx, row);
 
 export const operationSubject: ArchiveSubject<Operation> = {
   entityType: "operation",

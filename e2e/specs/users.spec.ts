@@ -543,8 +543,9 @@ test.describe("a newly created user signs in", () => {
     admin: [entries.home, entries.fleet, entries.users, entries.organization],
     fleet_analyst: [entries.home, entries.fleet, entries.organization],
     viewer: [entries.home, entries.fleet, entries.organization],
-    manager: [entries.home, entries.organization],
-    supervisor: [entries.home, entries.organization],
+    // Scoped readers have Flota since P0-08 T4 (equipment is visible by its assignment, D6).
+    manager: [entries.home, entries.fleet, entries.organization],
+    supervisor: [entries.home, entries.fleet, entries.organization],
   };
 
   for (const [key, visible] of Object.entries(sidebarByRole)) {

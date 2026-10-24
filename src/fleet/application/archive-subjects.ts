@@ -1,7 +1,7 @@
 import { err, ok, type Result } from "../../shared/domain/result";
 import type { DomainError } from "../../shared/domain/domain-error";
 import type { AssetType, Equipment, Supplier } from "../domain/entities";
-import { AlreadyArchivedError, HasActiveEquipmentError, NotArchivedError } from "../domain/errors";
+import { AlreadyArchivedError, HasActiveEquipmentError, HasOpenAssignmentError, NotArchivedError } from "../domain/errors";
 import { nameKey } from "../../shared/domain/catalog-name";
 import type { ArchiveSubject } from "./archiving";
 import { internalCodeTaken, loadActiveParents, nameTaken, requireFreeName } from "./guards";
@@ -45,6 +45,10 @@ const equipmentOutcome = (stored: SetEquipmentArchivedAt, row: Equipment, archiv
 const requireNoActiveEquipment = (count: number, label: string): Result<void, DomainError> =>
   count === 0 ? ok(undefined) : err(new HasActiveEquipmentError(`${label} still has ${String(count)} active equipment`));
 
+/** An equipment with an open assignment cannot be archived: its assignment is ended first. */
+const requireNoOpenAssignment = (open: { readonly id: string } | null, equipmentId: string): Result<void, DomainError> =>
+  open === null ? ok(undefined) : err(new HasOpenAssignmentError(`Equipment ${equipmentId} still has an open assignment`));
+
 export const supplierSubject: ArchiveSubject<Supplier> = {
   entityType: "supplier",
   label: "Supplier",
@@ -80,7 +84,11 @@ export const equipmentSubject: ArchiveSubject<Equipment> = {
   label: "Equipment",
   find: (tx, tenantId, id) => tx.equipment.findById(tenantId, id),
   check: async (tx, verb, row) => {
-    if (verb === "archive") return ok(undefined);
+    if (verb === "archive") {
+      // The same row lock an assign takes, BEFORE the open assignment is read: either order then sees the other's commit.
+      await tx.equipment.lock(row.tenantId, [row.id]);
+      return requireNoOpenAssignment(await tx.assignments.findOpen(row.tenantId, row.id), row.id);
+    }
     const parents = await loadActiveParents(tx, row.tenantId, row.supplierId, row.assetTypeId);
     if (!parents.ok) return parents;
     const same = await tx.equipment.findByInternalCode(row.tenantId, row.supplierId, nameKey(row.internalCode));

@@ -3,7 +3,7 @@ import { toActor } from "../../src/identity/application/actor-mapper";
 import type { DomainError } from "../../src/shared/domain/domain-error";
 import type { Result } from "../../src/shared/domain/result";
 import { getContainer } from "../../src/shared/infrastructure/container";
-import { canReadCatalog, canViewFleet } from "../_lib/catalog-access";
+import { canReadCatalog, canViewFleet, canViewFleetCatalogs } from "../_lib/catalog-access";
 import { copy } from "../_lib/copy";
 import { buildKpis, countActive, distribute, dropUnknowableCounts, hasNoData, type KpiKey } from "../_lib/dashboard-view";
 import { requireActor } from "../_lib/session";
@@ -31,11 +31,15 @@ async function read<T>(name: string, run: Promise<Result<readonly T[], DomainErr
   return null;
 }
 
-async function loadFleet(actor: Actor) {
+/**
+ * The equipment list is filtered by assignment, so a scoped reader gets the count of what it can see.
+ * Suppliers and asset types stay tenant-wide: a scoped reader gets neither card nor distribution, never a false zero.
+ */
+async function loadFleet(actor: Actor, wide: boolean) {
   const { fleet } = getContainer();
   const [suppliers, assetTypes, equipment] = await Promise.all([
-    read("suppliers", fleet.listSuppliers.execute({ actor })),
-    read("assetTypes", fleet.listAssetTypes.execute({ actor })),
+    wide ? read("suppliers", fleet.listSuppliers.execute({ actor })) : null,
+    wide ? read("assetTypes", fleet.listAssetTypes.execute({ actor })) : null,
     read("equipment", fleet.listEquipment.execute({ actor })),
   ]);
   return { suppliers, assetTypes, equipment };
@@ -87,18 +91,19 @@ function Distributions({ fleet }: { fleet: Fleet | null }) {
 async function loadDashboard(context: ActorContext) {
   const actor = toActor(context);
   const showFleet = canViewFleet(context);
+  const wide = canViewFleetCatalogs(context);
   const showStructure = canReadCatalog(context);
   const [fleet, structure] = await Promise.all([
-    showFleet ? loadFleet(actor) : null,
+    showFleet ? loadFleet(actor, wide) : null,
     showStructure ? loadStructure(actor) : null,
   ]);
   const lists = { equipment: fleet?.equipment, suppliers: fleet?.suppliers, assetTypes: fleet?.assetTypes, ...structure };
-  return { fleet, kpis: buildKpis(dropUnknowableCounts(countsOf(lists))), showFleet, showStructure };
+  return { fleet, kpis: buildKpis(dropUnknowableCounts(countsOf(lists))), wide, showStructure };
 }
 
 export default async function HomePage() {
   const context = await requireActor();
-  const { fleet, kpis, showFleet, showStructure } = await loadDashboard(context);
+  const { fleet, kpis, wide, showStructure } = await loadDashboard(context);
   return (
     <>
       <header className="page-head">
@@ -108,7 +113,7 @@ export default async function HomePage() {
         </div>
       </header>
       <KpiGrid kpis={kpis} />
-      {hasNoData(kpis) && <FirstSteps organization={showStructure} fleet={showFleet} />}
+      {hasNoData(kpis, { ignoreEquipment: !wide }) && <FirstSteps organization={showStructure} fleet={wide} />}
       <Distributions fleet={fleet} />
     </>
   );

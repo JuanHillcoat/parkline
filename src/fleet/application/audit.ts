@@ -1,4 +1,5 @@
 import type { AuditEntry, AuditOrigin } from "../../shared/domain/ports/audit-log";
+import type { Assignment } from "../domain/assignment";
 import type { AssetType, Equipment, Supplier } from "../domain/entities";
 import type { FleetDeps } from "./deps";
 import type { FleetTx } from "./ports/fleet-tx";
@@ -26,6 +27,19 @@ export const equipmentSnapshot = (equipment: Equipment, supplier: Supplier, asse
   serialNumber: equipment.serialNumber,
   batteryQuantity: equipment.batteryQuantity,
   observations: equipment.observations,
+});
+
+/** The fields an assignment audit entry records on each side of a change. */
+export const assignmentSnapshot = (assignment: Assignment) => ({
+  id: assignment.id,
+  equipmentId: assignment.equipmentId,
+  operationId: assignment.operationId,
+  businessUnitId: assignment.businessUnitId,
+  siteId: assignment.siteId,
+  kind: assignment.kind,
+  validFrom: assignment.validFrom,
+  validTo: assignment.validTo,
+  reason: assignment.reason,
 });
 
 /** Writes inside the caller's unit of work. Time and correlation id come from the ports. */

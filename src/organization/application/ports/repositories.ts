@@ -41,6 +41,8 @@ export type OperationAdd = "added" | "name_taken" | "cost_center_taken";
 export type OperationUpdate = "updated" | "name_taken" | "cost_center_taken";
 
 export interface OperationRepository {
+  /** Row lock on the operation, held until the transaction ends (an archive takes "exclusive" before it counts assignments). */
+  lock(tenantId: string, id: string, mode: ParentLock): Promise<void>;
   findById(tenantId: string, id: string): Promise<Operation | null>;
   findByName(tenantId: string, businessUnitId: string, key: string): Promise<Operation | null>;
   findByCostCenter(tenantId: string, costCenter: string): Promise<Operation | null>;

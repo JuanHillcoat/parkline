@@ -1,3 +1,4 @@
+import type { EquipmentListItem } from "../../src/fleet/application/equipment-visibility";
 import type { AssetType, Equipment, Supplier } from "../../src/fleet/domain/entities";
 import type { MeterKind } from "../../src/fleet/domain/values";
 import { nameKey } from "../../src/shared/domain/catalog-name";
@@ -41,12 +42,22 @@ export type EquipmentFormValues = {
   readonly observations: string;
 };
 
-/** The names are null when the supplier or the asset type is not in the visible lists. */
+/** Where an equipment stands: `unassigned` has no open assignment (archived equipment never has one). */
+export type EquipmentState = "active" | "spare" | "unassigned";
+
+/** Names of the operations and sites the actor can read, by id (the organization lists are scope-filtered). */
+export type Places = { readonly operations: readonly Option[]; readonly sites: readonly Option[] };
+
+/** The operation and site names are null without an open assignment or when the organization list lacks them. */
 export type EquipmentRow = {
   readonly id: string;
   readonly internalCode: string;
-  readonly supplierName: string | null;
-  readonly assetTypeName: string | null;
+  readonly supplierName: string;
+  readonly assetTypeName: string;
+  readonly state: EquipmentState;
+  readonly operationId: string | null;
+  readonly operationName: string | null;
+  readonly siteName: string | null;
   readonly brandModel: string | null;
   readonly year: number | null;
   readonly serialNumber: string | null;
@@ -110,29 +121,55 @@ const brandModel = (e: Equipment): string | null => {
 
 type Names = ReadonlyMap<string, string>;
 
-const equipmentRow = (e: Equipment, suppliers: Names, types: Names): EquipmentRow => ({
-  id: e.id,
-  internalCode: e.internalCode,
-  supplierName: suppliers.get(e.supplierId) ?? null,
-  assetTypeName: types.get(e.assetTypeId) ?? null,
-  brandModel: brandModel(e),
-  year: e.year,
-  serialNumber: e.serialNumber,
-  batteryQuantity: e.batteryQuantity,
-  observations: e.observations,
-  archived: e.archivedAt !== null,
-  form: equipmentFormValues(e),
+const stateOf = (item: EquipmentListItem): EquipmentState => item.assignment?.kind ?? "unassigned";
+
+const placeOf = (item: EquipmentListItem, operations: Names, sites: Names) => ({
+  state: stateOf(item),
+  operationId: item.assignment?.operationId ?? null,
+  operationName: operations.get(item.assignment?.operationId ?? "") ?? null,
+  siteName: sites.get(item.assignment?.siteId ?? "") ?? null,
 });
 
-export const buildEquipmentRows = (
-  equipment: readonly Equipment[],
-  suppliers: readonly Supplier[],
-  types: readonly AssetType[],
-): EquipmentRow[] => {
-  const supplierNames = new Map(suppliers.map((s) => [s.id, s.name]));
-  const typeNames = new Map(types.map((type) => [type.id, type.name]));
-  return equipment.map((e) => equipmentRow(e, supplierNames, typeNames));
+const equipmentRow = (item: EquipmentListItem, operations: Names, sites: Names): EquipmentRow => ({
+  id: item.id,
+  internalCode: item.internalCode,
+  supplierName: item.supplier.name,
+  assetTypeName: item.assetType.name,
+  ...placeOf(item, operations, sites),
+  brandModel: brandModel(item),
+  year: item.year,
+  serialNumber: item.serialNumber,
+  batteryQuantity: item.batteryQuantity,
+  observations: item.observations,
+  archived: item.archivedAt !== null,
+  form: equipmentFormValues(item),
+});
+
+const namesOf = (options: readonly Option[]): Names => new Map(options.map((option) => [option.id, option.name]));
+
+/** The list items already carry the supplier and asset type names; operation and site come from `places`. */
+export const buildEquipmentRows = (items: readonly EquipmentListItem[], places: Places): EquipmentRow[] => {
+  const operations = namesOf(places.operations);
+  const sites = namesOf(places.sites);
+  return items.map((item) => equipmentRow(item, operations, sites));
 };
+
+const byName = (a: Option, b: Option): number => a.name.localeCompare(b.name, "es");
+
+const uniqueOptions = (options: readonly Option[]): Option[] =>
+  [...new Map(options.map((option) => [option.id, option])).values()].sort(byName);
+
+/** Supplier filter options for a reader who cannot read the catalog: the suppliers of the visible equipment. */
+export const supplierNamesOf = (items: readonly EquipmentListItem[]): Option[] =>
+  uniqueOptions(items.map((item) => ({ id: item.supplier.id, name: item.supplier.name })));
+
+/** The same for asset types. */
+export const assetTypeNamesOf = (items: readonly EquipmentListItem[]): Option[] =>
+  uniqueOptions(items.map((item) => ({ id: item.assetType.id, name: item.assetType.name })));
+
+/** Operations that are not archived: the options of the operation filter. */
+export const operationOptions = (operations: readonly (Option & { readonly archivedAt: Date | null })[]): Option[] =>
+  operations.filter((operation) => operation.archivedAt === null).map(({ id, name }) => ({ id, name }));
 
 const activeOptions = (rows: readonly (Supplier | AssetType)[]): Option[] =>
   rows.filter((row) => row.archivedAt === null).map((row) => ({ id: row.id, name: row.name }));
@@ -159,20 +196,32 @@ type Raw = string | readonly string[] | undefined;
 /** An unknown or repeated tab value falls back to the equipment tab. */
 export const parseFleetTab = (raw: Raw): FleetTab => TABS.find((tab) => tab === raw) ?? "equipment";
 
-export type EquipmentFilters = { readonly q: string; readonly supplierId: string | null; readonly typeId: string | null };
+export type EquipmentFilters = {
+  readonly q: string;
+  readonly supplierId: string | null;
+  readonly typeId: string | null;
+  readonly operationId: string | null;
+  readonly state: EquipmentState | null;
+};
+
+const STATES: readonly EquipmentState[] = ["active", "spare", "unassigned"];
+
+/** An unknown or repeated state value is ignored. */
+export const parseEquipmentState = (raw: Raw): EquipmentState | null => STATES.find((state) => state === raw) ?? null;
 
 const searchable = (row: EquipmentRow): string =>
   nameKey([row.internalCode, row.brandModel, row.serialNumber, row.supplierName, row.assetTypeName].filter((part) => part !== null).join(" "));
 
-/** Text search (ignoring case and accents) plus the supplier and asset type filters. */
+const matchesFilters = (row: EquipmentRow, filters: EquipmentFilters): boolean =>
+  (filters.supplierId === null || row.form.supplierId === filters.supplierId) &&
+  (filters.typeId === null || row.form.assetTypeId === filters.typeId) &&
+  (filters.operationId === null || row.operationId === filters.operationId) &&
+  (filters.state === null || (!row.archived && row.state === filters.state));
+
+/** Text search (ignoring case and accents) plus the supplier, asset type, operation and state filters. */
 export const filterEquipment = (rows: readonly EquipmentRow[], filters: EquipmentFilters): EquipmentRow[] => {
   const key = nameKey(filters.q);
-  return rows.filter(
-    (row) =>
-      (filters.supplierId === null || row.form.supplierId === filters.supplierId) &&
-      (filters.typeId === null || row.form.assetTypeId === filters.typeId) &&
-      (key === "" || searchable(row).includes(key)),
-  );
+  return rows.filter((row) => matchesFilters(row, filters) && (key === "" || searchable(row).includes(key)));
 };
 
 /** A filter id that is not among the options is ignored. */
@@ -217,6 +266,8 @@ export type FleetQuery = {
   readonly q?: string;
   readonly supplierId?: string | null;
   readonly typeId?: string | null;
+  readonly operationId?: string | null;
+  readonly state?: EquipmentState | null;
   readonly page?: number;
 };
 
@@ -228,7 +279,13 @@ export const fleetHref = (query: FleetQuery): string => {
   if (query.q !== undefined && query.q.trim() !== "") params.set("q", query.q);
   if (query.supplierId) params.set("supplier", query.supplierId);
   if (query.typeId) params.set("type", query.typeId);
+  if (query.operationId) params.set("operation", query.operationId);
+  if (query.state) params.set("state", query.state);
   if (query.page !== undefined && query.page > 1) params.set("page", String(query.page));
   const text = params.toString();
   return text === "" ? "/fleet" : `/fleet?${text}`;
 };
+
+/** The rows of a list result, or none when it failed: the board then shows blank names instead of breaking. */
+export const listOrEmpty = <T>(result: { readonly ok: true; readonly value: readonly T[] } | { readonly ok: false; readonly error: unknown }): readonly T[] =>
+  result.ok ? result.value : [];

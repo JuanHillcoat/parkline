@@ -11,7 +11,8 @@ test.describe("test harness", () => {
     try {
       const supplier = await seeder.supplier("Harness supplier");
       const assetType = await seeder.assetType("Harness type");
-      await seeder.equipment({ supplierId: supplier, assetTypeId: assetType, internalCode: "H-1" });
+      const equipment = await seeder.equipment({ supplierId: supplier, assetTypeId: assetType, internalCode: "H-1" });
+      await seeder.assign({ equipmentId: equipment, operationId: readWorld().ids.operation });
     } finally {
       await seeder.close();
     }
@@ -19,12 +20,13 @@ test.describe("test harness", () => {
 
     const sql = postgres(readWorld().ownerUrl, { max: 1, onnotice: () => undefined });
     try {
-      const [rows] = await sql<{ equipments: number; suppliers: number; users: number; operations: number }[]>`
+      const [rows] = await sql<{ equipments: number; assignments: number; suppliers: number; users: number; operations: number }[]>`
         select (select count(*) from equipments)::int as equipments,
+               (select count(*) from equipment_assignments)::int as assignments,
                (select count(*) from suppliers)::int as suppliers,
                (select count(*) from users)::int as users,
                (select count(*) from operations)::int as operations`;
-      expect(rows).toEqual({ equipments: 0, suppliers: 0, users: 5, operations: 1 });
+      expect(rows).toEqual({ equipments: 0, assignments: 0, suppliers: 0, users: 5, operations: 1 });
     } finally {
       await sql.end();
     }

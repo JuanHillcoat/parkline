@@ -4,14 +4,22 @@ import { InMemoryAuditLog } from "../../../../shared/infrastructure/in-memory-au
 import { SequentialIdGenerator } from "../../../../shared/infrastructure/sequential-id-generator";
 import { InMemoryFleetStore } from "../../../infrastructure/in-memory-fleet-store";
 import { FakeAccessPolicy } from "../../../__tests__/support/fake-access-policy";
+import { FakeOperationDirectory } from "../../../__tests__/support/fake-operation-directory";
 import type { FleetDeps } from "../../deps";
 import { ArchiveAssetType } from "../../use-cases/archive-asset-type";
 import { ArchiveEquipment } from "../../use-cases/archive-equipment";
 import { ArchiveSupplier } from "../../use-cases/archive-supplier";
+import { AssignEquipment } from "../../use-cases/assign-equipment";
+import { CorrectAssignment } from "../../use-cases/correct-assignment";
+import { EndAssignment } from "../../use-cases/end-assignment";
+import { ListEquipmentAssignments } from "../../use-cases/list-equipment-assignments";
+import { MoveEquipment } from "../../use-cases/move-equipment";
+import { ReplaceEquipment } from "../../use-cases/replace-equipment";
 import { CreateAssetType } from "../../use-cases/create-asset-type";
 import { CreateEquipment, type CreateEquipmentInput } from "../../use-cases/create-equipment";
 import { CreateSupplier } from "../../use-cases/create-supplier";
 import { ListAssetTypes } from "../../use-cases/list-asset-types";
+import { GetEquipment } from "../../use-cases/get-equipment";
 import { ListEquipment } from "../../use-cases/list-equipment";
 import { ListSuppliers } from "../../use-cases/list-suppliers";
 import { RenameSupplier } from "../../use-cases/rename-supplier";
@@ -34,12 +42,31 @@ export const grant = (role: string, scopeType: string, scopeId: string): Grant =
   scopeId,
 });
 
+/**
+ * Operations of the fake organization. OP1 and OP2 share the division BU1 (sites S1 and S2); OP3 is in
+ * BU2 (site S3); OPX is archived; OPB belongs to tenant t-b.
+ */
+const seedOperations = (): FakeOperationDirectory => {
+  const directory = new FakeOperationDirectory();
+  const row = (tenantId: string, id: string, businessUnitId: string, siteId: string) =>
+    directory.add({ tenantId, id, businessUnitId, siteId, archivedAt: null });
+  row("t-a", "op1", "bu1", "s1");
+  row("t-a", "op2", "bu1", "s2");
+  row("t-a", "op3", "bu2", "s3");
+  row("t-a", "opx", "bu1", "s1");
+  row("t-b", "opb", "bu-b", "s-b");
+  directory.archive("opx", START);
+  return directory;
+};
+
 export const createHarness = () => {
   const audit = new InMemoryAuditLog();
-  const store = new InMemoryFleetStore(audit);
+  const operations = seedOperations();
+  const store = new InMemoryFleetStore(audit, operations);
+  const clock = new FixedClock(START);
   const deps: FleetDeps = {
     unitOfWork: store.unitOfWork(),
-    clock: new FixedClock(START),
+    clock,
     ids: new SequentialIdGenerator("id"),
     accessPolicy: new FakeAccessPolicy(),
   };
@@ -59,6 +86,13 @@ export const createHarness = () => {
     listSuppliers: new ListSuppliers(deps),
     listAssetTypes: new ListAssetTypes(deps),
     listEquipment: new ListEquipment(deps),
+    getEquipment: new GetEquipment(deps),
+    assignEquipment: new AssignEquipment(deps),
+    moveEquipment: new MoveEquipment(deps),
+    replaceEquipment: new ReplaceEquipment(deps),
+    endAssignment: new EndAssignment(deps),
+    correctAssignment: new CorrectAssignment(deps),
+    listEquipmentAssignments: new ListEquipmentAssignments(deps),
   };
 
   const admin = actorWith([grant("admin", "tenant", "t-a")]);
@@ -110,9 +144,25 @@ export const createHarness = () => {
     return { supplierA, supplierB, spare, forklift, container, spareType, eq1, c43 };
   };
 
+  /** A fleet analyst limited to one operation: writes there, never archives (archive is tenant-wide). */
+  const analystAt = (operationId: string) => actorWith([grant("fleet_analyst", "operation", operationId)]);
+  /** An admin limited to one operation: writes there only. */
+  const adminAt = (operationId: string) => actorWith([grant("admin", "operation", operationId)]);
+
+  /** Assigns as the admin and returns the stored assignment; override any input a test needs. */
+  const assign = async (
+    equipmentId: string,
+    operationId: string,
+    day: string,
+    overrides: Partial<Parameters<AssignEquipment["execute"]>[0]> = {},
+  ) => orThrow(await useCases.assignEquipment.execute({ actor: admin, equipmentId, operationId, kind: "active", day, ...overrides }));
+
+  /** Every assignment of an equipment of tenant A, newest first, read from the committed state. */
+  const assignmentsOf = (equipmentId: string) => store.read((tx) => tx.assignments.listByEquipment("t-a", equipmentId));
+
   const auditOf = (action: string) => audit.entries.filter((entry) => entry.action === action);
 
-  return { audit, store, deps, admin, adminB, analyst, analystB, auditOf, orThrow, equipmentInput, seedTenantA, ...useCases };
+  return { audit, store, deps, clock, operations, assign, assignmentsOf, analystAt, adminAt, admin, adminB, analyst, analystB, auditOf, orThrow, equipmentInput, seedTenantA, ...useCases };
 };
 
 export type Harness = ReturnType<typeof createHarness>;

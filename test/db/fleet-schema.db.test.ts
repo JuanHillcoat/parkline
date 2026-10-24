@@ -296,8 +296,17 @@ describe("check constraints", () => {
 });
 
 describe("fleet audit actions in TypeScript", () => {
-  it("lists the four fleet actions as sensitive in TypeScript", () => {
-    expect(FLEET_ACTIONS).toEqual(["fleet.asset_type.update", "fleet.equipment.update", "fleet.archive", "fleet.restore"]);
+  it("lists the eight fleet actions as sensitive in TypeScript", () => {
+    expect(FLEET_ACTIONS).toEqual([
+      "fleet.asset_type.update",
+      "fleet.equipment.update",
+      "fleet.archive",
+      "fleet.restore",
+      "fleet.assignment.move",
+      "fleet.assignment.replace",
+      "fleet.assignment.end",
+      "fleet.assignment.correct",
+    ]);
   });
 });
 

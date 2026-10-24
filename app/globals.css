@@ -1219,3 +1219,137 @@ dialog.dialog::backdrop {
     width: 100%;
   }
 }
+
+/* Equipment detail page (P0-08): header, cards, choices and the placeholder photo */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  margin-bottom: 8px;
+  color: var(--muted-strong);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.back-link::before {
+  content: "\2190";
+  margin-right: 8px;
+}
+
+.back-link:hover {
+  color: var(--text);
+}
+
+.title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: 16px;
+}
+
+.detail-card h2 {
+  margin-bottom: 12px;
+}
+
+.detail-card-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.detail-list {
+  display: grid;
+  flex: 1 1 200px;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+}
+
+.detail-row {
+  display: grid;
+  grid-template-columns: minmax(96px, 40%) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.detail-row dt {
+  color: var(--muted-strong);
+  font-size: 14px;
+}
+
+.detail-row dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+
+.photo-placeholder {
+  display: grid;
+  flex: 0 1 140px;
+  place-items: center;
+  width: 140px;
+  max-width: 100%;
+  min-height: 110px;
+  border: 1px dashed #cdd5e1;
+  border-radius: var(--radius-control);
+  background: var(--neutral-bg);
+  color: var(--muted-strong);
+  font-size: 13px;
+  text-align: center;
+}
+
+.location-none {
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.choice-group {
+  min-width: 0;
+  margin-right: 0;
+  margin-left: 0;
+  padding: 0;
+  border: 0;
+}
+
+.choice-group legend {
+  padding: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.field .choice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  font-weight: 500;
+}
+
+.choice input {
+  width: 18px;
+  height: 18px;
+}
+
+.tab-panel > .empty-state {
+  border-width: 1px 0 0;
+  border-radius: 0;
+}
+
+@media (max-width: 640px) {
+  .detail-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  .photo-placeholder {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+}

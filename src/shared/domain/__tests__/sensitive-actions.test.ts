@@ -21,6 +21,10 @@ describe("SENSITIVE_AUDIT_ACTIONS", () => {
       "fleet.equipment.update",
       "fleet.archive",
       "fleet.restore",
+      "fleet.assignment.move",
+      "fleet.assignment.replace",
+      "fleet.assignment.end",
+      "fleet.assignment.correct",
     ]);
   });
 });

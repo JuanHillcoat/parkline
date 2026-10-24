@@ -274,7 +274,8 @@ test.describe("scoped roles on a phone", () => {
     test("@mobile the drawer lists only the entries the role may open", async ({ page }) => {
       await page.goto("/");
       await openDrawer(page);
-      await expect(drawerLinks(page)).toHaveText([copy.nav.home, copy.nav.organization]);
+      // Flota is open to scoped readers since P0-08 T4 (equipment is visible by its assignment, D6).
+      await expect(drawerLinks(page)).toHaveText([copy.nav.home, copy.nav.fleet, copy.nav.organization]);
     });
   });
 

@@ -71,16 +71,23 @@ const ARCHIVE_ACTIONS = {
   restore: { supplier: restoreSupplierAction, assetType: restoreAssetTypeAction, equipment: restoreEquipmentAction },
 } satisfies Record<"archive" | "restore", Record<FleetKind, DialogAction>>;
 
-type ArchiveDialogProps = { readonly kind: FleetKind; readonly verb: "archive" | "restore"; readonly target: Option };
+type ArchiveDialogProps = {
+  readonly kind: FleetKind;
+  readonly verb: "archive" | "restore";
+  readonly target: Option;
+  /** The detail page passes its own button style and an action that revalidates that page. */
+  readonly triggerClassName?: string;
+  readonly action?: DialogAction;
+};
 
 /** Archives or restores one row. The reason is mandatory and audited (ADR-0004, ADR-0007). */
-export function ArchiveDialog({ kind, verb, target }: ArchiveDialogProps) {
+export function ArchiveDialog({ kind, verb, target, triggerClassName = "btn btn-link", action }: ArchiveDialogProps) {
   const t = copy.dialogs[verb];
   const description = copy.dialogs[verb === "archive" ? "archiveFleet" : "restoreFleet"].description;
   return (
-    <ActionDialog triggerLabel={t.trigger} triggerClassName="btn btn-link" title={t.title(target.name)}
+    <ActionDialog triggerLabel={t.trigger} triggerClassName={triggerClassName} title={t.title(target.name)}
       danger={verb === "archive"} description={description} submitLabel={t.submit}
-      action={ARCHIVE_ACTIONS[verb][kind]}>
+      action={action ?? ARCHIVE_ACTIONS[verb][kind]}>
       <input type="hidden" name="id" value={target.id} />
       <ReasonField id={`${verb}-${kind}-${target.id}`} placeholder={t.reasonPlaceholder} />
     </ActionDialog>

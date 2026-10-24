@@ -6,6 +6,7 @@ import {
   ArchivedError,
   CostCenterTakenError,
   HasActiveOperationsError,
+  HasOpenAssignmentsError,
   InvalidCostCenterError,
   InvalidNameError,
   NameTakenError,
@@ -30,6 +31,7 @@ const cases = [
   ["reason_too_long", new ReasonTooLongError()],
   ["archived", new ArchivedError("Operation o1 is archived")],
   ["has_active_operations", new HasActiveOperationsError("Site still has 2 active operations")],
+  ["has_open_assignments", new HasOpenAssignmentsError("Operation o1 still has 2 open assignments")],
   ["parent_archived", new ParentArchivedError("parent")],
   ["already_archived", new AlreadyArchivedError("Site s1 is already archived")],
   ["not_archived", new NotArchivedError("Site s1 is not archived")],
@@ -57,6 +59,7 @@ describe("errorMessage for the organization codes", () => {
   it("tells the user what to do first when a block applies", () => {
     expect(errorMessage(new HasActiveOperationsError("x"))).toContain("Da de baja primero sus operaciones");
     expect(errorMessage(new ParentArchivedError("x"))).toContain("dados de baja");
+    expect(errorMessage(new HasOpenAssignmentsError("x"))).toContain("Termina o mueve primero sus equipos");
   });
 
   it("keeps the generic not-found text", () => {

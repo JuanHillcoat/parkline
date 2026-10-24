@@ -4,6 +4,7 @@ import { InMemoryAuditLog } from "../../../../shared/infrastructure/in-memory-au
 import { SequentialIdGenerator } from "../../../../shared/infrastructure/sequential-id-generator";
 import { InMemoryOrganizationStore } from "../../../infrastructure/in-memory-organization-store";
 import { FakeAccessPolicy } from "../../../__tests__/support/fake-access-policy";
+import { FakeAssignmentDirectory } from "../../../__tests__/support/fake-assignment-directory";
 import type { OrganizationDeps } from "../../deps";
 import { CreateBusinessUnit } from "../../use-cases/create-business-unit";
 import { CreateOperation } from "../../use-cases/create-operation";
@@ -37,7 +38,8 @@ export const grant = (role: string, scopeType: string, scopeId: string): Grant =
 
 export const createHarness = () => {
   const audit = new InMemoryAuditLog();
-  const store = new InMemoryOrganizationStore(audit);
+  const assignments = new FakeAssignmentDirectory();
+  const store = new InMemoryOrganizationStore(audit, assignments);
   const deps: OrganizationDeps = {
     unitOfWork: store.unitOfWork(),
     clock: new FixedClock(START),
@@ -94,7 +96,7 @@ export const createHarness = () => {
   const adminB = actorWith([grant("admin", "tenant", "t-b")], { tenantId: "t-b" });
   const auditOf = (action: string) => audit.entries.filter((entry) => entry.action === action);
 
-  return { audit, store, deps, admin, adminB, analyst, analystB, auditOf, orThrow, seedTenantA, ...useCases };
+  return { audit, store, assignments, deps, admin, adminB, analyst, analystB, auditOf, orThrow, seedTenantA, ...useCases };
 };
 
 export type Harness = ReturnType<typeof createHarness>;

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   assetTypeConflictOf,
+  assignmentWriteOf,
   equipmentConflictOf,
+  exclusionViolationConstraint,
   supplierConflictOf,
   uniqueViolationIndex,
 } from "../postgres-fleet-conflicts";
@@ -34,5 +36,21 @@ describe("typed conflicts by index name", () => {
     for (const index of ["suppliers_active_name_key", "equipments_pkey", "organization_x", undefined]) {
       expect(equipmentConflictOf(index)).toBeNull();
     }
+  });
+});
+
+describe("assignment overlap by constraint name", () => {
+  it("reads the constraint of an exclusion violation only (23P01)", () => {
+    expect(exclusionViolationConstraint({ code: "23P01", constraint_name: "equipment_assignments_no_overlap" })).toBe(
+      "equipment_assignments_no_overlap",
+    );
+    expect(exclusionViolationConstraint({ code: "23505", constraint_name: "equipment_assignments_no_overlap" })).toBeUndefined();
+    expect(exclusionViolationConstraint(new Error("boom"))).toBeUndefined();
+    expect(exclusionViolationConstraint(null)).toBeUndefined();
+  });
+
+  it("maps only the no-overlap constraint to a typed result", () => {
+    expect(assignmentWriteOf("equipment_assignments_no_overlap")).toBe("overlap");
+    for (const name of ["equipment_assignments_pkey", "other_exclusion", undefined]) expect(assignmentWriteOf(name)).toBeNull();
   });
 });

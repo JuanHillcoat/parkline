@@ -129,6 +129,14 @@ export class PostgresSupplierRepository implements SupplierRepository {
     return rows[0] ? toSupplier(rows[0]) : null;
   }
 
+  async findManyByIds(tenantId: string, ids: readonly string[]): Promise<readonly Supplier[]> {
+    const valid = ids.filter(isUuid);
+    if (!isUuid(tenantId) || valid.length === 0) return [];
+    const rows = await this.sql<SupplierRow[]>`
+      select id, tenant_id, name, archived_at from suppliers where tenant_id = ${tenantId} and id in ${this.sql(valid)}`;
+    return rows.map(toSupplier);
+  }
+
   async findByName(tenantId: string, key: string): Promise<Supplier | null> {
     if (!isUuid(tenantId)) return null;
     const rows = await this.sql<SupplierRow[]>`
@@ -184,6 +192,15 @@ export class PostgresAssetTypeRepository implements AssetTypeRepository {
     return rows[0] ? toAssetType(rows[0]) : null;
   }
 
+  async findManyByIds(tenantId: string, ids: readonly string[]): Promise<readonly AssetType[]> {
+    const valid = ids.filter(isUuid);
+    if (!isUuid(tenantId) || valid.length === 0) return [];
+    const rows = await this.sql<AssetTypeRow[]>`
+      select id, tenant_id, name, meter_kind, preventive_interval_hours, archived_at
+      from asset_types where tenant_id = ${tenantId} and id in ${this.sql(valid)}`;
+    return rows.map(toAssetType);
+  }
+
   async findByName(tenantId: string, key: string): Promise<AssetType | null> {
     if (!isUuid(tenantId)) return null;
     const rows = await this.sql<AssetTypeRow[]>`
@@ -230,6 +247,18 @@ export class PostgresAssetTypeRepository implements AssetTypeRepository {
 
 export class PostgresEquipmentRepository implements EquipmentRepository {
   constructor(private readonly sql: TransactionSql) {}
+
+  /**
+   * NO KEY UPDATE, the lock `PostgresAssignmentRepository` takes before it writes: it does not block the
+   * key-share locks the foreign keys of other tables take. One statement per row, in sorted id order, so
+   * the order does not depend on the plan of a multi-row query.
+   */
+  async lock(tenantId: string, ids: readonly string[]): Promise<void> {
+    if (!isUuid(tenantId)) return;
+    for (const id of [...new Set(ids.map((value) => value.toLowerCase()))].filter(isUuid).sort()) {
+      await this.sql`select 1 from equipments where tenant_id = ${tenantId} and id = ${id} for no key update`;
+    }
+  }
 
   private get columns() {
     return this.sql`id, tenant_id, supplier_id, asset_type_id, internal_code, brand, model, year, serial_number, battery_quantity, observations, archived_at`;
