@@ -31,8 +31,8 @@ function DetailFields({ idPrefix, initial }: Pick<FieldsProps, "idPrefix" | "ini
   const t = copy.dialogs.equipmentFields;
   return (
     <>
-      <TextField id={`${idPrefix}-brand`} name="brand" label={t.brandLabel} initial={initial.brand} />
-      <TextField id={`${idPrefix}-model`} name="model" label={t.modelLabel} initial={initial.model} />
+      <TextField id={`${idPrefix}-brand`} name="brand" label={t.brandLabel} initial={initial.brand} required />
+      <TextField id={`${idPrefix}-model`} name="model" label={t.modelLabel} initial={initial.model} required />
       <TextField id={`${idPrefix}-year`} name="year" label={t.yearLabel} hint={t.yearHint}
         initial={initial.year} numeric={{ min: 1950, max: new Date().getFullYear() + 1 }} />
       <TextField id={`${idPrefix}-serial`} name="serialNumber" label={t.serialNumberLabel}

@@ -57,7 +57,7 @@ export class InvalidBatteryQuantityError extends ValidationError {
   }
 }
 
-/** Brand, model, serial number or observations are longer than their maximum once trimmed. */
+/** Brand or model blank, or brand, model, serial number or observations longer than their maximum once trimmed. */
 export class InvalidTextError extends ValidationError {
   readonly code: string = "invalid_text";
 }

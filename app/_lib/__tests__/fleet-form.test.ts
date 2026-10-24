@@ -42,13 +42,13 @@ describe("assetTypeFields", () => {
 });
 
 describe("equipmentFields", () => {
-  it("converts numbers and blank optional text", () => {
+  it("converts numbers and blank optional text, and passes brand and model as typed", () => {
     const data = form({
-      supplierId: "s1", assetTypeId: "a1", internalCode: "c-043", brand: "", model: "M-1",
+      supplierId: "s1", assetTypeId: "a1", internalCode: "c-043", brand: " ", model: "M-1",
       year: "2020", serialNumber: " ", batteryQuantity: "2", observations: "",
     });
     expect(equipmentFields(data)).toEqual({
-      supplierId: "s1", assetTypeId: "a1", internalCode: "c-043", brand: null, model: "M-1",
+      supplierId: "s1", assetTypeId: "a1", internalCode: "c-043", brand: " ", model: "M-1",
       year: 2020, serialNumber: null, batteryQuantity: 2, observations: null,
     });
   });

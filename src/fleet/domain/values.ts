@@ -71,3 +71,16 @@ export const parseOptionalText = (
     ? err(new InvalidTextError(`The ${field} has at most ${String(maxLength)} characters`, field))
     : ok(text);
 };
+
+/** Required free text (brand, model): trimmed, never blank, bounded. `field` names the offending input. */
+export const parseRequiredText = (
+  raw: string | null,
+  maxLength: number,
+  field: string,
+): Result<string, InvalidTextError> => {
+  const text = raw === null ? "" : raw.trim();
+  if (text === "") return err(new InvalidTextError(`The ${field} is required`, field));
+  return text.length > maxLength
+    ? err(new InvalidTextError(`The ${field} has at most ${String(maxLength)} characters`, field))
+    : ok(text);
+};

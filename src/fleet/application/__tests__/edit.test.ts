@@ -129,8 +129,8 @@ const equipmentEdit = (h: Harness, s: Awaited<ReturnType<Harness["seedTenantA"]>
   supplierId: s.supplierA.id,
   assetTypeId: s.forklift.id,
   internalCode: "EQ-0001",
-  brand: null,
-  model: null,
+  brand: "Brand",
+  model: "Model",
   year: null,
   serialNumber: null,
   batteryQuantity: null,
@@ -154,7 +154,7 @@ describe("UpdateEquipment", () => {
       entityType: "equipment",
       entityId: s.eq1.id,
       reason: "Re-assigned",
-      before: { supplierId: s.supplierA.id, supplierName: "SUPPLIER A", assetTypeName: "FORKLIFT", internalCode: "EQ-0001", brand: null },
+      before: { supplierId: s.supplierA.id, supplierName: "SUPPLIER A", assetTypeName: "FORKLIFT", internalCode: "EQ-0001", brand: "Brand" },
       after: {
         supplierId: s.supplierB.id, supplierName: "SUPPLIER B", assetTypeId: s.container.id, assetTypeName: "CONTAINER",
         internalCode: "EQ-9", brand: "Brand X", model: "M-1", year: 2019, serialNumber: "SN-9", batteryQuantity: 1, observations: "Moved",
@@ -167,7 +167,7 @@ describe("UpdateEquipment", () => {
     const s = await h.seedTenantA();
     const blank = await h.updateEquipment.execute(equipmentEdit(h, s, { brand: "X", reason: " " }));
     const long = await h.updateEquipment.execute(equipmentEdit(h, s, { brand: "X", reason: "r".repeat(501) }));
-    const same = await h.updateEquipment.execute(equipmentEdit(h, s, { internalCode: " eq-0001 ", brand: "  " }));
+    const same = await h.updateEquipment.execute(equipmentEdit(h, s, { internalCode: " eq-0001 ", brand: " Brand " }));
     expect(!blank.ok && blank.error.code).toBe("reason_required");
     expect(!long.ok && long.error.code).toBe("reason_too_long");
     expect(!same.ok && same.error.code).toBe("no_changes");
@@ -196,6 +196,7 @@ describe("UpdateEquipment", () => {
     for (const override of [
       { supplierId: s.spare.id }, { assetTypeId: s.spareType.id }, { supplierId: "missing" }, { assetTypeId: "missing" },
       { internalCode: "" }, { year: 1900 }, { batteryQuantity: 9 }, { brand: "b".repeat(121) },
+      { brand: "  " }, { brand: null }, { model: "" }, { model: null },
     ]) {
       const result = await h.updateEquipment.execute(equipmentEdit(h, s, override));
       codes.push(result.ok ? "ok" : result.error.code);
@@ -203,6 +204,7 @@ describe("UpdateEquipment", () => {
     expect(codes).toEqual([
       "parent_archived", "parent_archived", "not_found", "not_found",
       "invalid_internal_code", "invalid_year", "invalid_battery_quantity", "invalid_text",
+      "invalid_text", "invalid_text", "invalid_text", "invalid_text",
     ]);
   });
 

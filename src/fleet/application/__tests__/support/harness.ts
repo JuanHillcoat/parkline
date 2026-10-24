@@ -105,7 +105,7 @@ export const createHarness = () => {
     return result.value;
   };
 
-  /** The create input of an equipment with every optional field empty; override what a test needs. */
+  /** The create input of an equipment with a brand and a model and every optional field empty; override what a test needs. */
   const equipmentInput = (
     supplierId: string,
     assetTypeId: string,
@@ -116,8 +116,8 @@ export const createHarness = () => {
     supplierId,
     assetTypeId,
     internalCode,
-    brand: null,
-    model: null,
+    brand: "Brand",
+    model: "Model",
     year: null,
     serialNumber: null,
     batteryQuantity: null,

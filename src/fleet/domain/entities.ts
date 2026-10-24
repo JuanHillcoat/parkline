@@ -20,6 +20,7 @@ import {
   parseName,
   parseOptionalText,
   parsePreventiveInterval,
+  parseRequiredText,
   parseYear,
   type MeterKind,
 } from "./values";
@@ -48,6 +49,7 @@ export type Equipment = Archivable & {
   readonly supplierId: string;
   readonly assetTypeId: string;
   readonly internalCode: string;
+  /** Required when registering or editing; rows stored before that rule may still hold null. */
   readonly brand: string | null;
   readonly model: string | null;
   readonly year: number | null;
@@ -100,12 +102,12 @@ export const createAssetType = (input: AssetTypeInput): Result<AssetType, AssetT
   });
 };
 
-type OptionalFields = Pick<Equipment, "brand" | "model" | "serialNumber" | "observations">;
+type TextFields = Pick<Equipment, "brand" | "model" | "serialNumber" | "observations">;
 
-const optionalTexts = (input: EquipmentInput): Result<OptionalFields, InvalidTextError> => {
-  const brand = parseOptionalText(input.brand, MAX_BRAND_LENGTH, "brand");
+const equipmentTexts = (input: EquipmentInput): Result<TextFields, InvalidTextError> => {
+  const brand = parseRequiredText(input.brand, MAX_BRAND_LENGTH, "brand");
   if (!brand.ok) return brand;
-  const model = parseOptionalText(input.model, MAX_MODEL_LENGTH, "model");
+  const model = parseRequiredText(input.model, MAX_MODEL_LENGTH, "model");
   if (!model.ok) return model;
   const serialNumber = parseOptionalText(input.serialNumber, MAX_SERIAL_NUMBER_LENGTH, "serialNumber");
   if (!serialNumber.ok) return serialNumber;
@@ -118,7 +120,7 @@ const optionalTexts = (input: EquipmentInput): Result<OptionalFields, InvalidTex
 export const createEquipment = (input: EquipmentInput, currentYear: number): Result<Equipment, EquipmentError> => {
   const internalCode = parseInternalCode(input.internalCode);
   if (!internalCode.ok) return internalCode;
-  const texts = optionalTexts(input);
+  const texts = equipmentTexts(input);
   if (!texts.ok) return texts;
   const year = parseYear(input.year, currentYear);
   if (!year.ok) return year;

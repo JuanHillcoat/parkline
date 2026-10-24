@@ -20,13 +20,13 @@ export const assetTypeFields = (form: FormData) => ({
   preventiveIntervalHours: optionalInteger(field(form, "preventiveIntervalHours")),
 });
 
-/** The editable fields of an equipment. Authorization never depends on them. */
+/** The editable fields of an equipment. Brand and model are required: the domain rejects a blank one. */
 export const equipmentFields = (form: FormData) => ({
   supplierId: field(form, "supplierId"),
   assetTypeId: field(form, "assetTypeId"),
   internalCode: field(form, "internalCode"),
-  brand: optionalText(field(form, "brand")),
-  model: optionalText(field(form, "model")),
+  brand: field(form, "brand"),
+  model: field(form, "model"),
   year: optionalInteger(field(form, "year")),
   serialNumber: optionalText(field(form, "serialNumber")),
   batteryQuantity: optionalInteger(field(form, "batteryQuantity")),
