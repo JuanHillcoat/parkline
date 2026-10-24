@@ -48,6 +48,14 @@ jobs:
 
       - run: pnpm build
 
+      # Fails on a high or critical advisory in a production dependency: a vulnerable Next.js went
+      # unnoticed once (https://github.com/JuanHillcoat/parkline/issues/46). It queries the npm registry,
+      # so it runs last (an outage never hides the lint, type and test results), has its own time limit
+      # and, if the registry is unreachable, fails, which is the safe direction.
+      - name: Audit production dependencies
+        run: pnpm audit --prod --audit-level=high
+        timeout-minutes: 5
+
   database:
     name: Migrations and database tests
     runs-on: ubuntu-latest
