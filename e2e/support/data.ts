@@ -76,6 +76,12 @@ export type AssignmentSeed = {
   readonly reason?: string;
 };
 
+/** Moves the open assignment: it ends the day before `day` and a new one starts on `day`. */
+export type MoveSeed = { readonly equipmentId: string; readonly operationId: string; readonly day: string; readonly reason: string };
+
+/** Closes the open assignment on `day` (its last day). */
+export type EndSeed = { readonly equipmentId: string; readonly day: string; readonly reason: string };
+
 export type OperationSeed = { division: string; site: string; name: string; costCenter: string };
 
 export type Seeder = {
@@ -86,6 +92,10 @@ export type Seeder = {
   readonly assetType: (name: string, meterKind?: string, intervalHours?: number | null) => Promise<string>;
   readonly equipment: (input: EquipmentSeed) => Promise<string>;
   readonly assign: (input: AssignmentSeed) => Promise<void>;
+  readonly move: (input: MoveSeed) => Promise<void>;
+  readonly end: (input: EndSeed) => Promise<void>;
+  /** Archives an equipment that has no open assignment. */
+  readonly archiveEquipment: (equipmentId: string, reason: string) => Promise<void>;
   readonly close: () => Promise<void>;
 };
 
@@ -131,7 +141,7 @@ function fleetSeeds(c: Container, actor: Actor) {
 
 const today = (): string => new Date().toISOString().slice(0, 10);
 
-function assignmentSeeds(c: Container, actor: Actor) {
+function assignmentSeeds(c: Container, actor: Actor, analyst: Actor) {
   return {
     assign: async (input: AssignmentSeed) => {
       must(
@@ -145,6 +155,16 @@ function assignmentSeeds(c: Container, actor: Actor) {
         }),
       );
     },
+    move: async (input: MoveSeed) => {
+      must(await c.fleet.moveEquipment.execute({ actor, ...input }));
+    },
+    end: async (input: EndSeed) => {
+      must(await c.fleet.endAssignment.execute({ actor, ...input }));
+    },
+    // Only the fleet analyst holds `catalog.archive`, so the archive runs as the world's analyst.
+    archiveEquipment: async (equipmentId: string, reason: string) => {
+      must(await c.fleet.archiveEquipment.execute({ actor: analyst, id: equipmentId, reason }));
+    },
   };
 }
 
@@ -157,5 +177,7 @@ export async function openSeeder(): Promise<Seeder> {
   const c = createContainer(sql);
   const session = must(await c.identity.signIn.execute({ email: WORLD_USERS.admin.email, password: passwordOf("admin") }));
   const actor = toActor(must(await c.identity.authenticate.execute({ token: session.token })));
-  return { ...organizationSeeds(c, actor), ...fleetSeeds(c, actor), ...assignmentSeeds(c, actor), close: () => sql.end() };
+  const analystSession = must(await c.identity.signIn.execute({ email: WORLD_USERS.fleet_analyst.email, password: passwordOf("fleet_analyst") }));
+  const analyst = toActor(must(await c.identity.authenticate.execute({ token: analystSession.token })));
+  return { ...organizationSeeds(c, actor), ...fleetSeeds(c, actor), ...assignmentSeeds(c, actor, analyst), close: () => sql.end() };
 }

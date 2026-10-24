@@ -14,6 +14,7 @@ import { CreateAssetType } from "../../fleet/application/use-cases/create-asset-
 import { CreateEquipment } from "../../fleet/application/use-cases/create-equipment";
 import { CreateSupplier } from "../../fleet/application/use-cases/create-supplier";
 import { EndAssignment } from "../../fleet/application/use-cases/end-assignment";
+import { GetEquipment } from "../../fleet/application/use-cases/get-equipment";
 import { ListAssetTypes } from "../../fleet/application/use-cases/list-asset-types";
 import { ListEquipment } from "../../fleet/application/use-cases/list-equipment";
 import { ListEquipmentAssignments } from "../../fleet/application/use-cases/list-equipment-assignments";
@@ -141,6 +142,7 @@ const assignmentUseCases = (deps: FleetDeps) => ({
   assignEquipment: new AssignEquipment(deps),
   correctAssignment: new CorrectAssignment(deps),
   endAssignment: new EndAssignment(deps),
+  getEquipment: new GetEquipment(deps),
   listEquipmentAssignments: new ListEquipmentAssignments(deps),
   moveEquipment: new MoveEquipment(deps),
   replaceEquipment: new ReplaceEquipment(deps),

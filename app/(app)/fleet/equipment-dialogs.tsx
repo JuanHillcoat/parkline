@@ -1,4 +1,4 @@
-import { ActionDialog } from "../../_components/action-dialog";
+import { ActionDialog, type DialogAction } from "../../_components/action-dialog";
 import { ReasonField, SelectField, TextField, type Option } from "../../_components/form-fields";
 import { copy } from "../../_lib/copy";
 import type { EquipmentFormValues, EquipmentRow } from "../../_lib/fleet-view";
@@ -72,13 +72,21 @@ export function NewEquipmentDialog({ options }: { options: EquipmentOptions }) {
   );
 }
 
+type EditProps = {
+  readonly target: EquipmentRow;
+  readonly options: EquipmentOptions;
+  /** The detail page passes its own button style and an action that revalidates that page. */
+  readonly triggerClassName?: string;
+  readonly action?: DialogAction;
+};
+
 /** Edits every field of an equipment. The reason is mandatory and the change is audited (ADR-0007). */
-export function EditEquipmentDialog({ target, options }: { target: EquipmentRow; options: EquipmentOptions }) {
+export function EditEquipmentDialog({ target, options, triggerClassName = "btn btn-link", action = updateEquipmentAction }: EditProps) {
   const t = copy.dialogs.editEquipment;
   const key = `edit-equipment-${target.id}`;
   return (
-    <ActionDialog triggerLabel={t.trigger} triggerClassName="btn btn-link" title={t.title(target.internalCode)}
-      description={t.description} submitLabel={t.submit} action={updateEquipmentAction}>
+    <ActionDialog triggerLabel={t.trigger} triggerClassName={triggerClassName} title={t.title(target.internalCode)}
+      description={t.description} submitLabel={t.submit} action={action}>
       <input type="hidden" name="id" value={target.id} />
       <EquipmentFields idPrefix={key} options={options} initial={target.form} />
       <ReasonField id={`${key}-reason`} placeholder={t.reasonPlaceholder} />

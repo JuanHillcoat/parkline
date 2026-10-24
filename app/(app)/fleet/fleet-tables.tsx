@@ -117,7 +117,7 @@ type EquipmentLineProps = Access & { readonly row: EquipmentRow; readonly option
 function EquipmentLine({ row, options, ...access }: EquipmentLineProps) {
   return (
     <tr data-archived={row.archived}>
-      <th scope="row" className="cell-code cell-id">{row.internalCode}</th>
+      <th scope="row" className="cell-code cell-id"><a href={`/fleet/equipment/${row.id}`}>{row.internalCode}</a></th>
       <td data-label={c.assetType}>{row.assetTypeName}</td>
       <td data-label={c.supplier}>{row.supplierName}</td>
       <td data-label={c.operation}>{orDash(row.operationName)}</td>

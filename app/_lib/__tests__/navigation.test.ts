@@ -37,6 +37,7 @@ describe("sectionTitle", () => {
     expect(sectionTitle("/")).toBe(copy.nav.home);
     expect(sectionTitle("/fleet")).toBe(copy.nav.fleet);
     expect(sectionTitle("/fleet/abc")).toBe(copy.nav.fleet);
+    expect(sectionTitle("/fleet/equipment/abc")).toBe(copy.nav.fleet);
     expect(sectionTitle("/users")).toBe(copy.nav.users);
     expect(sectionTitle("/organization")).toBe(copy.nav.organization);
   });

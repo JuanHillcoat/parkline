@@ -19,6 +19,7 @@ import { CreateAssetType } from "../../use-cases/create-asset-type";
 import { CreateEquipment, type CreateEquipmentInput } from "../../use-cases/create-equipment";
 import { CreateSupplier } from "../../use-cases/create-supplier";
 import { ListAssetTypes } from "../../use-cases/list-asset-types";
+import { GetEquipment } from "../../use-cases/get-equipment";
 import { ListEquipment } from "../../use-cases/list-equipment";
 import { ListSuppliers } from "../../use-cases/list-suppliers";
 import { RenameSupplier } from "../../use-cases/rename-supplier";
@@ -85,6 +86,7 @@ export const createHarness = () => {
     listSuppliers: new ListSuppliers(deps),
     listAssetTypes: new ListAssetTypes(deps),
     listEquipment: new ListEquipment(deps),
+    getEquipment: new GetEquipment(deps),
     assignEquipment: new AssignEquipment(deps),
     moveEquipment: new MoveEquipment(deps),
     replaceEquipment: new ReplaceEquipment(deps),

@@ -448,6 +448,32 @@ describe("assignment flows through the container as parkline_app", () => {
     }
   });
 
+  it("reads one equipment for tenant-wide and scoped readers, an unassigned and an archived one, as parkline_app", async () => {
+    const [mine, other] = [await operationFixture("GetMine"), await operationFixture("GetOther")];
+    const [here, there, idle, gone] = [
+      await equipmentFixture("GetHere"), await equipmentFixture("GetThere"), await equipmentFixture("GetIdle"), await equipmentFixture("GetGone"),
+    ];
+    must(await assign(here.id, mine.operation.id, { day: "2026-01-01", reason: "Backfill" }));
+    must(await assign(there.id, other.operation.id, { day: "2026-01-01", reason: "Backfill" }));
+    must(await c.fleet.archiveEquipment.execute({ actor: analyst, id: gone.id, reason: "Loaded by mistake" }));
+    const n = next();
+    const supervisor = await scopedStaff(`supervisor.get${n}@example.test`, "supervisor", { type: "operation", id: mine.operation.id });
+    const manager = await scopedStaff(`manager.get${n}@example.test`, "manager", { type: "business_unit", id: mine.division.id });
+    const get = (actor: Actor, id: string) => c.fleet.getEquipment.execute({ actor, id });
+
+    const wide = must(await get(analyst, here.id));
+    expect(wide).toMatchObject({ id: here.id, assignment: { operationId: mine.operation.id, siteId: mine.site.id, kind: "active", validFrom: "2026-01-01" } });
+    expect(wide.supplier.id).toBe(here.supplierId);
+    expect(wide.assetType).toMatchObject({ id: here.assetTypeId, meterKind: "hours" });
+    expect(must(await get(analyst, idle.id)).assignment).toBeNull();
+    expect(must(await get(analyst, gone.id)).archivedAt).not.toBeNull();
+    for (const reader of [supervisor, manager]) {
+      expect(must(await get(reader, here.id)).supplier.id).toBe(here.supplierId);
+      for (const hidden of [there.id, idle.id, gone.id, randomUUID()]) expect(code(await get(reader, hidden))).toBe("not_found");
+    }
+    expect(code(await get(analyst, randomUUID()))).toBe("not_found");
+  });
+
   it("ends an open assignment and corrects an existing one; history is newest first", async () => {
     const [a, b] = [await operationFixture("EndA"), await operationFixture("EndB")];
     const eq = await equipmentFixture("End");
