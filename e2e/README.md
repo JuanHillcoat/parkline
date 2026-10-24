@@ -43,7 +43,7 @@ One tenant and five users (`e2e/support/world.ts`): `admin`, `fleet_analyst` and
 whole company, `manager` over `DIVISION E2E`, and `supervisor` over `OPERATION E2E` (which uses
 `SITE E2E`). `resetCatalogs()` keeps these users and the three organization rows (by id) and
 deletes everything else except the append-only audit log. Do not edit or archive the world's own
-organization rows; create your own with the seeder.
+organization rows; create your own with the seeder. The seeder (`openSeeder()` in `e2e/support/data.ts`) also creates assignments (`assign`, `move`, `end`) and archives equipment as the world's fleet analyst (`archiveEquipment`), and `resetCatalogs()` deletes the assignments before the equipment. Spec files of the assignment feature: `fleet-board`, `equipment-detail`, `equipment-assignments`, `equipment-replace` and `equipment-detail-actions`.
 
 ## Writing a suite
 
