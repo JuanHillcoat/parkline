@@ -113,6 +113,30 @@ describe("architecture boundaries", () => {
     expect(infrastructure).toHaveLength(1);
   });
 
+  it("lets metering use the shared equipment directory port and forbids importing fleet", async () => {
+    const path = "src/metering/application/use-cases/record-reading.ts";
+    const port = await dependencyErrors(
+      path,
+      'import type { EquipmentDirectory } from "../../../shared/domain/ports/equipment-directory";\nexport type X = EquipmentDirectory;\n',
+    );
+    const application = await dependencyErrors(
+      path,
+      'import { GetEquipment } from "../../../fleet/application/use-cases/get-equipment";\nexport const x = GetEquipment;\n',
+    );
+    const infrastructure = await dependencyErrors(
+      path,
+      'import { PostgresAssignmentDirectory } from "../../../fleet/infrastructure/postgres-assignment-directory";\nexport const x = PostgresAssignmentDirectory;\n',
+    );
+    const organization = await dependencyErrors(
+      path,
+      'import { ListOperations } from "../../../organization/application/use-cases/list-operations";\nexport const x = ListOperations;\n',
+    );
+    expect(port).toEqual([]);
+    expect(application).toHaveLength(1);
+    expect(infrastructure).toHaveLength(1);
+    expect(organization).toHaveLength(1);
+  });
+
   it("fails functions longer than 20 lines in non-test code", async () => {
     const body = Array.from({ length: 22 }, (_, i) => `  const v${String(i)} = ${String(i)};`).join("\n");
     const code = `export function long(): void {\n${body}\n}\n`;

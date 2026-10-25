@@ -31,7 +31,7 @@ describe("role permissions", () => {
     expect(roleGrants("fleet_analyst", "user.create")).toBe(false);
   });
 
-  it("keeps supervisor and viewer read-only", () => {
+  it("keeps supervisor and viewer from writing the catalog", () => {
     for (const role of ["supervisor", "viewer"] as const) {
       expect(roleGrants(role, "catalog.read")).toBe(true);
       expect(roleGrants(role, "catalog.write")).toBe(false);
@@ -44,6 +44,18 @@ describe("role permissions", () => {
       for (const permission of ["user.create", "user.deactivate", "audit.read"] as const) {
         expect(roleGrants(role, permission)).toBe(false);
       }
+    }
+  });
+
+  it("lets only admin and fleet analyst load, correct and replace readings; the other roles only read", () => {
+    for (const role of ["admin", "fleet_analyst"] as const) {
+      expect(roleGrants(role, "reading.write")).toBe(true);
+      expect(roleGrants(role, "reading.correct")).toBe(true);
+    }
+    for (const role of ["manager", "supervisor", "viewer"] as const) {
+      expect(roleGrants(role, "reading.write")).toBe(false);
+      expect(roleGrants(role, "reading.correct")).toBe(false);
+      expect(roleGrants(role, "catalog.read")).toBe(true);
     }
   });
 });
