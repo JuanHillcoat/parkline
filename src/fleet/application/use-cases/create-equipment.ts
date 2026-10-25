@@ -4,7 +4,7 @@ import { ok, type Result } from "../../../shared/domain/result";
 import { nameKey } from "../../../shared/domain/catalog-name";
 import { createEquipment, type Equipment } from "../../domain/entities";
 import { stageAssignment, type StagedAssignment } from "../assign-in-tx";
-import { authorizeOperation, type Target } from "../assignment-support";
+import { authorizeOperation, positionOfOperation, type Target } from "../assignment-support";
 import { equipmentSnapshot, recordAudit } from "../audit";
 import type { FleetDeps } from "../deps";
 import { parseNewImage } from "../equipment-image";
@@ -36,13 +36,21 @@ export type NewEquipmentAssignment = {
   readonly reason: string | null;
 };
 
+/** The optional first reading of a new equipment (issue 52, D11): the day `YYYY-MM-DD` and what the meter showed. */
+export type NewEquipmentReading = { readonly day: string; readonly value: number };
+
 export type CreateEquipmentInput = EquipmentFields & {
   readonly actor: Actor;
   /** When present, the equipment is born assigned, in the same transaction and with the rules of `AssignEquipment`. */
   readonly assignment?: NewEquipmentAssignment;
   /** The bytes of the representative image, validated by content; none by default. */
   readonly image?: Uint8Array | null;
+  /** When present, the first reading of the meter is loaded in the same transaction through the shared port; refused for a type without a meter. */
+  readonly initialReading?: NewEquipmentReading;
 };
+
+/** What the end of a registration needs: who, with which role, what was created and where. */
+type Done = { actor: Actor; role: string; equipment: Equipment; parents: Parents; initialReading: NewEquipmentReading | undefined; target: Target | null };
 
 /**
  * Needs `catalog.write` over the tenant. The supplier and the asset type must exist in the actor's
@@ -52,6 +60,9 @@ export type CreateEquipmentInput = EquipmentFields & {
  * With an `assignment`, the actor also needs `catalog.write` at the operation (checked right after the create
  * permission and before any lookup of the supplier, asset type or equipment), and the assignment is stored last,
  * by the same code as `AssignEquipment`; if it is refused nothing is created.
+ * With an `initialReading`, the shared `InitialReadingRecorder` opens the meter of the asset type and stores the
+ * reading in the same transaction, after the assignment and before the audit entries of the equipment and the
+ * assignment (so a refused reading leaves nothing behind, also in the fakes, which never roll audit back).
  */
 export class CreateEquipment {
   constructor(private readonly deps: FleetDeps) {}
@@ -61,7 +72,7 @@ export class CreateEquipment {
   }
 
   private async create(tx: FleetTx, input: CreateEquipmentInput): Promise<Result<Equipment, DomainError>> {
-    const { actor, image: bytes, assignment, ...fields } = input;
+    const { actor, image: bytes, assignment, initialReading, ...fields } = input;
     const role = authorize(this.deps.accessPolicy, actor, "catalog.write");
     if (!role.ok) return role;
     const target = await this.authorizeAssignment(tx, actor, assignment);
@@ -76,9 +87,34 @@ export class CreateEquipment {
     if (!stored.ok) return stored;
     const staged = await this.stage(tx, actor, created.value.id, assignment, target.value);
     if (!staged.ok) return staged;
-    await this.audit(tx, actor, role.value, { equipment: created.value, parents: parents.value, hash: image.value?.sha256 ?? null });
-    await staged.value?.record();
-    return ok(created.value);
+    const done = { actor, role: role.value, equipment: created.value, parents: parents.value, initialReading, target: target.value };
+    return this.finish(tx, done, { hash: image.value?.sha256 ?? null, staged: staged.value });
+  }
+
+  /** The reading first (it may be refused), then the audit entries of the equipment and of the assignment. */
+  private async finish(tx: FleetTx, done: Done, rest: { hash: string | null; staged: StagedAssignment | null }): Promise<Result<Equipment, DomainError>> {
+    const reading = await this.recordReading(tx, done);
+    if (!reading.ok) return reading;
+    await this.audit(tx, done.actor, done.role, { equipment: done.equipment, parents: done.parents, hash: rest.hash });
+    await rest.staged?.record();
+    return ok(done.equipment);
+  }
+
+  /** The first reading, if one was asked, through the shared port: the meter kind is the asset type's, the position the assignment's. */
+  private async recordReading(
+    tx: FleetTx,
+    made: Done,
+  ): Promise<Result<void, DomainError>> {
+    const { actor, role, equipment, initialReading, target } = made;
+    if (initialReading === undefined) return ok(undefined);
+    const recorder = this.deps.initialReadings;
+    if (recorder === undefined) throw new Error("CreateEquipment needs an InitialReadingRecorder to load an initial reading");
+    const recorded = await recorder.record(tx, {
+      actor, tenantId: actor.tenantId, equipmentId: equipment.id, meterKind: made.parents.assetType.meterKind,
+      day: initialReading.day, value: initialReading.value, actorRole: role,
+      ...(target === null ? {} : { position: positionOfOperation(actor.tenantId, target.op) }),
+    });
+    return recorded.ok ? ok(undefined) : recorded;
   }
 
   /** No assignment asked: no target. Otherwise the actor must write at the operation, before anything else is read. */

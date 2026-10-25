@@ -4,7 +4,7 @@
 - Issue: #52
 - Source of truth: `docs/00-analisis-inicial.md` (section 7.2 "Lecturas de medidor", priority 1 "Horómetros", the `metering` module, the audit rules), `docs/adr/0007-fleet-catalogs.md` (meter kind), `docs/adr/0010-equipment-assignments.md` (visibility by assignment), `docs/adr/0005-cross-module-authorization.md`
 - Delivery strategy: ask-on-risk; test runner: `pnpm test`, `pnpm test:db`, `pnpm test:e2e`
-- Status: design approved by the maintainer (D7 and D11 changed on 2026-10-24); T1 in progress
+- Status: T1 to T4 done; pull request and hosted migration pending
 
 ## Specs
 
@@ -42,8 +42,8 @@ Out: see D12.
 
 - [x] T1 (S2, S3, S4) Domain, ports, use cases, in-memory adapters, permissions, shared-kernel port, architecture rules and unit tests (strict TDD). Route: delegated writer. Commit: pending
 - [x] T2 (S2, S4) Migration `0012`, Postgres adapters, the `fleet` implementation of `EquipmentDirectory`, container wiring, sensitive actions in the trigger, database tests (privileges, constraints, races). Route: delegated writer. Commit: pending
-- [ ] T3 (S1, S4) Lecturas tab, dialogs, last reading in the card, copy; the fleet side of D11 (`CreateEquipment` takes the optional initial reading through the port, the registration dialog field); end-to-end tests (roles, scope, errors, mobile). Route: delegated writer. Commit: pending
-- [ ] T4 (S4) ADR-0012, README, AGENTS, CHANGELOG. Route: inline. Commit: with T3
+- [x] T3 (S1, S4) Lecturas tab, dialogs, last reading in the card, copy; the fleet side of D11 (`CreateEquipment` takes the optional initial reading through the port, the registration dialog field); end-to-end tests (roles, scope, errors, mobile). Route: delegated writer. Commit: pending
+- [x] T4 (S4) ADR-0012, README, AGENTS, CHANGELOG. Route: inline. Commit: with T3
 
 ## Log
 
@@ -52,3 +52,11 @@ Out: see D12.
 - 2026-10-24 The maintainer changed two decisions: "el supervisor y gerente de operacion solo debe tener permisos de lectura. No puedo modificar valores en los equipos" (D7: readings are written only by admin and fleet_analyst) and "con respecto a la carga de horas en el alta de equipo busquemosle una solucion porque debe estar" (D11 replaced: the first reading at registration through an inverted shared-kernel port, atomic, with no dependency of fleet on metering). The T1 writer was told. A note for the maintainer: this overrides the analysis document's "supervisor (OR y lecturas de su alcance)" for readings; the document should be updated in T4.
 - 2026-10-24 T2 written (uncommitted): migration `0012_metering.sql` (tables `meters` and `meter_readings`, partial unique index for one open meter, `seq` identity column as the insertion tie-breaker, readings granted select and insert only, trigger function with `metering.reading.correct` and `metering.meter.replace`), Postgres repositories and transaction in `src/metering/infrastructure`, `PostgresEquipmentDirectory` in `src/fleet/infrastructure`, `c.metering` and `c.initialReadingRecorder` in the container (the recorder joins fleet's transaction through `sqlOfFleetTx`), `test/db/metering.db.test.ts` (40 tests) and the e2e seeder `reading` and `replaceMeter`. RED evidence for the five race tests: with the `FOR NO KEY UPDATE` removed from `PostgresEquipmentDirectory`, all five failed (unordered history, ok/ok where one must lose, a reading after the closing reading, audit order); with the lock they pass. Histories are bounded to the newest 5000 readings (`READING_HISTORY_LIMIT`).
 - 2026-10-25 T2 committed; its native review (medium, 11 files, 1,149 lines) APPROVED with four findings: R3-004 fixed (the application role may update only the column closed_on of meters, enforced in the database, after revoking the default table-level UPDATE) and R3-001 fixed (close() guards malformed ids); R3-002 (an invariant error for a non-Postgres fleet transaction) and R3-003 (seeder helpers used later by T3) answered without change. Parent re-run before the commit: lint, typecheck, unit and the full database suite.
+
+### T3 evidence (writer)
+
+- RED: `src/fleet/application/__tests__/create-with-reading.test.ts` failed 8 of 10 before `CreateEquipment` took `initialReading` (the port was never called); GREEN after: 10 of 10 and the whole fleet suite (319 tests).
+- Decision: the port is called after the assignment is staged and BEFORE the audit entries of the equipment and the assignment, so a refused reading leaves no audit entry even in the in-memory fakes (which never roll audit back). Audit order in Postgres is therefore `metering.reading.create`, `fleet.equipment.create`, `fleet.assignment.create`.
+- Checks: `pnpm lint`, `pnpm typecheck`, `pnpm test` (1272), `pnpm build`, `pnpm test:db` (386, new file `test/db/equipment-create-reading.db.test.ts`) pass; `equipment-readings.spec.ts` (54 tests) and `equipment-register-reading.spec.ts` (25 tests with setup) pass three runs in a row; the existing fleet, detail, image and mobile specs (187 tests) pass.
+- 2026-10-25 T1 committed as `370d6db` and T2 as `e70041b`, each after its approved native review. Parent verification of T3 and T4: lint and typecheck clean, `pnpm test` 1272 passed, build clean, `pnpm test:db` 18 files and 386 tests passed, full `pnpm test:e2e:only` 590 passed, 0 failed, no leftover database. T4 done: ADR-0012, README, AGENTS, CHANGELOG, and the line of the analysis document about the supervisor (now read-only for readings). Known limits stated in the ADR: the 5000-reading window of a history, the audit entry of the first reading written before the registration's own entries (same transaction), and the column "who loaded it" showing names only to actors that may list users. Pending: native review of T3 and T4, push, pull request, and the hosted migration `0012` (only with the maintainer's explicit authorization, before the merge).
+- 2026-10-25 Native review of T3 and T4 (medium, 32 files, 2,056 lines) APPROVED with three findings, all fixed with tests: the audit order is now asserted without sorting (metering reading, then equipment, then assignment) in the unit and database tests; an empty day with a typed initial value is tested at the form (sent as is) and in the database (invalid_day, nothing stored).

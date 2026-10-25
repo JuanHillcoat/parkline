@@ -228,6 +228,13 @@ describe("select options", () => {
     expect(assetTypeOptions([...types, assetType("a3", "OLD", "none", null, GONE)]).map((o) => o.id)).toEqual(["a1", "a2"]);
   });
 
+  it("carry the meter kind of each active asset type, so the registration knows when a first reading applies", () => {
+    expect(assetTypeOptions(types)).toEqual([
+      { id: "a1", name: "FORKLIFT", meterKind: "hours" },
+      { id: "a2", name: "PALLET JACK", meterKind: "none" },
+    ]);
+  });
+
   it("allow a new equipment only with at least one of each", () => {
     expect(canCreateEquipment(supplierOptions(suppliers), assetTypeOptions(types))).toBe(true);
     expect(canCreateEquipment([], assetTypeOptions(types))).toBe(false);

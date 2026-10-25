@@ -184,8 +184,12 @@ const activeOptions = (rows: readonly (Supplier | AssetType)[]): Option[] =>
 /** Only active suppliers can receive equipment. */
 export const supplierOptions = (suppliers: readonly Supplier[]): Option[] => activeOptions(suppliers);
 
+/** An asset type choice that carries its meter kind, so the registration dialog knows when a first reading applies. */
+export type AssetTypeOption = Option & { readonly meterKind: AssetType["meterKind"] };
+
 /** Only active asset types can classify equipment. */
-export const assetTypeOptions = (types: readonly AssetType[]): Option[] => activeOptions(types);
+export const assetTypeOptions = (types: readonly AssetType[]): AssetTypeOption[] =>
+  types.filter((type) => type.archivedAt === null).map((type) => ({ id: type.id, name: type.name, meterKind: type.meterKind }));
 
 /** A new equipment needs at least one active supplier and one active asset type. */
 export const canCreateEquipment = (suppliers: readonly Option[], types: readonly Option[]): boolean =>

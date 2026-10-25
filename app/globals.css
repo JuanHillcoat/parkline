@@ -993,6 +993,12 @@ dialog.dialog::backdrop {
   color: var(--primary);
 }
 
+/* A corrected reading stays in the history but no longer counts: shown muted. */
+.table tr[data-superseded="true"] > * {
+  color: var(--muted-strong);
+  opacity: 0.7;
+}
+
 .tab-panel {
   margin-top: 0;
 }

@@ -4,6 +4,7 @@ import { InMemoryAuditLog } from "../../../../shared/infrastructure/in-memory-au
 import { SequentialIdGenerator } from "../../../../shared/infrastructure/sequential-id-generator";
 import { InMemoryFleetStore } from "../../../infrastructure/in-memory-fleet-store";
 import { FakeAccessPolicy } from "../../../__tests__/support/fake-access-policy";
+import { FakeInitialReadingRecorder } from "../../../__tests__/support/fake-initial-reading-recorder";
 import { FakeOperationDirectory } from "../../../__tests__/support/fake-operation-directory";
 import type { FleetDeps } from "../../deps";
 import { ArchiveAssetType } from "../../use-cases/archive-asset-type";
@@ -65,8 +66,10 @@ export const createHarness = () => {
   const operations = seedOperations();
   const store = new InMemoryFleetStore(audit, operations);
   const clock = new FixedClock(START);
+  const initialReadings = new FakeInitialReadingRecorder(clock);
   const deps: FleetDeps = {
     unitOfWork: store.unitOfWork(),
+    initialReadings,
     clock,
     ids: new SequentialIdGenerator("id"),
     accessPolicy: new FakeAccessPolicy(),
@@ -164,7 +167,7 @@ export const createHarness = () => {
 
   const auditOf = (action: string) => audit.entries.filter((entry) => entry.action === action);
 
-  return { audit, store, deps, clock, operations, assign, assignmentsOf, analystAt, adminAt, admin, adminB, analyst, analystB, auditOf, orThrow, equipmentInput, seedTenantA, ...useCases };
+  return { audit, store, deps, initialReadings, clock, operations, assign, assignmentsOf, analystAt, adminAt, admin, adminB, analyst, analystB, auditOf, orThrow, equipmentInput, seedTenantA, ...useCases };
 };
 
 export type Harness = ReturnType<typeof createHarness>;

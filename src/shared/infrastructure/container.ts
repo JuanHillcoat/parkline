@@ -237,7 +237,10 @@ export const createContainer = (sql: Sql, options: ContainerOptions = {}) => {
     /** Cross-module authorization (ADR-0005); modules receive it instead of importing identity. */
     accessPolicy,
     organization: organizationUseCases(organizationDeps(sql, options, accessPolicy)),
-    fleet: fleetUseCases(fleetDeps(sql, options, accessPolicy)),
+    fleet: fleetUseCases({
+      ...fleetDeps(sql, options, accessPolicy),
+      initialReadings: initialReadingRecorder(meteringDeps(sql, options, accessPolicy)),
+    }),
     metering: meteringUseCases(meteringDeps(sql, options, accessPolicy)),
     /** For `CreateEquipment`'s optional first reading (issue 52, D11): joins the caller's fleet transaction. */
     initialReadingRecorder: initialReadingRecorder(meteringDeps(sql, options, accessPolicy)),
