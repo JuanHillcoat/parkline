@@ -14,6 +14,8 @@ Status: early development. The skeleton (`p0-01`), identity (`p0-02`: sign-in, s
 
 **Equipment image.** An equipment can carry one representative picture (JPEG, PNG or WebP, up to 500 KB, kept in the database at no cost). It is chosen when registering or editing, shown in the detail and as a thumbnail in the list, and large photos are reduced in the browser before they are sent. Brand and model are required. See [ADR-0011](docs/adr/0011-equipment-image.md).
 
+**Register and assign in one step.** The Nuevo equipo dialog can also assign the equipment to an operation (as active or as a spare, from today or from a past day with a reason); both happen in one transaction, so a refused assignment creates nothing.
+
 ## Requirements
 
 - Node.js 22.15 or later (the install command uses experimental type stripping)

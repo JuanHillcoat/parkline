@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assetTypeFields, equipmentFields, imageChange, newImage, optionalInteger, optionalText } from "../fleet-form";
+import { assetTypeFields, assignmentOnCreate, equipmentFields, imageChange, newImage, optionalInteger, optionalText } from "../fleet-form";
 
 const form = (entries: Record<string, string>): FormData => {
   const data = new FormData();
@@ -55,6 +55,30 @@ describe("equipmentFields", () => {
 
   it("keeps an invalid year as NaN instead of hiding it", () => {
     expect(equipmentFields(form({ year: "abc" })).year).toBeNaN();
+  });
+});
+
+describe("assignmentOnCreate", () => {
+  it("sends nothing when no operation was chosen, whatever the other fields carry", () => {
+    expect(assignmentOnCreate(form({ operationId: "", kind: "active", day: "2026-01-10", reason: "x" }))).toBeUndefined();
+    expect(assignmentOnCreate(form({}))).toBeUndefined();
+    expect(assignmentOnCreate(form({ operationId: "   ", kind: "active", day: "2026-01-10" }))).toBeUndefined();
+  });
+
+  it("maps the chosen operation with its kind, trimmed day and a blank reason as null", () => {
+    expect(assignmentOnCreate(form({ operationId: "op1", kind: "spare", day: " 2026-01-10 ", reason: "  " }))).toEqual({
+      operationId: "op1", kind: "spare", day: "2026-01-10", reason: null,
+    });
+  });
+
+  it("keeps a given reason for the use case to trim and validate", () => {
+    expect(assignmentOnCreate(form({ operationId: "op1", kind: "active", day: "2026-01-10", reason: "Cargado tarde" }))?.reason).toBe(
+      "Cargado tarde",
+    );
+  });
+
+  it("does not leak into the equipment fields", () => {
+    expect(equipmentFields(form({ operationId: "op1", kind: "active", day: "2026-01-10" }))).not.toHaveProperty("operationId");
   });
 });
 

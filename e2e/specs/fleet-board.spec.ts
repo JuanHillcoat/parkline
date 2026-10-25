@@ -51,7 +51,7 @@ const expectRows = async (page: Page, present: readonly string[], absent: readon
   for (const code of absent) await expect(rowOf(page, code), `${code} is not listed`).toHaveCount(0);
 };
 
-const optionTexts = (page: Page, label: string) => page.getByLabel(label, { exact: true }).locator("option");
+const optionTexts = (page: Page, label: string) => page.getByRole("search").getByLabel(label, { exact: true }).locator("option");
 
 test.describe("fleet board as a fleet analyst", () => {
   test.use({ storageState: storageStatePath("fleet_analyst") });
@@ -105,11 +105,11 @@ test.describe("fleet board as a fleet analyst", () => {
   test("filters by operation from the toolbar", async ({ page }) => {
     await seedBoard();
     await gotoFleet(page);
-    await page.getByLabel(t.operationFilter, { exact: true }).selectOption({ label: SIBLING_OPERATION });
+    await page.getByRole("search").getByLabel(t.operationFilter, { exact: true }).selectOption({ label: SIBLING_OPERATION });
     await page.getByRole("button", { name: t.applyFilters }).click();
     await expect(page).toHaveURL(/operation=/u);
     await expectRows(page, ["B-SPARE"], ["A-ACTIVE", "C-ELSEWHERE", "D-IDLE"]);
-    await expect(page.getByLabel(t.operationFilter, { exact: true })).toHaveValue(/.+/u);
+    await expect(page.getByRole("search").getByLabel(t.operationFilter, { exact: true })).toHaveValue(/.+/u);
   });
 
   test("filters by state from the toolbar", async ({ page }) => {
