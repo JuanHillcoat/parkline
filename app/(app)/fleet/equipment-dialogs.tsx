@@ -1,6 +1,6 @@
 import { EditImageField, NewImageField } from "../../_components/image-field";
 import { ActionDialog, type DialogAction } from "../../_components/action-dialog";
-import { ReasonField, SelectField, TextField, type Option } from "../../_components/form-fields";
+import { DateField, ReasonField, SelectField, TextField, type Option } from "../../_components/form-fields";
 import { copy } from "../../_lib/copy";
 import type { EquipmentFormValues, EquipmentRow } from "../../_lib/fleet-view";
 import { createEquipmentAction, updateEquipmentAction } from "./actions";
@@ -63,13 +63,40 @@ function EquipmentFields(props: FieldsProps) {
   );
 }
 
-export function NewEquipmentDialog({ options }: { options: EquipmentOptions }) {
+const KINDS: readonly Option[] = [
+  { id: "active", name: copy.fleet.detail.kinds.active },
+  { id: "spare", name: copy.fleet.detail.kinds.spare },
+];
+
+type AssignmentProps = { readonly operations: readonly Option[]; readonly today: string };
+
+/** The optional first assignment: the server asks for the reason only when the day is in the past. */
+function AssignmentFields({ operations, today }: AssignmentProps) {
+  const t = copy.dialogs.assignEquipment;
+  const n = copy.dialogs.newEquipment;
+  return (
+    <fieldset className="field choice-group">
+      <legend>{n.assignmentLegend}</legend>
+      <span className="hint">{n.assignmentHint}</span>
+      <SelectField id="new-equipment-operation" name="operationId" label={t.operationLabel} prompt={n.noOperation}
+        options={operations} optional />
+      <SelectField id="new-equipment-kind" name="kind" label={t.kindLabel} prompt={t.selectKind} options={KINDS} initial="active" />
+      <DateField id="new-equipment-day" name="day" label={t.dayLabel} initial={today} />
+      <ReasonField id="new-equipment-reason" placeholder={t.reasonPlaceholder} optional={{ label: t.reasonLabel, hint: t.reasonHint }} />
+    </fieldset>
+  );
+}
+
+type NewProps = AssignmentProps & { readonly options: EquipmentOptions };
+
+export function NewEquipmentDialog({ options, operations, today }: NewProps) {
   const t = copy.dialogs.newEquipment;
   return (
     <ActionDialog triggerLabel={t.trigger} triggerClassName="btn btn-primary" title={t.title}
       description={t.description} submitLabel={t.submit} action={createEquipmentAction}>
       <EquipmentFields idPrefix="new-equipment" options={options} initial={EMPTY} />
       <NewImageField id="new-equipment-image" />
+      <AssignmentFields operations={operations} today={today} />
     </ActionDialog>
   );
 }

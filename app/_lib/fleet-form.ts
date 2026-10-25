@@ -35,6 +35,16 @@ export const equipmentFields = (form: FormData) => ({
 });
 
 /**
+ * The optional first assignment of a new equipment. Nothing is sent unless an operation was chosen; then the
+ * kind, the day and the reason travel with it. A blank reason is "not set": only a past day makes it mandatory.
+ */
+export const assignmentOnCreate = (form: FormData) => {
+  const operationId = field(form, "operationId").trim();
+  if (operationId === "") return undefined;
+  return { operationId, kind: field(form, "kind"), day: field(form, "day").trim(), reason: optionalText(field(form, "reason")) };
+};
+
+/**
  * The bytes of an uploaded file. A file input left empty arrives as an empty file whose name the framework may
  * rewrite, so an empty file only counts as chosen when the form says so (`imageChosen`, set by the image field
  * when a file is picked); a chosen file with no content stays empty, so the domain answers `image_empty`.

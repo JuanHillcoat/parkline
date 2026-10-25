@@ -368,6 +368,9 @@ const es = {
       title: "Nuevo equipo",
       description: "Cada unidad con su proveedor, su tipo de activo y su interno.",
       submit: "Registrar equipo",
+      assignmentLegend: "Asignación (opcional)",
+      assignmentHint: "Si eliges una operación, el equipo queda asignado desde el día indicado, en el mismo paso.",
+      noOperation: "Sin operación (sin asignar)",
     },
     equipmentFields: {
       internalCodeLabel: "Interno",

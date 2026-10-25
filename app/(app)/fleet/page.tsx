@@ -27,6 +27,7 @@ import {
   listOrEmpty,
 } from "../../_lib/fleet-view";
 import { wantsArchived } from "../../_lib/organization-view";
+import { dayOf } from "../../../src/fleet/domain/day";
 import { requireActor } from "../../_lib/session";
 import { NewEquipmentDialog } from "./equipment-dialogs";
 import { NewAssetTypeDialog, NewSupplierDialog } from "./fleet-dialogs";
@@ -97,7 +98,7 @@ function Actions({ data, tab }: { data: Data; tab: FleetTab }) {
     <span className="head-actions">
       {tab === "suppliers" && <NewSupplierDialog />}
       {tab === "asset-types" && <NewAssetTypeDialog />}
-      {tab === "equipment" && canCreateEquipment(options.suppliers, options.assetTypes) && <NewEquipmentDialog options={options} />}
+      {tab === "equipment" && canCreateEquipment(options.suppliers, options.assetTypes) && <NewEquipmentDialog options={options} operations={operationOptions(data.operations)} today={dayOf(new Date())} />}
     </span>
   );
 }

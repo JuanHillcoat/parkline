@@ -41,14 +41,16 @@ type SelectProps = {
   readonly options: readonly Option[];
   readonly hint?: string;
   readonly initial?: string;
+  /** An optional select may stay empty: its first option is a choosable "none" instead of a disabled prompt. */
+  readonly optional?: boolean;
 };
 
 export function SelectField(props: SelectProps) {
   return (
     <div className="field">
       <label htmlFor={props.id}>{props.label}</label>
-      <select id={props.id} name={props.name} required defaultValue={props.initial ?? ""} className="input">
-        <option value="" disabled>{props.prompt}</option>
+      <select id={props.id} name={props.name} required={props.optional !== true} defaultValue={props.initial ?? ""} className="input">
+        <option value="" disabled={props.optional !== true}>{props.prompt}</option>
         {props.options.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
       </select>
       {props.hint !== undefined && <span className="hint">{props.hint}</span>}
