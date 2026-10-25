@@ -17,17 +17,30 @@ import {
  */
 export type OperationDirectoryFactory = (handle: TransactionSql) => OperationDirectory;
 
+const handles = new WeakMap<FleetTx, TransactionSql>();
+
+/**
+ * The SQL transaction a `FleetTx` was built over, so the composition root can make another module's
+ * adapter join the same transaction (for example the first reading of a new equipment). Undefined for a
+ * `FleetTx` that did not come from `createPostgresFleetTx` (the in-memory fakes).
+ */
+export const sqlOfFleetTx = (tx: FleetTx): TransactionSql | undefined => handles.get(tx);
+
 /** Builds the fleet ports over one transaction handle. */
 export const createPostgresFleetTx = (
   handle: TransactionSql,
   operations: OperationDirectoryFactory,
   audit: AuditLog = new PostgresAuditLog(handle),
-): FleetTx => ({
-  suppliers: new PostgresSupplierRepository(handle),
-  assetTypes: new PostgresAssetTypeRepository(handle),
-  equipment: new PostgresEquipmentRepository(handle),
-  assignments: new PostgresAssignmentRepository(handle),
-  images: new PostgresEquipmentImageRepository(handle),
-  operations: operations(handle),
-  audit,
-});
+): FleetTx => {
+  const tx: FleetTx = {
+    suppliers: new PostgresSupplierRepository(handle),
+    assetTypes: new PostgresAssetTypeRepository(handle),
+    equipment: new PostgresEquipmentRepository(handle),
+    assignments: new PostgresAssignmentRepository(handle),
+    images: new PostgresEquipmentImageRepository(handle),
+    operations: operations(handle),
+    audit,
+  };
+  handles.set(tx, handle);
+  return tx;
+};

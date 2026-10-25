@@ -63,6 +63,8 @@ describe("database after migrations", () => {
       "equipment_assignments",
       "equipment_images",
       "equipments",
+      "meter_readings",
+      "meters",
       "operations",
       "outbox_events",
       "schema_migrations",
@@ -123,6 +125,6 @@ describe("migration runner", () => {
     const applied = await migrate(sql, MIGRATIONS_DIR);
     expect(applied).toEqual([]);
     const rows = await sql`select count(*)::int as n from schema_migrations`;
-    expect(rows[0]?.n).toBe(11);
+    expect(rows[0]?.n).toBe(12);
   });
 });

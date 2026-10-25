@@ -29,7 +29,9 @@ import { RestoreSupplier } from "../../fleet/application/use-cases/restore-suppl
 import { UpdateAssetType } from "../../fleet/application/use-cases/update-asset-type";
 import { UpdateEquipment } from "../../fleet/application/use-cases/update-equipment";
 import { PostgresAssignmentDirectory } from "../../fleet/infrastructure/postgres-assignment-directory";
-import { createPostgresFleetTx } from "../../fleet/infrastructure/postgres-fleet-tx";
+import { PostgresEquipmentDirectory } from "../../fleet/infrastructure/postgres-equipment-directory";
+import { createPostgresFleetTx, sqlOfFleetTx } from "../../fleet/infrastructure/postgres-fleet-tx";
+import type { FleetTx } from "../../fleet/application/ports/fleet-tx";
 import type { IdentityDeps } from "../../identity/application/deps";
 import { IdentityAccessPolicy } from "../../identity/application/identity-access-policy";
 import type { PasswordHasher } from "../../identity/application/ports/password-hasher";
@@ -67,7 +69,17 @@ import { UpdateOperation } from "../../organization/application/use-cases/update
 import { createPostgresOrganizationTx } from "../../organization/infrastructure/postgres-organization-tx";
 import { PostgresOperationDirectory } from "../../organization/infrastructure/postgres-operation-directory";
 import { PostgresScopeDirectory } from "../../organization/infrastructure/postgres-scope-directory";
+import type { MeteringDeps } from "../../metering/application/deps";
+import { CorrectReading } from "../../metering/application/use-cases/correct-reading";
+import { ListEquipmentReadings } from "../../metering/application/use-cases/list-equipment-readings";
+import { RecordInitialReading } from "../../metering/application/use-cases/record-initial-reading";
+import { RecordReading } from "../../metering/application/use-cases/record-reading";
+import { ReplaceMeter } from "../../metering/application/use-cases/replace-meter";
+import { createPostgresMeteringTx } from "../../metering/infrastructure/postgres-metering-tx";
 import type { AccessPolicy } from "../domain/ports/access-policy";
+import type { InitialReading, InitialReadingInput, InitialReadingRecorder } from "../domain/ports/initial-reading-recorder";
+import type { DomainError } from "../domain/domain-error";
+import type { Result } from "../domain/result";
 import type { AuditLog } from "../domain/ports/audit-log";
 import { PostgresAuditLog } from "./postgres-audit-log";
 import { PostgresUnitOfWork } from "./postgres-unit-of-work";
@@ -168,7 +180,43 @@ const catalogUseCases = (deps: FleetDeps) => ({
   updateEquipment: new UpdateEquipment(deps),
 });
 
+const meteringDeps = (sql: Sql, options: ContainerOptions, accessPolicy: AccessPolicy): MeteringDeps => ({
+  unitOfWork: new PostgresUnitOfWork(sql, (handle) => {
+    const audit = new PostgresAuditLog(handle);
+    // Implemented by fleet, handed to metering as the shared port only (ADR-0005).
+    return createPostgresMeteringTx(handle, (tx) => new PostgresEquipmentDirectory(tx), options.wrapAudit?.(audit) ?? audit);
+  }),
+  clock: new SystemClock(),
+  ids: new UuidIdGenerator(),
+  accessPolicy,
+});
+
+const meteringUseCases = (deps: MeteringDeps) => ({
+  recordReading: new RecordReading(deps),
+  correctReading: new CorrectReading(deps),
+  replaceMeter: new ReplaceMeter(deps),
+  listEquipmentReadings: new ListEquipmentReadings(deps),
+});
+
+/**
+ * The first reading of a new equipment, in the transaction of fleet's `CreateEquipment`: the metering ports
+ * are built over the SAME SQL handle (and the same audit log) as the fleet transaction, so the equipment and
+ * its reading commit or roll back together. Implements the shared port; fleet never imports metering.
+ */
+class FleetInitialReadingRecorder implements InitialReadingRecorder<FleetTx> {
+  constructor(private readonly recorder: RecordInitialReading) {}
+
+  record(tx: FleetTx, input: InitialReadingInput): Promise<Result<InitialReading, DomainError>> {
+    const handle = sqlOfFleetTx(tx);
+    if (handle === undefined) throw new Error("The initial reading needs a Postgres fleet transaction");
+    return this.recorder.record(createPostgresMeteringTx(handle, (h) => new PostgresEquipmentDirectory(h), tx.audit), input);
+  }
+}
+
 const fleetUseCases = (deps: FleetDeps) => ({ ...catalogUseCases(deps), ...assignmentUseCases(deps) });
+
+const initialReadingRecorder = (deps: MeteringDeps): InitialReadingRecorder<FleetTx> =>
+  new FleetInitialReadingRecorder(new RecordInitialReading(deps));
 
 const identityUseCases = (deps: IdentityDeps) => ({
   install: new InstallTenantAdmin(deps),
@@ -190,6 +238,9 @@ export const createContainer = (sql: Sql, options: ContainerOptions = {}) => {
     accessPolicy,
     organization: organizationUseCases(organizationDeps(sql, options, accessPolicy)),
     fleet: fleetUseCases(fleetDeps(sql, options, accessPolicy)),
+    metering: meteringUseCases(meteringDeps(sql, options, accessPolicy)),
+    /** For `CreateEquipment`'s optional first reading (issue 52, D11): joins the caller's fleet transaction. */
+    initialReadingRecorder: initialReadingRecorder(meteringDeps(sql, options, accessPolicy)),
     identity: identityUseCases(identityDeps(sql, options)),
   };
 };

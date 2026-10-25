@@ -34,7 +34,7 @@ async function deleteTestOrganization(sql: Sql, ids: WorldFile["ids"]): Promise<
 
 /**
  * Deletes everything a suite created: users other than the world's (with their sessions and
- * assignments), the failed sign-in counters, equipment assignments, equipments, asset types, suppliers, operations,
+ * assignments), the failed sign-in counters, equipment assignments, meter readings, meters, equipments, asset types, suppliers, operations,
  * sites and divisions, in foreign-key order.
  */
 export async function resetCatalogs(): Promise<void> {
@@ -44,6 +44,8 @@ export async function resetCatalogs(): Promise<void> {
     await deleteTestUsers(sql);
     await sql`delete from sign_in_attempts`;
     await sql`delete from equipment_assignments`;
+    await sql`delete from meter_readings`;
+    await sql`delete from meters`;
     await sql`delete from equipment_images`;
     await sql`delete from equipments`;
     await sql`delete from asset_types`;
@@ -83,6 +85,15 @@ export type MoveSeed = { readonly equipmentId: string; readonly operationId: str
 /** Closes the open assignment on `day` (its last day). */
 export type EndSeed = { readonly equipmentId: string; readonly day: string; readonly reason: string };
 
+/** Replaces the meter of an equipment on `day`: the old one ends at `finalValue`, the new one starts at `initialValue`. */
+export type MeterReplacementSeed = {
+  readonly equipmentId: string;
+  readonly day: string;
+  readonly finalValue: number;
+  readonly initialValue: number;
+  readonly reason: string;
+};
+
 export type OperationSeed = { division: string; site: string; name: string; costCenter: string };
 
 export type Seeder = {
@@ -99,6 +110,9 @@ export type Seeder = {
   readonly end: (input: EndSeed) => Promise<void>;
   /** Archives an equipment that has no open assignment. */
   readonly archiveEquipment: (equipmentId: string, reason: string) => Promise<void>;
+  /** Records a reading as the world's administrator; the first one opens the meter. */
+  readonly reading: (equipmentId: string, day: string, value: number) => Promise<void>;
+  readonly replaceMeter: (input: MeterReplacementSeed) => Promise<void>;
   readonly close: () => Promise<void>;
 };
 
@@ -191,6 +205,17 @@ function assignmentSeeds(c: Container, actor: Actor, analyst: Actor) {
   };
 }
 
+function meteringSeeds(c: Container, actor: Actor) {
+  return {
+    reading: async (equipmentId: string, day: string, value: number) => {
+      must(await c.metering.recordReading.execute({ actor, equipmentId, day, value }));
+    },
+    replaceMeter: async (input: MeterReplacementSeed) => {
+      must(await c.metering.replaceMeter.execute({ actor, ...input }));
+    },
+  };
+}
+
 /**
  * Opens a seeder that creates rows through the use cases as the world's administrator, so audit
  * entries, normalization and validation are the real ones. Always `close()` it.
@@ -202,5 +227,5 @@ export async function openSeeder(): Promise<Seeder> {
   const actor = toActor(must(await c.identity.authenticate.execute({ token: session.token })));
   const analystSession = must(await c.identity.signIn.execute({ email: WORLD_USERS.fleet_analyst.email, password: passwordOf("fleet_analyst") }));
   const analyst = toActor(must(await c.identity.authenticate.execute({ token: analystSession.token })));
-  return { ...organizationSeeds(c, actor), ...fleetSeeds(c, actor), ...assignmentSeeds(c, actor, analyst), close: () => sql.end() };
+  return { ...organizationSeeds(c, actor), ...fleetSeeds(c, actor), ...assignmentSeeds(c, actor, analyst), ...meteringSeeds(c, actor), close: () => sql.end() };
 }
