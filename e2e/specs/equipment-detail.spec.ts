@@ -127,10 +127,11 @@ test.describe("equipment detail as a fleet analyst", () => {
       [t.info.model, "M-1"],
       [t.info.year, "2020"],
       [t.info.serialNumber, NO_VALUE],
-      [t.info.batteries, NO_VALUE],
+      [t.info.batteryKind, copy.fleet.batteryKind.combustion],
       [t.info.observations, NO_VALUE],
     ];
     for (const [label, value] of expected) await expect(valueOf(card, label), label).toHaveText(value);
+    await expect(card.getByText(t.info.batteries, { exact: true }), "no quantity for a combustion equipment").toHaveCount(0);
     await expect(card.getByRole("img", { name: t.info.photoLabel })).toBeVisible();
     await expect(page.getByRole("region", { name: t.moreTitle })).toBeVisible();
   });
@@ -175,7 +176,7 @@ test.describe("equipment detail as a fleet analyst", () => {
     const [open, middle, first] = [historyRows(page).nth(0), historyRows(page).nth(1), historyRows(page).nth(2)];
     await expect(open).toContainText("01/04/2026");
     await expect(open).toContainText(t.history.open);
-    await expect(open).toContainText(WORLD_ORG.operation);
+    await expect(open.locator(`td[data-label="${t.history.operation}"]`)).toHaveText(NO_VALUE);
     await expect(open).toContainText(WORLD_ORG.site);
     await expect(open).toContainText(t.kinds.spare);
     await expect(open).toContainText("Back as spare");
@@ -230,19 +231,20 @@ test.describe("equipment detail as a fleet analyst", () => {
     await expect(historyTable(page).getByRole("button", { name: d.correctAssignment.trigger, exact: true })).toHaveCount(3);
   });
 
-  test("the assign dialog opens with the operation, kind Activo, today and an optional reason, and closes with Escape", async ({ page }) => {
+  test("the assign dialog opens with the operations plus Muleto, today and an optional reason, and closes with Escape", async ({ page }) => {
     const ids = await seedDetail();
     await gotoDetail(page, ids.idle, "DET-IDLE");
     const dialog = await openDialog(page, d.assignEquipment.trigger, buttonsOf(page));
     await expect(dialog.getByRole("heading", { name: d.assignEquipment.title("DET-IDLE") })).toBeVisible();
     await expect(dialog.getByLabel(d.assignEquipment.operationLabel, { exact: true })).toBeVisible();
     const operations = dialog.getByLabel(d.assignEquipment.operationLabel, { exact: true }).locator("option");
-    await expect(operations).toHaveCount(4);
+    await expect(operations).toHaveCount(5);
     await expect(operations.first()).toHaveText(d.assignEquipment.selectOperation);
+    await expect(operations.last()).toHaveText(d.placement.muleto);
     await expect(operations.filter({ hasText: OTHER_OPERATION })).toHaveCount(1);
     await expect(operations.filter({ hasText: FAR_OPERATION })).toHaveCount(1);
     await expect(operations.filter({ hasText: WORLD_ORG.operation })).toHaveCount(1);
-    await expect(dialog.getByLabel(d.assignEquipment.kindLabel, { exact: true })).toHaveValue("active");
+    await expect(dialog.getByLabel(d.placement.siteLabel, { exact: true })).toHaveCount(0);
     await expect(dialog.getByLabel(d.assignEquipment.dayLabel, { exact: true })).toHaveValue(/^\d{4}-\d{2}-\d{2}$/u);
     await expect(dialog.getByLabel(d.assignEquipment.reasonLabel, { exact: true })).not.toHaveAttribute("required", /.*/u);
     await page.keyboard.press("Escape");
@@ -255,8 +257,9 @@ test.describe("equipment detail as a fleet analyst", () => {
     const dialog = await openDialog(page, d.moveEquipment.trigger, buttonsOf(page));
     await expect(dialog.getByRole("heading", { name: d.moveEquipment.title("DET-ACTIVE") })).toBeVisible();
     const operations = dialog.getByLabel(d.moveEquipment.operationLabel, { exact: true }).locator("option");
-    await expect(operations).toHaveCount(3);
+    await expect(operations).toHaveCount(4);
     await expect(operations.first()).toHaveText(d.moveEquipment.selectOperation);
+    await expect(operations.last()).toHaveText(d.placement.muleto);
     await expect(operations.filter({ hasText: OTHER_OPERATION })).toHaveCount(1);
     await expect(operations.filter({ hasText: FAR_OPERATION })).toHaveCount(1);
     await expect(operations.filter({ hasText: WORLD_ORG.operation })).toHaveCount(0);
@@ -294,18 +297,19 @@ test.describe("equipment detail as a fleet analyst", () => {
     await expect(correct.getByRole("heading", { name: d.correctAssignment.title })).toBeVisible();
     await expect(correct.getByLabel(d.correctAssignment.fromLabel, { exact: true })).toHaveValue("2026-02-10");
     await expect(correct.getByLabel(d.correctAssignment.toLabel, { exact: true })).toHaveValue("2026-03-01");
-    await expect(correct.getByLabel(d.correctAssignment.kindLabel, { exact: true })).toHaveValue("active");
     await expect(correct.getByLabel(d.correctAssignment.operationLabel, { exact: true }).locator("option:checked")).toHaveText(OTHER_OPERATION);
+    await expect(correct.getByLabel(d.placement.siteLabel, { exact: true })).toHaveCount(0);
     await page.keyboard.press("Escape");
     await expect(openDialogOf(page)).toBeHidden();
   });
 
-  test("the open row of the history is prefilled with an empty end", async ({ page }) => {
+  test("the open row of the history is prefilled with an empty end, Muleto and its site", async ({ page }) => {
     const ids = await seedDetail();
     await gotoDetail(page, ids.hist, "DET-HIST", "history");
     const correct = await openDialog(page, d.correctAssignment.trigger, historyRows(page).nth(0));
     await expect(correct.getByLabel(d.correctAssignment.toLabel, { exact: true })).toHaveValue("");
-    await expect(correct.getByLabel(d.correctAssignment.kindLabel, { exact: true })).toHaveValue("spare");
+    await expect(correct.getByLabel(d.correctAssignment.operationLabel, { exact: true }).locator("option:checked")).toHaveText(d.placement.muleto);
+    await expect(correct.getByLabel(d.placement.siteLabel, { exact: true }).locator("option:checked")).toHaveText(WORLD_ORG.site);
   });
 
   test("the edit dialog of the board opens from the detail page", async ({ page }) => {

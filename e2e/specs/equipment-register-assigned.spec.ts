@@ -7,10 +7,10 @@ import {
 import { expectDialogClosed, gotoFleet, rowOf } from "../support/fleet-flows";
 import { boxOf, expectNoHorizontalScroll, VIEWPORT_HEIGHT, VIEWPORT_WIDTH } from "../support/mobile-flows";
 import {
-  actionsFor, d, expectNothingRegistered, fillAndSubmit, fillAssignment, groupOf, openNewEquipment, operationOptions,
+  actionsFor, d, expectNothingRegistered, fieldOf, fillAndSubmit, fillAssignment, openNewEquipment, operationOptions,
   OP_ONE, OP_TWO, registeredId, registerWith, seedRegisterFixture, type Seeded,
 } from "../support/register-assigned-flows";
-import { storageStatePath, WORLD_ORG } from "../support/world";
+import { readWorld, storageStatePath, WORLD_ORG } from "../support/world";
 
 const messages = copy.errors.byCode;
 const t = copy.fleet.detail;
@@ -49,7 +49,7 @@ for (const role of ["admin", "fleet_analyst"] as const) {
       await expect(row.first()).toContainText(t.history.open);
       await expect(row.first()).toContainText(ddmmyyyy(today()));
       expect(await storedAssignments(id)).toEqual([
-        { valid_from: today(), valid_to: null, kind: "active", operation_id: fixture.opOne, reason: null },
+        { valid_from: today(), valid_to: null, kind: "active", operation_id: fixture.opOne, site_id: readWorld().ids.site, reason: null },
       ]);
       expect(await actionsFor(id)).toEqual(["fleet.equipment.create"]);
       expect((await assignmentAudit(id)).map((entry) => entry.action)).toEqual(["fleet.assignment.create"]);
@@ -61,16 +61,19 @@ test.describe("registering an assigned equipment", () => {
   test.use({ storageState: storageStatePath("fleet_analyst") });
   test.beforeEach(freshFixture);
 
-  test("born as a muleto: the board and the detail say Muleto", async ({ page }) => {
-    await registerWith(page, "REG-SPARE", { operation: OP_TWO, kind: "spare" });
+  test("born as a muleto of a site: the board and the detail say Muleto, with the site and no operation", async ({ page }) => {
+    await registerWith(page, "REG-SPARE", { site: WORLD_ORG.site });
     await expectDialogClosed(page);
-    await expectOnBoard(page, "REG-SPARE", OP_TWO, copy.fleet.state.spare);
+    await expectOnBoard(page, "REG-SPARE", WORLD_ORG.site, copy.fleet.state.spare);
+    await expect(rowOf(page, "REG-SPARE").locator(`td[data-label="${copy.fleet.columns.operation}"]`)).toHaveText(copy.fleet.noValue);
     const id = await registeredId("REG-SPARE");
     await gotoDetail(page, id, "REG-SPARE");
     await expect(pillOf(page)).toHaveText(copy.fleet.state.spare);
-    await expect(valueOf(locationCard(page), t.location.operation)).toHaveText(OP_TWO);
+    await expect(valueOf(locationCard(page), t.location.site)).toHaveText(WORLD_ORG.site);
     await expect(valueOf(locationCard(page), t.location.kind)).toHaveText(t.kinds.spare);
-    expect((await storedAssignments(id))[0]).toMatchObject({ kind: "spare", operation_id: fixture.opTwo });
+    await expect(locationCard(page).getByText(t.location.operation, { exact: true })).toHaveCount(0);
+    await expect(locationCard(page).getByText(t.location.division, { exact: true })).toHaveCount(0);
+    expect((await storedAssignments(id))[0]).toMatchObject({ kind: "spare", operation_id: null, site_id: readWorld().ids.site });
   });
 
   test("a past day with a reason is stored with the reason in the row and the audit entry", async ({ page }) => {
@@ -81,9 +84,10 @@ test.describe("registering an assigned equipment", () => {
     expect(await assignmentAudit(id)).toMatchObject([{ action: "fleet.assignment.create", reason: "Cargado tarde" }]);
   });
 
-  test("a past day without a reason shows the message and creates nothing", async ({ page }) => {
+  test("a past day without Observaciones shows the message that names Observaciones and creates nothing", async ({ page }) => {
     const dialog = await registerWith(page, "REG-NOREASON", { operation: OP_ONE, day: "2025-03-01" });
-    await expect(dialog.getByRole("alert")).toContainText(messages.reason_required);
+    await expect(dialog.getByRole("alert")).toHaveText(messages.registration_day_in_past);
+    await expect(dialog.getByRole("alert")).toContainText(d.equipmentFields.observationsLabel);
     await expectNothingRegistered("REG-NOREASON");
   });
 
@@ -96,8 +100,7 @@ test.describe("registering an assigned equipment", () => {
 
   test("registering without an operation still works and leaves the equipment unassigned", async ({ page }) => {
     const dialog = await openNewEquipment(page);
-    await expect(groupOf(dialog)).toBeVisible();
-    await fillAndSubmit(dialog, "REG-PLAIN", { kind: "spare", reason: "Ignored without an operation" });
+    await fillAndSubmit(dialog, "REG-PLAIN", { reason: "Only an observation without an operation" });
     await expectDialogClosed(page);
     await expectOnBoard(page, "REG-PLAIN", copy.fleet.noValue, copy.fleet.state.unassigned);
     const id = await registeredId("REG-PLAIN");
@@ -114,13 +117,14 @@ test.describe("registering an assigned equipment", () => {
     await expectNothingRegistered("REG-STALE");
   });
 
-  test("the group is labeled, the operation is empty and the kind and day have defaults", async ({ page }) => {
+  test("the operation starts empty, the day is today and the old group, kind and reason fields are gone", async ({ page }) => {
     const dialog = await openNewEquipment(page);
-    const labels = d.assignEquipment;
-    await expect(groupOf(dialog)).toBeVisible();
-    await expect(dialog.getByLabel(labels.operationLabel, { exact: true })).toHaveValue("");
-    await expect(dialog.getByLabel(labels.kindLabel, { exact: true })).toHaveValue("active");
-    await expect(dialog.getByLabel(labels.dayLabel, { exact: true })).toHaveValue(today());
+    const labels = d.newEquipment;
+    await expect(fieldOf(dialog, labels.operationLabel)).toHaveValue("");
+    await expect(fieldOf(dialog, labels.dayLabel)).toHaveValue(today());
+    await expect(dialog.getByRole("group")).toHaveCount(0);
+    await expect(dialog.getByText("Tipo de asignación")).toHaveCount(0);
+    await expect(dialog.getByText("Motivo", { exact: false })).toHaveCount(0);
   });
 });
 
@@ -141,7 +145,7 @@ test.describe("registering an assigned equipment on a phone", () => {
   test.use({ storageState: storageStatePath("fleet_analyst") });
   test.beforeEach(freshFixture);
 
-  test("@mobile the dialog with the new group fits the viewport and reaches its submit button", async ({ page }) => {
+  test("@mobile the dialog with the placement fields fits the viewport and reaches its submit button", async ({ page }) => {
     await page.goto("/fleet");
     await page.getByRole("button", { name: d.newEquipment.trigger }).tap();
     const dialog = page.getByRole("dialog", { name: d.newEquipment.title });
@@ -150,10 +154,11 @@ test.describe("registering an assigned equipment on a phone", () => {
     expect(box.x).toBeGreaterThanOrEqual(0);
     expect(box.x + box.width).toBeLessThanOrEqual(VIEWPORT_WIDTH);
     expect(box.y + box.height).toBeLessThanOrEqual(VIEWPORT_HEIGHT);
-    await groupOf(dialog).scrollIntoViewIfNeeded();
-    const group = await boxOf(groupOf(dialog));
-    expect(group.x).toBeGreaterThanOrEqual(0);
-    expect(group.x + group.width).toBeLessThanOrEqual(VIEWPORT_WIDTH);
+    const place = fieldOf(dialog, d.newEquipment.operationLabel);
+    await place.scrollIntoViewIfNeeded();
+    const field = await boxOf(place);
+    expect(field.x).toBeGreaterThanOrEqual(0);
+    expect(field.x + field.width).toBeLessThanOrEqual(VIEWPORT_WIDTH);
     await expectNoHorizontalScroll(page);
     const submit = dialog.getByRole("button", { name: d.newEquipment.submit });
     await submit.scrollIntoViewIfNeeded();

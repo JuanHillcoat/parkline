@@ -70,7 +70,10 @@ export type EquipmentSeed = {
   readonly year?: number;
 };
 
-/** Today is the default start day: a past day would need a reason, a future one hides nothing. */
+/**
+ * Today is the default start day: a past day would need a reason, a future one hides nothing. A `spare` kind
+ * is a spare of the SITE of that operation (a spare belongs to a site, ADR-0013); use `assignSpare` to name the site.
+ */
 export type AssignmentSeed = {
   readonly equipmentId: string;
   readonly operationId: string;
@@ -79,8 +82,22 @@ export type AssignmentSeed = {
   readonly reason?: string;
 };
 
-/** Moves the open assignment: it ends the day before `day` and a new one starts on `day`. */
-export type MoveSeed = { readonly equipmentId: string; readonly operationId: string; readonly day: string; readonly reason: string };
+/** A spare of a site: no operation, no division. */
+export type SpareSeed = {
+  readonly equipmentId: string;
+  readonly siteId: string;
+  readonly day?: string;
+  readonly reason?: string;
+};
+
+/** Moves the open assignment: it ends the day before `day` and a new one starts on `day`, in an operation or at a site (a spare). */
+export type MoveSeed = {
+  readonly equipmentId: string;
+  readonly operationId?: string;
+  readonly siteId?: string;
+  readonly day: string;
+  readonly reason: string;
+};
 
 /** Closes the open assignment on `day` (its last day). */
 export type EndSeed = { readonly equipmentId: string; readonly day: string; readonly reason: string };
@@ -106,6 +123,7 @@ export type Seeder = {
   /** Sets (or replaces) the image of an equipment through the edit use case; `bytes` must be a valid JPEG, PNG or WebP. */
   readonly equipmentImage: (equipmentId: string, bytes: Uint8Array) => Promise<void>;
   readonly assign: (input: AssignmentSeed) => Promise<void>;
+  readonly assignSpare: (input: SpareSeed) => Promise<void>;
   readonly move: (input: MoveSeed) => Promise<void>;
   readonly end: (input: EndSeed) => Promise<void>;
   /** Archives an equipment that has no open assignment. */
@@ -149,6 +167,7 @@ function fleetSeeds(c: Container, actor: Actor) {
           model: input.model ?? "MODELO",
           year: input.year ?? null,
           serialNumber: null,
+          batteryKind: "combustion",
           batteryQuantity: null,
           observations: null,
         }),
@@ -167,6 +186,7 @@ function fleetSeeds(c: Container, actor: Actor) {
           model: e.model,
           year: e.year,
           serialNumber: e.serialNumber,
+          batteryKind: e.batteryKind ?? "combustion",
           batteryQuantity: e.batteryQuantity,
           observations: e.observations,
           image: { action: "replace", bytes },
@@ -178,22 +198,42 @@ function fleetSeeds(c: Container, actor: Actor) {
 
 const today = (): string => new Date().toISOString().slice(0, 10);
 
+async function siteOfOperation(c: Container, actor: Actor, operationId: string): Promise<string> {
+  const operation = must(await c.organization.listOperations.execute({ actor })).find((row) => row.id === operationId);
+  if (operation === undefined) throw new Error(`Seeding failed: operation ${operationId} not found`);
+  return operation.siteId;
+}
+
 function assignmentSeeds(c: Container, actor: Actor, analyst: Actor) {
   return {
     assign: async (input: AssignmentSeed) => {
+      const target = input.kind === "spare" ? { siteId: await siteOfOperation(c, actor, input.operationId) } : { operationId: input.operationId };
       must(
         await c.fleet.assignEquipment.execute({
           actor,
           equipmentId: input.equipmentId,
-          operationId: input.operationId,
-          kind: input.kind ?? "active",
+          target,
+          day: input.day ?? today(),
+          reason: input.reason ?? null,
+        }),
+      );
+    },
+    assignSpare: async (input: SpareSeed) => {
+      must(
+        await c.fleet.assignEquipment.execute({
+          actor,
+          equipmentId: input.equipmentId,
+          target: { siteId: input.siteId },
           day: input.day ?? today(),
           reason: input.reason ?? null,
         }),
       );
     },
     move: async (input: MoveSeed) => {
-      must(await c.fleet.moveEquipment.execute({ actor, ...input }));
+      const { operationId, siteId, ...rest } = input;
+      if (siteId === undefined && operationId === undefined) throw new Error("The move seeder needs an operationId or a siteId");
+      const target = siteId === undefined ? { operationId: operationId ?? "" } : { siteId };
+      must(await c.fleet.moveEquipment.execute({ actor, ...rest, target }));
     },
     end: async (input: EndSeed) => {
       must(await c.fleet.endAssignment.execute({ actor, ...input }));
