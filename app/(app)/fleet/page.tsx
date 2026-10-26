@@ -20,6 +20,7 @@ import {
   parseEquipmentState,
   parseFleetTab,
   parsePage,
+  siteOptions,
   supplierNamesOf,
   supplierOptions,
   type FleetQuery,
@@ -98,7 +99,7 @@ function Actions({ data, tab }: { data: Data; tab: FleetTab }) {
     <span className="head-actions">
       {tab === "suppliers" && <NewSupplierDialog />}
       {tab === "asset-types" && <NewAssetTypeDialog />}
-      {tab === "equipment" && canCreateEquipment(options.suppliers, options.assetTypes) && <NewEquipmentDialog options={options} operations={operationOptions(data.operations)} today={dayOf(new Date())} />}
+      {tab === "equipment" && canCreateEquipment(options.suppliers, options.assetTypes) && <NewEquipmentDialog options={options} operations={operationOptions(data.operations)} sites={siteOptions(data.sites)} today={dayOf(new Date())} />}
     </span>
   );
 }

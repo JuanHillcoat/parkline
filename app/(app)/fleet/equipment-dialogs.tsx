@@ -1,8 +1,10 @@
 import { EditImageField, NewImageField } from "../../_components/image-field";
 import { ActionDialog, type DialogAction } from "../../_components/action-dialog";
 import { DateField, ReasonField, SelectField, TextField, type Option } from "../../_components/form-fields";
+import { PlacementFields } from "../../_components/placement-fields";
 import { copy } from "../../_lib/copy";
 import type { AssetTypeOption, EquipmentFormValues, EquipmentRow } from "../../_lib/fleet-view";
+import { BatteryFields } from "./battery-fields";
 import { createEquipmentAction, updateEquipmentAction } from "./actions";
 import { InitialReadingFields } from "./initial-reading-fields";
 
@@ -10,7 +12,7 @@ export type EquipmentOptions = { readonly suppliers: readonly Option[]; readonly
 
 const EMPTY: EquipmentFormValues = {
   internalCode: "", supplierId: "", assetTypeId: "", brand: "", model: "",
-  year: "", serialNumber: "", batteryQuantity: "", observations: "",
+  year: "", serialNumber: "", batteryKind: "", batteryQuantity: "", observations: "",
 };
 
 type FieldsProps = { readonly idPrefix: string; readonly options: EquipmentOptions; readonly initial: EquipmentFormValues };
@@ -19,7 +21,7 @@ function IdentityFields({ idPrefix, options, initial }: FieldsProps) {
   const t = copy.dialogs.equipmentFields;
   return (
     <>
-      <TextField id={`${idPrefix}-code`} name="internalCode" label={t.internalCodeLabel} hint={t.internalCodeHint}
+      <TextField id={`${idPrefix}-code`} name="internalCode" label={t.internalCodeLabel}
         placeholder={t.internalCodePlaceholder} initial={initial.internalCode} required mono />
       <SelectField id={`${idPrefix}-supplier`} name="supplierId" label={t.supplierLabel}
         prompt={t.selectSupplier} options={options.suppliers} initial={initial.supplierId} />
@@ -29,79 +31,61 @@ function IdentityFields({ idPrefix, options, initial }: FieldsProps) {
   );
 }
 
+/** Brand, model, year, serial number and the battery, in the order of the registration. */
 function DetailFields({ idPrefix, initial }: Pick<FieldsProps, "idPrefix" | "initial">) {
   const t = copy.dialogs.equipmentFields;
   return (
     <>
       <TextField id={`${idPrefix}-brand`} name="brand" label={t.brandLabel} initial={initial.brand} required />
       <TextField id={`${idPrefix}-model`} name="model" label={t.modelLabel} initial={initial.model} required />
-      <TextField id={`${idPrefix}-year`} name="year" label={t.yearLabel} hint={t.yearHint}
+      <TextField id={`${idPrefix}-year`} name="year" label={t.yearLabel} placeholder={t.yearPlaceholder}
         initial={initial.year} numeric={{ min: 1950, max: new Date().getFullYear() + 1 }} />
       <TextField id={`${idPrefix}-serial`} name="serialNumber" label={t.serialNumberLabel}
-        hint={t.serialNumberHint} initial={initial.serialNumber} />
-      <TextField id={`${idPrefix}-batteries`} name="batteryQuantity" label={t.batteryQuantityLabel}
-        hint={t.batteryQuantityHint} initial={initial.batteryQuantity} numeric={{ min: 0, max: 4 }} />
+        placeholder={t.serialNumberPlaceholder} initial={initial.serialNumber} />
+      <BatteryFields idPrefix={idPrefix} initialKind={initial.batteryKind} initialQuantity={initial.batteryQuantity} />
     </>
   );
 }
 
 function ObservationsField({ id, initial }: { id: string; initial: string }) {
   return (
-    <div className="field">
+    <div className="field field-span-2">
       <label htmlFor={id}>{copy.dialogs.equipmentFields.observationsLabel}</label>
-      <textarea id={id} name="observations" rows={3} maxLength={500} defaultValue={initial} className="input" />
+      <textarea id={id} name="observations" rows={2} maxLength={500} defaultValue={initial} className="input" />
     </div>
   );
 }
 
-function EquipmentFields(props: FieldsProps) {
-  return (
-    <>
-      <IdentityFields {...props} />
-      <DetailFields idPrefix={props.idPrefix} initial={props.initial} />
-      <ObservationsField id={`${props.idPrefix}-observations`} initial={props.initial.observations} />
-    </>
-  );
-}
-
-const KINDS: readonly Option[] = [
-  { id: "active", name: copy.fleet.detail.kinds.active },
-  { id: "spare", name: copy.fleet.detail.kinds.spare },
-];
-
-type AssignmentProps = { readonly operations: readonly Option[]; readonly today: string };
-
-/** The optional first assignment: the server asks for the reason only when the day is in the past. */
-function AssignmentFields({ operations, today }: AssignmentProps) {
-  const t = copy.dialogs.assignEquipment;
-  const n = copy.dialogs.newEquipment;
-  return (
-    <fieldset className="field choice-group">
-      <legend>{n.assignmentLegend}</legend>
-      <span className="hint">{n.assignmentHint}</span>
-      <SelectField id="new-equipment-operation" name="operationId" label={t.operationLabel} prompt={n.noOperation}
-        options={operations} optional />
-      <SelectField id="new-equipment-kind" name="kind" label={t.kindLabel} prompt={t.selectKind} options={KINDS} initial="active" />
-      <DateField id="new-equipment-day" name="day" label={t.dayLabel} initial={today} />
-      <ReasonField id="new-equipment-reason" placeholder={t.reasonPlaceholder} optional={{ label: t.reasonLabel, hint: t.reasonHint }} />
-    </fieldset>
-  );
-}
-
-type NewProps = AssignmentProps & { readonly options: EquipmentOptions };
+type NewProps = {
+  readonly options: EquipmentOptions;
+  readonly operations: readonly Option[];
+  readonly sites: readonly Option[];
+  readonly today: string;
+};
 
 const metersOf = (options: EquipmentOptions): Record<string, AssetTypeOption["meterKind"]> =>
   Object.fromEntries(options.assetTypes.map((type) => [type.id, type.meterKind]));
 
-export function NewEquipmentDialog({ options, operations, today }: NewProps) {
+/**
+ * The registration on one screen (issue 54, D6): identity, battery, Horómetro (only for a type with a meter),
+ * image, Operación (or Muleto with its Site), "Desde el día" (the day of the assignment and of the reading)
+ * and Observaciones last, which is also the reason of the assignment.
+ */
+export function NewEquipmentDialog({ options, operations, sites, today }: NewProps) {
   const t = copy.dialogs.newEquipment;
+  const id = "new-equipment";
   return (
-    <ActionDialog triggerLabel={t.trigger} triggerClassName="btn btn-primary" title={t.title}
+    <ActionDialog triggerLabel={t.trigger} triggerClassName="btn btn-primary" title={t.title} wide
       description={t.description} submitLabel={t.submit} action={createEquipmentAction}>
-      <EquipmentFields idPrefix="new-equipment" options={options} initial={EMPTY} />
-      <NewImageField id="new-equipment-image" />
-      <AssignmentFields operations={operations} today={today} />
-      <InitialReadingFields selectId="new-equipment-type" meters={metersOf(options)} today={today} />
+      <div className="form-grid">
+        <IdentityFields idPrefix={id} options={options} initial={EMPTY} />
+        <DetailFields idPrefix={id} initial={EMPTY} />
+        <InitialReadingFields selectId={`${id}-type`} meters={metersOf(options)} />
+        <NewImageField id={`${id}-image`} />
+        <PlacementFields idPrefix={id} label={t.operationLabel} prompt={t.noOperation} operations={operations} sites={sites} optional />
+        <DateField id={`${id}-day`} name="day" label={t.dayLabel} initial={today} />
+        <ObservationsField id={`${id}-observations`} initial="" />
+      </div>
     </ActionDialog>
   );
 }
@@ -119,12 +103,18 @@ export function EditEquipmentDialog({ target, options, triggerClassName = "btn b
   const t = copy.dialogs.editEquipment;
   const key = `edit-equipment-${target.id}`;
   return (
-    <ActionDialog triggerLabel={t.trigger} triggerClassName={triggerClassName} title={t.title(target.internalCode)}
+    <ActionDialog triggerLabel={t.trigger} triggerClassName={triggerClassName} title={t.title(target.internalCode)} wide
       description={t.description} submitLabel={t.submit} action={action}>
       <input type="hidden" name="id" value={target.id} />
-      <EquipmentFields idPrefix={key} options={options} initial={target.form} />
-      <EditImageField id={`${key}-image`} currentUrl={target.imageUrl} />
-      <ReasonField id={`${key}-reason`} placeholder={t.reasonPlaceholder} />
+      <div className="form-grid">
+        <IdentityFields idPrefix={key} options={options} initial={target.form} />
+        <DetailFields idPrefix={key} initial={target.form} />
+        <EditImageField id={`${key}-image`} currentUrl={target.imageUrl} />
+        <ObservationsField id={`${key}-observations`} initial={target.form.observations} />
+        <div className="field-span-2">
+          <ReasonField id={`${key}-reason`} placeholder={t.reasonPlaceholder} />
+        </div>
+      </div>
     </ActionDialog>
   );
 }

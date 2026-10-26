@@ -1,4 +1,7 @@
 import type { ImageChange } from "../../src/fleet/application/equipment-image";
+import type { AssignmentTarget } from "../../src/fleet/application/assignment-support";
+import { ValidationError, type DomainError } from "../../src/shared/domain/domain-error";
+import { err, type Result } from "../../src/shared/domain/result";
 import { field } from "./action-state";
 
 /**
@@ -30,19 +33,45 @@ export const equipmentFields = (form: FormData) => ({
   model: field(form, "model"),
   year: optionalInteger(field(form, "year")),
   serialNumber: optionalText(field(form, "serialNumber")),
+  batteryKind: field(form, "batteryKind").trim(),
   batteryQuantity: optionalInteger(field(form, "batteryQuantity")),
   observations: optionalText(field(form, "observations")),
 });
 
 /**
- * The optional first assignment of a new equipment. Nothing is sent unless an operation was chosen; then the
- * kind, the day and the reason travel with it. A blank reason is "not set": only a past day makes it mandatory.
+ * Where an equipment goes: the `operationId` of the form, else its `siteId` (a spare of that site, ADR-0013).
+ * Neither chosen is `undefined`.
+ */
+export const targetOf = (form: FormData): AssignmentTarget | undefined => {
+  const operationId = field(form, "operationId").trim();
+  if (operationId !== "") return { operationId };
+  const siteId = field(form, "siteId").trim();
+  return siteId === "" ? undefined : { siteId };
+};
+
+/**
+ * The optional first assignment of a new equipment. Nothing is sent unless an operation or a site (the
+ * equipment is born a spare of it) was chosen; then the day ("Desde el día") and the reason travel with it. The
+ * reason is the Observaciones of the form: blank is "not set", and only a past day makes it mandatory.
  */
 export const assignmentOnCreate = (form: FormData) => {
-  const operationId = field(form, "operationId").trim();
-  if (operationId === "") return undefined;
-  return { operationId, kind: field(form, "kind"), day: field(form, "day").trim(), reason: optionalText(field(form, "reason")) };
+  const target = targetOf(form);
+  if (target === undefined) return undefined;
+  return { target, day: field(form, "day").trim(), reason: optionalText(field(form, "observations")) };
 };
+
+/** The registration asks for its reason in Observaciones, so the generic "motivo" wording would confuse. */
+class RegistrationDayInPastError extends ValidationError {
+  readonly code: string = "registration_day_in_past";
+
+  constructor() {
+    super("The reason of a past day is written in Observaciones", "observations");
+  }
+}
+
+/** Rewords the typed `reason_required` of a registration so the message names Observaciones; anything else passes. */
+export const registrationWording = <T>(result: Result<T, DomainError>): Result<T, DomainError> =>
+  result.ok || result.error.code !== "reason_required" ? result : err(new RegistrationDayInPastError());
 
 /**
  * The bytes of an uploaded file. A file input left empty arrives as an empty file whose name the framework may

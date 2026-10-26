@@ -1403,3 +1403,46 @@ dialog.dialog::backdrop {
     width: 100%;
   }
 }
+
+/* Wide dialogs with a multi-column form (issue 54): the new equipment dialog fits a desktop screen without scrolling */
+dialog.dialog-wide {
+  width: min(1000px, calc(100vw - 32px));
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px 16px;
+  margin-top: 14px;
+}
+
+.form-grid .field {
+  min-width: 0;
+  margin-top: 0;
+}
+
+.form-grid .field-span-2,
+.form-grid > .choice-group {
+  grid-column: span 2;
+}
+
+.form-grid textarea.input {
+  min-height: 60px;
+}
+
+@media (max-width: 900px) {
+  .form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .form-grid .field-span-2,
+  .form-grid > .choice-group {
+    grid-column: auto;
+  }
+}

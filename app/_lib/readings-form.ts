@@ -37,11 +37,11 @@ export const replaceMeterFields = (form: FormData) => ({
 });
 
 /**
- * The optional first reading of a new equipment. Nothing is sent unless a value was typed; then the day
- * travels with it. A value that is not a number is sent as NaN so the use case answers with its typed error.
+ * The optional first reading of a new equipment ("Horómetro"). Nothing is sent unless a value was typed; then
+ * the day travels with it: the "Desde el día" of the registration, shared with the assignment. A value that is not a number is sent as NaN so the use case answers with its typed error.
  */
 export const initialReadingOnCreate = (form: FormData) => {
   const raw = field(form, "readingValue").trim();
   if (raw === "") return undefined;
-  return { day: day(form, "readingDay"), value: readingNumber(raw) };
+  return { day: day(form, "day"), value: readingNumber(raw) };
 };

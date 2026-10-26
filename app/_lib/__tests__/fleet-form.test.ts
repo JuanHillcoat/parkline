@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { assetTypeFields, assignmentOnCreate, equipmentFields, imageChange, newImage, optionalInteger, optionalText } from "../fleet-form";
+import { InvalidDayError, ReasonRequiredError } from "../../../src/fleet/domain/errors";
+import { err, ok } from "../../../src/shared/domain/result";
+import { errorMessage } from "../messages";
+import {
+  assetTypeFields,
+  assignmentOnCreate,
+  equipmentFields,
+  imageChange,
+  newImage,
+  optionalInteger,
+  optionalText,
+  registrationWording,
+} from "../fleet-form";
 
 const form = (entries: Record<string, string>): FormData => {
   const data = new FormData();
@@ -45,11 +57,11 @@ describe("equipmentFields", () => {
   it("converts numbers and blank optional text, and passes brand and model as typed", () => {
     const data = form({
       supplierId: "s1", assetTypeId: "a1", internalCode: "c-043", brand: " ", model: "M-1",
-      year: "2020", serialNumber: " ", batteryQuantity: "2", observations: "",
+      year: "2020", serialNumber: " ", batteryKind: " lead_acid ", batteryQuantity: "2", observations: "",
     });
     expect(equipmentFields(data)).toEqual({
       supplierId: "s1", assetTypeId: "a1", internalCode: "c-043", brand: " ", model: "M-1",
-      year: 2020, serialNumber: null, batteryQuantity: 2, observations: null,
+      year: 2020, serialNumber: null, batteryKind: "lead_acid", batteryQuantity: 2, observations: null,
     });
   });
 
@@ -58,23 +70,53 @@ describe("equipmentFields", () => {
   });
 });
 
-describe("assignmentOnCreate", () => {
-  it("sends nothing when no operation was chosen, whatever the other fields carry", () => {
-    expect(assignmentOnCreate(form({ operationId: "", kind: "active", day: "2026-01-10", reason: "x" }))).toBeUndefined();
-    expect(assignmentOnCreate(form({}))).toBeUndefined();
-    expect(assignmentOnCreate(form({ operationId: "   ", kind: "active", day: "2026-01-10" }))).toBeUndefined();
+describe("registrationWording", () => {
+  const reasonRequired = new ReasonRequiredError();
+
+  it("rewords the missing reason of a past day so the message names Observaciones", () => {
+    const result = registrationWording(err(reasonRequired));
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("registration_day_in_past");
+      expect(errorMessage(result.error)).toContain("Observaciones");
+    }
   });
 
-  it("maps the chosen operation with its kind, trimmed day and a blank reason as null", () => {
-    expect(assignmentOnCreate(form({ operationId: "op1", kind: "spare", day: " 2026-01-10 ", reason: "  " }))).toEqual({
-      operationId: "op1", kind: "spare", day: "2026-01-10", reason: null,
+  it("passes a success and every other error unchanged", () => {
+    const success = ok("done");
+    const other = err(new InvalidDayError("bad day"));
+    expect(registrationWording(success)).toBe(success);
+    expect(registrationWording(other)).toBe(other);
+  });
+});
+
+describe("assignmentOnCreate", () => {
+  it("sends nothing when no operation or site was chosen, whatever the other fields carry", () => {
+    expect(assignmentOnCreate(form({ operationId: "", day: "2026-01-10", reason: "x" }))).toBeUndefined();
+    expect(assignmentOnCreate(form({}))).toBeUndefined();
+    expect(assignmentOnCreate(form({ operationId: "   ", siteId: " ", day: "2026-01-10" }))).toBeUndefined();
+  });
+
+  it("maps the chosen operation with its trimmed day and a blank reason as null", () => {
+    expect(assignmentOnCreate(form({ operationId: "op1", day: " 2026-01-10 ", reason: "  " }))).toEqual({
+      target: { operationId: "op1" }, day: "2026-01-10", reason: null,
     });
   });
 
-  it("keeps a given reason for the use case to trim and validate", () => {
-    expect(assignmentOnCreate(form({ operationId: "op1", kind: "active", day: "2026-01-10", reason: "Cargado tarde" }))?.reason).toBe(
+  it("maps a chosen site to a spare target", () => {
+    expect(assignmentOnCreate(form({ operationId: "", siteId: "s1", day: "2026-01-10" }))).toEqual({
+      target: { siteId: "s1" }, day: "2026-01-10", reason: null,
+    });
+  });
+
+  it("takes the reason from Observaciones, kept as typed for the use case to trim and validate", () => {
+    expect(assignmentOnCreate(form({ operationId: "op1", day: "2026-01-10", observations: "Cargado tarde" }))?.reason).toBe(
       "Cargado tarde",
     );
+  });
+
+  it("ignores a separate reason field: the registration has none", () => {
+    expect(assignmentOnCreate(form({ operationId: "op1", day: "2026-01-10", reason: "Ignored" }))?.reason).toBeNull();
   });
 
   it("does not leak into the equipment fields", () => {

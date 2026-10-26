@@ -5,7 +5,7 @@ import type { ActorContext } from "../../../../../src/identity/application/actor
 import type { EquipmentListItem } from "../../../../../src/fleet/application/equipment-visibility";
 import type { EquipmentReadings } from "../../../../../src/metering/application/use-cases/list-equipment-readings";
 import { dayOf } from "../../../../../src/fleet/domain/day";
-import type { Operation } from "../../../../../src/organization/domain/entities";
+import type { Operation, Site } from "../../../../../src/organization/domain/entities";
 import type { Actor } from "../../../../../src/shared/domain/ports/access-policy";
 import { ok, type Result } from "../../../../../src/shared/domain/result";
 import { getContainer } from "../../../../../src/shared/infrastructure/container";
@@ -19,9 +19,14 @@ import {
   detailState,
   hasHeaderButtons,
   correctionOperations,
+  correctionSites,
   incomingCandidates,
+  moveOperations,
+  moveSites,
   parseDetailTab,
+  positionOfPlacement,
   writableOperations,
+  writableSites,
   type DetailActions,
   type DetailPlaces,
   type DetailTab,
@@ -62,13 +67,16 @@ async function loadPlaces(actor: Actor) {
     organization.listBusinessUnits.execute({ actor }),
   ]);
   const places: DetailPlaces = { operations: listOrEmpty(operations), sites: listOrEmpty(sites), divisions: listOrEmpty(divisions) };
-  return { places, operations: listOrEmpty(operations) };
+  return { places, operations: listOrEmpty(operations), sites: listOrEmpty(sites) };
 }
 
 type ActionData = {
   readonly today: string;
   readonly moveTo: readonly Option[];
   readonly assignTo: readonly Option[];
+  /** The sites that can hold a spare (the actor writes at them) and those a move can still go to. */
+  readonly spareAt: readonly Option[];
+  readonly moveSpareAt: readonly Option[];
   readonly candidates: readonly Option[];
   readonly options: EquipmentOptions;
 };
@@ -84,6 +92,10 @@ const writeAt = (actor: Actor) => (op: Place): boolean =>
     siteId: op.siteId,
   }).ok;
 
+/** Whether the actor holds `catalog.write` at the position of a site, where a spare lives (no division, no operation). */
+const writeAtSite = (actor: Actor) => (site: { readonly id: string }): boolean =>
+  getContainer().accessPolicy.check(actor, "catalog.write", { tenantId: actor.tenantId, siteId: site.id }).ok;
+
 /** The catalogs of the edit dialog and the free equipment of the replace dialog, read only when those buttons show. */
 async function loadChoices(actor: Actor, item: EquipmentListItem, actions: DetailActions) {
   const { fleet } = getContainer();
@@ -98,12 +110,17 @@ async function loadChoices(actor: Actor, item: EquipmentListItem, actions: Detai
   };
 }
 
-async function loadActionData(actor: Actor, item: EquipmentListItem, actions: DetailActions, operations: readonly Operation[]): Promise<ActionData> {
-  const assignTo = writableOperations(operations, writeAt(actor));
+type Places = { readonly operations: readonly Operation[]; readonly sites: readonly Site[] };
+
+async function loadActionData(actor: Actor, item: EquipmentListItem, actions: DetailActions, places: Places): Promise<ActionData> {
+  const assignTo = writableOperations(places.operations, writeAt(actor));
+  const spareAt = writableSites(places.sites, writeAtSite(actor));
   return {
     today: dayOf(new Date()),
     assignTo,
-    moveTo: assignTo.filter((op) => op.id !== item.assignment?.operationId),
+    moveTo: moveOperations(assignTo, item.assignment),
+    spareAt,
+    moveSpareAt: moveSites(spareAt, item.assignment),
     ...(await loadChoices(actor, item, actions)),
   };
 }
@@ -114,8 +131,8 @@ function AssignmentButtons({ item, actions, data, canArchive }: ButtonsProps) {
   const target = { id: item.id, code: item.internalCode };
   return (
     <>
-      {actions.assign && <AssignDialog target={target} today={data.today} operations={data.assignTo} />}
-      {actions.move && <MoveDialog target={target} today={data.today} operations={data.moveTo} />}
+      {actions.assign && <AssignDialog target={target} today={data.today} operations={data.assignTo} sites={data.spareAt} />}
+      {actions.move && <MoveDialog target={target} today={data.today} operations={data.moveTo} sites={data.moveSpareAt} />}
       {actions.replace && <ReplaceDialog target={target} today={data.today} candidates={data.candidates} canArchive={canArchive} />}
       {actions.end && <EndDialog target={target} today={data.today} />}
     </>
@@ -188,9 +205,10 @@ async function History({ item, actor, places, canWrite, data }: HistoryProps) {
   const listed = await getContainer().fleet.listEquipmentAssignments.execute({ actor, equipmentId: item.id });
   const rows = buildHistoryRows(listOrEmpty(listed), places);
   const operationsFor = (row: { form: { operationId: string } }) => correctionOperations(data.assignTo, row.form.operationId, places.operations);
+  const sitesFor = (row: { form: { siteId: string } }) => correctionSites(data.spareAt, row.form.siteId, places.sites);
   return (
     <section className="card section-card tab-panel" aria-label={t.history.title}>
-      <HistoryPanel equipmentId={item.id} rows={rows} canCorrect={canWrite} operationsFor={operationsFor} />
+      <HistoryPanel equipmentId={item.id} rows={rows} canCorrect={canWrite} operationsFor={operationsFor} sitesFor={sitesFor} />
     </section>
   );
 }
@@ -226,10 +244,7 @@ async function loadNames(context: ActorContext): Promise<ReadonlyMap<string, str
 /** `reading.write` and `reading.correct` at the position of the open assignment (or the company without one). */
 const readingAccessOf = (actor: Actor, item: EquipmentListItem, meterKind: EquipmentListItem["assetType"]["meterKind"]) => {
   const { accessPolicy } = getContainer();
-  const open = item.assignment;
-  const position = open === null
-    ? { tenantId: actor.tenantId }
-    : { tenantId: actor.tenantId, businessUnitId: open.businessUnitId, operationId: open.operationId, siteId: open.siteId };
+  const position = positionOfPlacement(actor.tenantId, item.assignment);
   return {
     canWrite: accessPolicy.check(actor, "reading.write", position).ok,
     canCorrect: accessPolicy.check(actor, "reading.correct", position).ok,
@@ -257,8 +272,8 @@ export default async function EquipmentDetailPage({ params, searchParams }: Prop
   const tab = parseDetailTab((await searchParams).tab);
   const access = accessOf(actor);
   const actions = detailActions({ ...access, archived: item.archivedAt !== null, assigned: item.assignment !== null });
-  const { places, operations } = await loadPlaces(actor);
-  const data = await loadActionData(actor, item, actions, operations);
+  const { places, operations, sites } = await loadPlaces(actor);
+  const data = await loadActionData(actor, item, actions, { operations, sites });
   const buttons = <ActionButtons item={item} actions={actions} data={data} places={places} canArchive={access.canArchive} />;
   return (
     <>
