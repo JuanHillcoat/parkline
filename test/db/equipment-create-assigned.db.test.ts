@@ -83,12 +83,12 @@ async function parents(label: string) {
 }
 
 type Parents = Awaited<ReturnType<typeof parents>>;
-type Assignment = { operationId: string; kind: string; day: string; reason: string | null };
+type Assignment = { target: { operationId: string } | { siteId: string }; day: string; reason: string | null };
 
 const createAssigned = (p: Parents, assignment: Assignment | undefined, extra: { actor?: Actor; image?: Uint8Array } = {}) =>
   c.fleet.createEquipment.execute({
     actor: extra.actor ?? adminActor, supplierId: p.supplierId, assetTypeId: p.assetTypeId, internalCode: p.internalCode,
-    brand: "Brand", model: "Model", year: null, serialNumber: null, batteryQuantity: null, observations: null,
+    brand: "Brand", model: "Model", year: null, serialNumber: null, batteryKind: "combustion", batteryQuantity: null, observations: null,
     ...(assignment === undefined ? {} : { assignment }), ...(extra.image === undefined ? {} : { image: extra.image }),
   });
 
@@ -127,7 +127,7 @@ describe("CreateEquipment with an assignment against Postgres", () => {
   it("creates the equipment and an open assignment as parkline_app, with both audit entries", async () => {
     const org = await operationFixture("Born");
     const p = await parents("Born");
-    const created = must(await createAssigned(p, { operationId: org.operation.id, kind: "active", day: today(), reason: null }));
+    const created = must(await createAssigned(p, { target: { operationId: org.operation.id }, day: today(), reason: null }));
     const [row] = await assignmentsOf(created.id);
     expect(row).toMatchObject({ operation_id: org.operation.id, kind: "active", reason: null, valid_to: null, valid_from: today() });
     expect((await auditOf(created.id)).map((e) => e.action)).toEqual(["fleet.equipment.create"]);
@@ -137,7 +137,7 @@ describe("CreateEquipment with an assignment against Postgres", () => {
   it("stores a spare assignment from a past day with its reason in the row and in the audit entry", async () => {
     const org = await operationFixture("Past");
     const p = await parents("Past");
-    const created = must(await createAssigned(p, { operationId: org.operation.id, kind: "spare", day: "2026-01-05", reason: "Cargado tarde" }));
+    const created = must(await createAssigned(p, { target: { siteId: org.site.id }, day: "2026-01-05", reason: "Cargado tarde" }));
     const [row] = await assignmentsOf(created.id);
     expect(row).toMatchObject({ kind: "spare", valid_from: "2026-01-05", reason: "Cargado tarde" });
     expect(await auditOf(row?.id ?? "")).toMatchObject([{ action: "fleet.assignment.create", reason: "Cargado tarde" }]);
@@ -147,7 +147,7 @@ describe("CreateEquipment with an assignment against Postgres", () => {
     const org = await operationFixture("Img");
     const p = await parents("Img");
     const image = jpeg(9);
-    const created = must(await createAssigned(p, { operationId: org.operation.id, kind: "active", day: today(), reason: null }, { image }));
+    const created = must(await createAssigned(p, { target: { operationId: org.operation.id }, day: today(), reason: null }, { image }));
     expect(must(await c.fleet.getEquipmentImage.execute({ actor: adminActor, id: created.id })).sha256).toBe(imageHash(image));
     expect(await assignmentsOf(created.id)).toHaveLength(1);
   });
@@ -156,7 +156,7 @@ describe("CreateEquipment with an assignment against Postgres", () => {
     const org = await operationFixture("Atomic");
     must(await c.organization.archiveOperation.execute({ actor: analyst, id: org.operation.id, reason: "Closed" }));
     const p = await parents("Atomic");
-    const result = await createAssigned(p, { operationId: org.operation.id, kind: "active", day: today(), reason: null }, { image: jpeg(8) });
+    const result = await createAssigned(p, { target: { operationId: org.operation.id }, day: today(), reason: null }, { image: jpeg(8) });
     expect(code(result)).toBe("operation_archived");
     expect(await equipmentsOf(p)).toHaveLength(0);
     expect(await orphanAudits()).toEqual([{ n: 0 }]);
@@ -164,14 +164,14 @@ describe("CreateEquipment with an assignment against Postgres", () => {
       select count(*)::int as n from equipment_images i where not exists (select 1 from equipments e where e.id = i.equipment_id)`;
     expect(images).toEqual([{ n: 0 }]);
     const live = await operationFixture("AtomicOk");
-    expect(code(await createAssigned(p, { operationId: live.operation.id, kind: "active", day: today(), reason: null }))).toBe("ok");
+    expect(code(await createAssigned(p, { target: { operationId: live.operation.id }, day: today(), reason: null }))).toBe("ok");
   });
 
   it("rolls back everything for a past day without a reason and for an unknown operation", async () => {
     const org = await operationFixture("Rollback");
     const p = await parents("Rollback");
-    expect(code(await createAssigned(p, { operationId: org.operation.id, kind: "active", day: "2025-01-01", reason: null }))).toBe("reason_required");
-    const missing = { operationId: "00000000-0000-4000-8000-000000000000", kind: "active", day: today(), reason: null };
+    expect(code(await createAssigned(p, { target: { operationId: org.operation.id }, day: "2025-01-01", reason: null }))).toBe("reason_required");
+    const missing = { target: { operationId: "00000000-0000-4000-8000-000000000000" }, day: today(), reason: null };
     expect(code(await createAssigned(p, missing))).toBe("not_found");
     expect(await equipmentsOf(p)).toHaveLength(0);
     expect(await orphanAudits()).toEqual([{ n: 0 }]);
@@ -182,7 +182,7 @@ describe("CreateEquipment with an assignment against Postgres", () => {
     const other = await operationFixture("ScopeOther");
     const scoped = await staff("scoped@example.test", "fleet_analyst", { type: "operation", id: other.operation.id });
     const p = await parents("Scope");
-    const result = await createAssigned(p, { operationId: org.operation.id, kind: "active", day: today(), reason: null }, { actor: scoped });
+    const result = await createAssigned(p, { target: { operationId: org.operation.id }, day: today(), reason: null }, { actor: scoped });
     expect(code(result)).toBe("forbidden");
     expect(await equipmentsOf(p)).toHaveLength(0);
   });
@@ -194,7 +194,7 @@ describe("CreateEquipment with an assignment against Postgres", () => {
     expect(await owner`select 1 from pg_constraint where conname = ${NO_OVERLAP}`).toHaveLength(1);
     const org = await operationFixture("Plain");
     const assign = () =>
-      c.fleet.assignEquipment.execute({ actor: adminActor, equipmentId: created.id, operationId: org.operation.id, kind: "active", day: today() });
+      c.fleet.assignEquipment.execute({ actor: adminActor, equipmentId: created.id, target: { operationId: org.operation.id }, day: today() });
     expect(code(await assign())).toBe("ok");
     expect(code(await assign())).toBe("open_assignment_exists");
   });
@@ -205,9 +205,9 @@ describe("CreateEquipment with an assignment against Postgres", () => {
       const other = must(await createAssigned(await parents(`RaceOther ${String(round)}`), undefined));
       const day = today();
       const results = await Promise.all([
-        createAssigned(await parents(`RaceNew ${String(round)}`), { operationId: org.operation.id, kind: "active", day, reason: null }),
-        c.fleet.assignEquipment.execute({ actor: analyst, equipmentId: other.id, operationId: org.operation.id, kind: "spare", day }),
-        createAssigned(await parents(`RaceNew2 ${String(round)}`), { operationId: org.operation.id, kind: "spare", day, reason: null }),
+        createAssigned(await parents(`RaceNew ${String(round)}`), { target: { operationId: org.operation.id }, day, reason: null }),
+        c.fleet.assignEquipment.execute({ actor: analyst, equipmentId: other.id, target: { siteId: org.site.id }, day }),
+        createAssigned(await parents(`RaceNew2 ${String(round)}`), { target: { siteId: org.site.id }, day, reason: null }),
       ]);
       expect(results.map(code)).toEqual(["ok", "ok", "ok"]);
     }
@@ -217,7 +217,7 @@ describe("CreateEquipment with an assignment against Postgres", () => {
     for (let round = 0; round < 6; round += 1) {
       const org = await operationFixture(`RaceArchive ${String(round)}`);
       const p = await parents(`RaceArchive ${String(round)}`);
-      const creating = createAssigned(p, { operationId: org.operation.id, kind: "active", day: today(), reason: null });
+      const creating = createAssigned(p, { target: { operationId: org.operation.id }, day: today(), reason: null });
       const archiving = c.organization.archiveOperation.execute({ actor: analyst, id: org.operation.id, reason: "Closed" });
       const [created, archived] = await Promise.all([creating, archiving]);
       const pair = `${code(created)}/${code(archived)}`;

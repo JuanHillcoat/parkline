@@ -82,13 +82,13 @@ async function parents(label: string, meterKind: "hours" | "km" | "none" = "hour
 }
 
 type Parents = Awaited<ReturnType<typeof parents>>;
-type Assignment = { operationId: string; kind: string; day: string; reason: string | null };
+type Assignment = { target: { operationId: string } | { siteId: string }; day: string; reason: string | null };
 type Extra = { image?: Uint8Array; assignment?: Assignment; reading?: { day: string; value: number } };
 
 const register = (p: Parents, extra: Extra = {}) =>
   c.fleet.createEquipment.execute({
     actor: adminActor, supplierId: p.supplierId, assetTypeId: p.assetTypeId, internalCode: p.internalCode,
-    brand: "Brand", model: "Model", year: null, serialNumber: null, batteryQuantity: null, observations: null,
+    brand: "Brand", model: "Model", year: null, serialNumber: null, batteryKind: "combustion", batteryQuantity: null, observations: null,
     ...(extra.assignment === undefined ? {} : { assignment: extra.assignment }),
     ...(extra.image === undefined ? {} : { image: extra.image }),
     ...(extra.reading === undefined ? {} : { initialReading: extra.reading }),
@@ -128,7 +128,7 @@ describe("CreateEquipment with an initial reading against Postgres", () => {
   it("stores the equipment, the assignment, the meter, the first reading and the three audit entries as parkline_app", async () => {
     const op = await operationFixture("Born");
     const p = await parents("Born");
-    const assignment = { operationId: op.id, kind: "active", day: today(), reason: null };
+    const assignment = { target: { operationId: op.id }, day: today(), reason: null };
     const created = must(await register(p, { assignment, reading: { day: today(), value: 1234.5 } }));
     expect(await metersOf(created.id)).toEqual([{ kind: "hours", opened_on: today(), initial_value_tenths: 12345 }]);
     expect(await readingsOf(created.id)).toEqual([{ kind: "reading", value_tenths: 12345, read_on: today() }]);
@@ -162,7 +162,7 @@ describe("CreateEquipment with an initial reading against Postgres", () => {
       const op = await operationFixture("Refused");
       const p = await parents("Refused", kind);
       const before = await totals();
-      const assignment = { operationId: op.id, kind: "active", day: today(), reason: null };
+      const assignment = { target: { operationId: op.id }, day: today(), reason: null };
       expect(code(await register(p, { assignment, reading: reading() }))).toBe(expected);
       expect(await equipmentsOf(p)).toHaveLength(0);
       expect(await totals()).toEqual(before);
@@ -177,9 +177,9 @@ describe("CreateEquipment with an initial reading against Postgres", () => {
       const other = must(await register(await parents(`RaceOther ${String(round)}`)));
       const day = today();
       const results = await Promise.all([
-        register(await parents(`RaceNew ${String(round)}`), { assignment: { operationId: op.id, kind: "active", day, reason: null }, reading: { day, value: 7 } }),
-        c.fleet.assignEquipment.execute({ actor: analyst, equipmentId: other.id, operationId: op.id, kind: "spare", day }),
-        register(await parents(`RaceNew2 ${String(round)}`), { assignment: { operationId: op.id, kind: "spare", day, reason: null }, reading: { day, value: 9 } }),
+        register(await parents(`RaceNew ${String(round)}`), { assignment: { target: { operationId: op.id }, day, reason: null }, reading: { day, value: 7 } }),
+        c.fleet.assignEquipment.execute({ actor: analyst, equipmentId: other.id, target: { operationId: op.id }, day }),
+        register(await parents(`RaceNew2 ${String(round)}`), { assignment: { target: { operationId: op.id }, day, reason: null }, reading: { day, value: 9 } }),
         c.metering.recordReading.execute({ actor: adminActor, equipmentId: other.id, day, value: 3 }),
       ]);
       expect(results.map(code)).toEqual(["ok", "ok", "ok", "ok"]);

@@ -86,7 +86,7 @@ const equipmentFields = (supplierId: string, assetTypeId: string, internalCode: 
   model: "Model",
   year: null,
   serialNumber: null,
-  batteryQuantity: null,
+  batteryKind: "combustion", batteryQuantity: null,
   observations: null,
 });
 
@@ -124,7 +124,7 @@ describe("fleet through the container as parkline_app", () => {
         ...equipmentFields(supplier.id, type.id, " eq-0001 "),
         brand: "Brand X",
         year: 2020,
-        batteryQuantity: 2,
+        batteryKind: "lead_acid", batteryQuantity: 2,
       }),
     );
     expect(equipment.internalCode).toBe("EQ-0001");
@@ -387,7 +387,7 @@ describe("equipment visibility follows the open assignment (D6) through the cont
     const idle = (await fixture(`VisC ${n}`)).equipment;
     const day = new Date().toISOString().slice(0, 10);
     const put = (equipmentId: string, operationId: string) =>
-      f().assignEquipment.execute({ actor: analyst, equipmentId, operationId, kind: "active", day });
+      f().assignEquipment.execute({ actor: analyst, equipmentId, target: { operationId }, day });
     must(await put(placed.id, first.operation.id));
     must(await put(other.id, second.operation.id));
     return { n, first, second, placed, other, idle };
@@ -426,7 +426,7 @@ describe("equipment visibility follows the open assignment (D6) through the cont
     const manager = await scopedStaff(`vis.mover.${s.n}@example.test`, "manager", "business_unit", s.first.division.id);
     expect(await idsOf(manager)).toContain(s.placed.id);
     const day = new Date().toISOString().slice(0, 10);
-    must(await f().moveEquipment.execute({ actor: analyst, equipmentId: s.placed.id, operationId: s.second.operation.id, day: new Date(Date.now() + 86_400_000).toISOString().slice(0, 10), reason: "Pedido" }));
+    must(await f().moveEquipment.execute({ actor: analyst, equipmentId: s.placed.id, target: { operationId: s.second.operation.id }, day: new Date(Date.now() + 86_400_000).toISOString().slice(0, 10), reason: "Pedido" }));
     expect(await idsOf(manager)).not.toContain(s.placed.id);
     must(await f().endAssignment.execute({ actor: analyst, equipmentId: s.other.id, day, reason: "Fin" }));
     const supervisor = await scopedStaff(`vis.ended.${s.n}@example.test`, "supervisor", "operation", s.second.operation.id);

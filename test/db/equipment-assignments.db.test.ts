@@ -103,7 +103,7 @@ async function equipmentFixture(label: string) {
   return must(
     await c.fleet.createEquipment.execute({
       actor: adminActor, supplierId: supplier.id, assetTypeId: type.id, internalCode: `EQ-${n}`,
-      brand: "Brand", model: "Model", year: null, serialNumber: null, batteryQuantity: null, observations: null,
+      brand: "Brand", model: "Model", year: null, serialNumber: null, batteryKind: "combustion", batteryQuantity: null, observations: null,
     }),
   );
 }
@@ -340,8 +340,10 @@ describe("audit reason trigger for the assignment actions", () => {
 
 describe("assignment flows through the container as parkline_app", () => {
   const f = () => c.fleet;
-  const assign = (equipmentId: string, operationId: string, extra: { kind?: string; day?: string; reason?: string } = {}) =>
-    f().assignEquipment.execute({ actor: analyst, equipmentId, operationId, kind: extra.kind ?? "active", day: extra.day ?? today(), reason: extra.reason });
+  const assign = (equipmentId: string, operationId: string, extra: { day?: string; reason?: string } = {}) =>
+    f().assignEquipment.execute({ actor: analyst, equipmentId, target: { operationId }, day: extra.day ?? today(), reason: extra.reason });
+  const assignSpare = (equipmentId: string, siteId: string, extra: { day?: string; reason?: string } = {}) =>
+    f().assignEquipment.execute({ actor: analyst, equipmentId, target: { siteId }, day: extra.day ?? today(), reason: extra.reason });
 
   it("assigns, lists and audits; a past start needs a reason and a bad day is refused", async () => {
     const org = await operationFixture("Assign");
@@ -363,7 +365,7 @@ describe("assignment flows through the container as parkline_app", () => {
   it("returns days as YYYY-MM-DD strings, never Date objects", async () => {
     const org = await operationFixture("Days");
     const eq = await equipmentFixture("Days");
-    must(await assign(eq.id, org.operation.id, { kind: "spare" }));
+    must(await assignSpare(eq.id, org.site.id));
     const [open] = must(await f().listEquipmentAssignments.execute({ actor: analyst, equipmentId: eq.id }));
     expect(typeof open?.validFrom).toBe("string");
     expect(open?.validFrom).toMatch(/^\d{4}-\d{2}-\d{2}$/);
@@ -374,7 +376,7 @@ describe("assignment flows through the container as parkline_app", () => {
     const [a, b] = [await operationFixture("MoveA"), await operationFixture("MoveB")];
     const eq = await equipmentFixture("Move");
     must(await assign(eq.id, a.operation.id, { day: "2026-01-10", reason: "Backfill" }));
-    must(await f().moveEquipment.execute({ actor: analyst, equipmentId: eq.id, operationId: b.operation.id, day: "2026-02-01", reason: "Contract started" }));
+    must(await f().moveEquipment.execute({ actor: analyst, equipmentId: eq.id, target: { operationId: b.operation.id }, day: "2026-02-01", reason: "Contract started" }));
     expect((await stored(eq.id)).map((r) => [r.valid_from, r.valid_to, r.operation_id])).toEqual([
       ["2026-01-10", "2026-01-31", a.operation.id],
       ["2026-02-01", null, b.operation.id],
@@ -389,7 +391,7 @@ describe("assignment flows through the container as parkline_app", () => {
     const eq = await equipmentFixture("Atomic");
     must(await assign(eq.id, a.operation.id, { day: "2026-01-10", reason: "Backfill" }));
     must(await c.organization.archiveOperation.execute({ actor: analyst, id: b.operation.id, reason: "Closed" }));
-    const refused = await f().moveEquipment.execute({ actor: analyst, equipmentId: eq.id, operationId: b.operation.id, day: "2026-02-01", reason: "Try" });
+    const refused = await f().moveEquipment.execute({ actor: analyst, equipmentId: eq.id, target: { operationId: b.operation.id }, day: "2026-02-01", reason: "Try" });
     expect(code(refused)).toBe("operation_archived");
     expect((await stored(eq.id)).map((r) => [r.valid_from, r.valid_to])).toEqual([["2026-01-10", null]]);
     expect(await audits(eq.id)).toHaveLength(1);
@@ -479,9 +481,9 @@ describe("assignment flows through the container as parkline_app", () => {
     const eq = await equipmentFixture("End");
     const first = must(await assign(eq.id, a.operation.id, { day: "2026-01-01", reason: "Backfill" }));
     must(await f().endAssignment.execute({ actor: analyst, equipmentId: eq.id, day: "2026-01-31", reason: "Unit parked" }));
-    must(await assign(eq.id, b.operation.id, { kind: "spare", day: "2026-03-01", reason: "Back in use" }));
-    const fixed = must(await f().correctAssignment.execute({ actor: analyst, assignmentId: first.id, validTo: "2026-02-15", kind: "spare", reason: "Wrong end day" }));
-    expect(fixed).toMatchObject({ validTo: "2026-02-15", kind: "spare" });
+    must(await assignSpare(eq.id, b.site.id, { day: "2026-03-01", reason: "Back in use" }));
+    const fixed = must(await f().correctAssignment.execute({ actor: analyst, assignmentId: first.id, validTo: "2026-02-15", target: { siteId: a.site.id }, reason: "Wrong end day" }));
+    expect(fixed).toMatchObject({ validTo: "2026-02-15", kind: "spare", operationId: null, siteId: a.site.id });
     const listed = must(await f().listEquipmentAssignments.execute({ actor: analyst, equipmentId: eq.id }));
     expect(listed.map((x) => x.validFrom)).toEqual(["2026-03-01", "2026-01-01"]);
     const overlapping = await f().correctAssignment.execute({ actor: analyst, assignmentId: first.id, validTo: "2026-03-05", reason: "Too long" });
@@ -611,7 +613,7 @@ describe("assignment flows through the container as parkline_app", () => {
     const eq = await equipmentFixture("Rollback");
     const failing: AuditLog = { record: () => Promise.reject(new Error("audit unavailable")) };
     const broken = createContainer(app, { hasher, wrapAudit: () => failing });
-    const attempt = broken.fleet.assignEquipment.execute({ actor: analyst, equipmentId: eq.id, operationId: org.operation.id, kind: "active", day: today() });
+    const attempt = broken.fleet.assignEquipment.execute({ actor: analyst, equipmentId: eq.id, target: { operationId: org.operation.id }, day: today() });
     await expect(attempt).rejects.toThrow(/audit unavailable/);
     expect(await stored(eq.id)).toHaveLength(0);
   });
@@ -717,7 +719,7 @@ describe("assignment races", () => {
     for (let round = 0; round < 8; round += 1) {
       const org = await operationFixture(`RaceAssign ${String(round)}`);
       const eq = await equipmentFixture(`RaceAssign ${String(round)}`);
-      const run = () => c.fleet.assignEquipment.execute({ actor: analyst, equipmentId: eq.id, operationId: org.operation.id, kind: "active", day: "2026-01-01", reason: "Race" });
+      const run = () => c.fleet.assignEquipment.execute({ actor: analyst, equipmentId: eq.id, target: { operationId: org.operation.id }, day: "2026-01-01", reason: "Race" });
       const result = outcomes(await Promise.allSettled([run(), run()])).join(",");
       expect(["assignment_overlap,ok", "ok,open_assignment_exists"], result).toContain(result);
       expect(await stored(eq.id)).toHaveLength(1);
@@ -759,7 +761,7 @@ describe("assignment races", () => {
       await gate.wait;
     });
     await updated.wait;
-    const assigning = c.fleet.assignEquipment.execute({ actor: analyst, equipmentId: eq.id, operationId: org.operation.id, kind: "active", day: today() });
+    const assigning = c.fleet.assignEquipment.execute({ actor: analyst, equipmentId: eq.id, target: { operationId: org.operation.id }, day: today() });
     await waitForLockWait();
     gate.open();
     await archiver;
@@ -789,7 +791,7 @@ describe("assignment races", () => {
     for (let round = 0; round < 8; round += 1) {
       const org = await operationFixture(`RaceArchive ${String(round)}`);
       const eq = await equipmentFixture(`RaceArchive ${String(round)}`);
-      const assigning = c.fleet.assignEquipment.execute({ actor: analyst, equipmentId: eq.id, operationId: org.operation.id, kind: "active", day: today() });
+      const assigning = c.fleet.assignEquipment.execute({ actor: analyst, equipmentId: eq.id, target: { operationId: org.operation.id }, day: today() });
       const archiving = c.organization.archiveOperation.execute({ actor: analyst, id: org.operation.id, reason: "Closed" });
       const [assigned, archived] = await Promise.all([assigning, archiving]);
       const pair = `${code(assigned)}/${code(archived)}`;
@@ -851,7 +853,7 @@ describe("assignment races", () => {
       await gate.wait;
     });
     await updated.wait;
-    const assigning = c.fleet.assignEquipment.execute({ actor: analyst, equipmentId: eq.id, operationId: org.operation.id, kind: "active", day: today() });
+    const assigning = c.fleet.assignEquipment.execute({ actor: analyst, equipmentId: eq.id, target: { operationId: org.operation.id }, day: today() });
     await waitForLockWait();
     gate.open();
     await archiver;
@@ -884,7 +886,7 @@ describe("assignment races", () => {
   it("an end waits for a writer holding the equipment lock and then finds no open assignment", async () => {
     const org = await operationFixture("LockEnd");
     const eq = await equipmentFixture("LockEnd");
-    must(await c.fleet.assignEquipment.execute({ actor: analyst, equipmentId: eq.id, operationId: org.operation.id, kind: "active", day: "2026-01-10", reason: "Backfill" }));
+    must(await c.fleet.assignEquipment.execute({ actor: analyst, equipmentId: eq.id, target: { operationId: org.operation.id }, day: "2026-01-10", reason: "Backfill" }));
     let answer = "";
     await withUncommittedEnd(eq.id, async () => {
       answer = code(await c.fleet.endAssignment.execute({ actor: analyst, equipmentId: eq.id, day: "2026-03-01", reason: "Fin" }));
@@ -896,10 +898,10 @@ describe("assignment races", () => {
   it("a move waits for a writer holding the equipment lock and then finds no open assignment", async () => {
     const [a, b] = [await operationFixture("LockMoveA"), await operationFixture("LockMoveB")];
     const eq = await equipmentFixture("LockMove");
-    must(await c.fleet.assignEquipment.execute({ actor: analyst, equipmentId: eq.id, operationId: a.operation.id, kind: "active", day: "2026-01-10", reason: "Backfill" }));
+    must(await c.fleet.assignEquipment.execute({ actor: analyst, equipmentId: eq.id, target: { operationId: a.operation.id }, day: "2026-01-10", reason: "Backfill" }));
     let answer = "";
     await withUncommittedEnd(eq.id, async () => {
-      answer = code(await c.fleet.moveEquipment.execute({ actor: analyst, equipmentId: eq.id, operationId: b.operation.id, day: "2026-03-01", reason: "Traslado" }));
+      answer = code(await c.fleet.moveEquipment.execute({ actor: analyst, equipmentId: eq.id, target: { operationId: b.operation.id }, day: "2026-03-01", reason: "Traslado" }));
     });
     expect(answer).toBe("no_open_assignment");
     expect(await stored(eq.id)).toHaveLength(1);
@@ -908,7 +910,7 @@ describe("assignment races", () => {
   it("a correction waits for a writer holding the equipment lock and keeps what that writer committed (no lost update)", async () => {
     const org = await operationFixture("LockCorrect");
     const eq = await equipmentFixture("LockCorrect");
-    const first = must(await c.fleet.assignEquipment.execute({ actor: analyst, equipmentId: eq.id, operationId: org.operation.id, kind: "active", day: "2026-01-10", reason: "Backfill" }));
+    const first = must(await c.fleet.assignEquipment.execute({ actor: analyst, equipmentId: eq.id, target: { operationId: org.operation.id }, day: "2026-01-10", reason: "Backfill" }));
     let answer = "";
     await withUncommittedEnd(eq.id, async () => {
       answer = code(await c.fleet.correctAssignment.execute({ actor: analyst, assignmentId: first.id, reason: "Inicio", validFrom: "2026-01-12" }));
@@ -924,7 +926,7 @@ describe("assignment races", () => {
       insert into equipments (tenant_id, supplier_id, asset_type_id, internal_code, brand, model)
       values (${adminActor.tenantId}, ${base.supplierId}, ${base.assetTypeId}, 'LEGACY-NULL', null, null) returning id`;
     const id = legacy?.id ?? "";
-    expect(code(await c.fleet.assignEquipment.execute({ actor: analyst, equipmentId: id, operationId: org.operation.id, kind: "active", day: today() }))).toBe("ok");
+    expect(code(await c.fleet.assignEquipment.execute({ actor: analyst, equipmentId: id, target: { operationId: org.operation.id }, day: today() }))).toBe("ok");
     expect(code(await c.fleet.archiveEquipment.execute({ actor: analyst, id, reason: "Baja" }))).toBe("has_open_assignment");
     must(await c.fleet.endAssignment.execute({ actor: analyst, equipmentId: id, day: today(), reason: "Fin" }));
     must(await c.fleet.archiveEquipment.execute({ actor: analyst, id, reason: "Baja" }));
@@ -940,7 +942,7 @@ describe("assignment races", () => {
     for (let round = 0; round < 8; round += 1) {
       const org = await operationFixture(`RaceEqArchive ${String(round)}`);
       const eq = await equipmentFixture(`RaceEqArchive ${String(round)}`);
-      const assigning = c.fleet.assignEquipment.execute({ actor: analyst, equipmentId: eq.id, operationId: org.operation.id, kind: "active", day: today() });
+      const assigning = c.fleet.assignEquipment.execute({ actor: analyst, equipmentId: eq.id, target: { operationId: org.operation.id }, day: today() });
       const archiving = c.fleet.archiveEquipment.execute({ actor: analyst, id: eq.id, reason: "Baja" });
       const [assigned, archived] = await Promise.all([assigning, archiving]);
       const pair = `${code(assigned)}/${code(archived)}`;
@@ -955,7 +957,7 @@ describe("assignment races", () => {
       const org = await operationFixture(`Swap ${String(round)}`);
       const [first, second] = [await equipmentFixture(`SwapA ${String(round)}`), await equipmentFixture(`SwapB ${String(round)}`)];
       const place = (equipmentId: string) =>
-        c.fleet.assignEquipment.execute({ actor: analyst, equipmentId, operationId: org.operation.id, kind: "active", day: "2026-01-01", reason: "Backfill" });
+        c.fleet.assignEquipment.execute({ actor: analyst, equipmentId, target: { operationId: org.operation.id }, day: "2026-01-01", reason: "Backfill" });
       must(await place(first.id));
       if (round % 2 === 1) must(await place(second.id));
       const replace = (outgoing: string, incoming: string) =>

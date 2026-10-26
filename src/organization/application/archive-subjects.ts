@@ -42,6 +42,10 @@ const outcome = (
 const requireNoActiveOperations = (count: number, label: string): Result<void, DomainError> =>
   count === 0 ? ok(undefined) : err(new HasActiveOperationsError(`${label} still has ${String(count)} active operations`));
 
+/** ADR-0013: a site with open spares (equipment that belongs to the site itself) cannot be archived. */
+const requireNoOpenSpares = (open: number, siteId: string): Result<void, DomainError> =>
+  open === 0 ? ok(undefined) : err(new HasOpenAssignmentsError(`Site ${siteId} still has ${String(open)} open spares`));
+
 export const businessUnitSubject: ArchiveSubject<BusinessUnit> = {
   entityType: "business_unit",
   label: "Business unit",
@@ -70,7 +74,8 @@ export const siteSubject: ArchiveSubject<Site> = {
     if (verb === "archive") {
       await tx.sites.lock(row.tenantId, row.id, "exclusive");
       const active = await tx.operations.countActiveBySite(row.tenantId, row.id);
-      return requireNoActiveOperations(active, siteSubject.label);
+      const blocked = requireNoActiveOperations(active, siteSubject.label);
+      return blocked.ok ? requireNoOpenSpares(await tx.assignments.countOpenSpares(row.tenantId, row.id), row.id) : blocked;
     }
     return requireFreeName(await tx.sites.findByName(row.tenantId, nameKey(row.name)), row.name, row.id);
   },
