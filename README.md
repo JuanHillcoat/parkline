@@ -16,6 +16,8 @@ Status: early development. The skeleton (`p0-01`), identity (`p0-02`: sign-in, s
 
 **Meters and readings (tab Lecturas).** An equipment whose asset type measures in hours or kilometers has a meter with immutable readings: a reading cannot go below the previous one (a lower value is a meter replacement, with a reason), a mistake is fixed with a correction that keeps the original, and the hours of the last 30 days are shown. The first reading can be loaded when registering the equipment. Only the administrator and the fleet analyst write; the rest read. See [ADR-0012](docs/adr/0012-meters-and-readings.md).
 
+**Spares belong to a site.** A muleto is not part of an operation: it is parked at a site and can cover any equipment of that site. When registering, assigning or moving you choose an operation or "Muleto" (and its site); a replacement can leave the outgoing equipment as a muleto at the site. Registering asks for the battery type (and the quantity only for lead acid) and the meter reading, in one compact screen. See [ADR-0013](docs/adr/0013-spares-belong-to-a-site.md).
+
 **Register and assign in one step.** The Nuevo equipo dialog can also assign the equipment to an operation (as active or as a spare, from today or from a past day with a reason); both happen in one transaction, so a refused assignment creates nothing.
 
 ## Requirements
@@ -117,6 +119,6 @@ Import rules between these layers are described in [`src/README.md`](src/README.
 ## Documentation
 
 - [`docs/00-analisis-inicial.md`](docs/00-analisis-inicial.md): initial analysis (Spanish). Scope, business rules, architecture, audit, stack and phases.
-- [`docs/adr/`](docs/adr/): architecture decisions, including [ADR-0003](docs/adr/0003-identity-and-sessions.md) (identity, sessions and install), [ADR-0004](docs/adr/0004-audit-hardening.md) (audit hardening), [ADR-0005](docs/adr/0005-cross-module-authorization.md) (cross-module authorization) [ADR-0006](docs/adr/0006-organization-model.md) (organization model) [ADR-0007](docs/adr/0007-fleet-catalogs.md) (fleet catalogs) [ADR-0010](docs/adr/0010-equipment-assignments.md) (equipment assignments) and [ADR-0011](docs/adr/0011-equipment-image.md) (equipment image) and [ADR-0012](docs/adr/0012-meters-and-readings.md) (meters and readings).
+- [`docs/adr/`](docs/adr/): architecture decisions, including [ADR-0003](docs/adr/0003-identity-and-sessions.md) (identity, sessions and install), [ADR-0004](docs/adr/0004-audit-hardening.md) (audit hardening), [ADR-0005](docs/adr/0005-cross-module-authorization.md) (cross-module authorization) [ADR-0006](docs/adr/0006-organization-model.md) (organization model) [ADR-0007](docs/adr/0007-fleet-catalogs.md) (fleet catalogs) [ADR-0010](docs/adr/0010-equipment-assignments.md) (equipment assignments) and [ADR-0011](docs/adr/0011-equipment-image.md) (equipment image) and [ADR-0012](docs/adr/0012-meters-and-readings.md) (meters and readings) and [ADR-0013](docs/adr/0013-spares-belong-to-a-site.md) (spares belong to a site).
 - [`AGENTS.md`](AGENTS.md): project conventions for contributors and agents.
 - [`CHANGELOG.md`](CHANGELOG.md): notable changes.

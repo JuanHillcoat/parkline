@@ -1,6 +1,6 @@
 # 0010. Equipment assignments
 
-- Status: Accepted
+- Status: Accepted, partly superseded by [ADR-0013](0013-spares-belong-to-a-site.md) (a spare belongs to a site, not to an operation)
 - Date: 2026-10-24
 - Feature: p0-08
 - Source: [`docs/00-analisis-inicial.md`](../00-analisis-inicial.md), section 7 ("Asignación con vigencia"); migration [`0010_equipment_assignments.sql`](../../db/migrations/0010_equipment_assignments.sql); decisions D1 to D10 in [`odd/tasks/p0-08-equipment-assignments.md`](../../odd/tasks/p0-08-equipment-assignments.md); builds on [ADR-0004](0004-audit-hardening.md), [ADR-0005](0005-cross-module-authorization.md), [ADR-0006](0006-organization-model.md) and [ADR-0007](0007-fleet-catalogs.md)
