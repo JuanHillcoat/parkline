@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { nameKey } from "../../../shared/domain/catalog-name";
 import { imageHash } from "../../../shared/domain/image";
-import { OperationArchivedError, ReasonRequiredError, InvalidDayError, InvalidAssignmentKindError } from "../../domain/errors";
+import { OperationArchivedError, ReasonRequiredError, InvalidDayError, SiteArchivedError } from "../../domain/errors";
 import { actorWith, createHarness, grant, type Harness } from "./support/harness";
 
 const setup = async () => {
@@ -9,7 +9,7 @@ const setup = async () => {
   const s = await h.seedTenantA();
   const input = (code: string, assignment?: object, overrides: object = {}) => ({
     ...h.equipmentInput(s.supplierA.id, s.forklift.id, code),
-    assignment: assignment === undefined ? undefined : { operationId: "op1", kind: "active", day: "2026-01-01", reason: null, ...assignment },
+    assignment: assignment === undefined ? undefined : { target: { operationId: "op1" }, day: "2026-01-01", reason: null, ...assignment },
     ...overrides,
   });
   return { h, s, input };
@@ -32,10 +32,14 @@ describe("CreateEquipment with an assignment", () => {
     expect(order.lastIndexOf("fleet.equipment.create")).toBeLessThan(order.indexOf("fleet.assignment.create"));
   });
 
-  it("creates a spare assignment", async () => {
+  it("creates a spare of a site: no operation, no division, and the site audited", async () => {
     const { h, input } = await setup();
-    const created = h.orThrow(await h.createEquipment.execute(input("EQ-SPARE", { kind: "spare" })));
-    expect((await h.assignmentsOf(created.id))[0]?.kind).toBe("spare");
+    const created = h.orThrow(await h.createEquipment.execute(input("EQ-SPARE", { target: { siteId: "s2" } })));
+    expect(await h.assignmentsOf(created.id)).toMatchObject([{ kind: "spare", operationId: null, businessUnitId: null, siteId: "s2" }]);
+    const [entry] = h.auditOf("fleet.assignment.create");
+    expect(entry).toMatchObject({ siteId: "s2", after: { kind: "spare", operationId: null, siteId: "s2" } });
+    expect(entry?.operationId).toBeUndefined();
+    expect(entry?.businessUnitId).toBeUndefined();
   });
 
   it("stores the reason of a past day in the row and the audit entry", async () => {
@@ -58,7 +62,7 @@ describe("CreateEquipment with an assignment", () => {
     const { h, s, input } = await setup();
     const jpeg = new Uint8Array(32).fill(7);
     jpeg.set([0xff, 0xd8, 0xff]);
-    const result = await h.createEquipment.execute(input("EQ-IMGF", { operationId: "opx" }, { image: jpeg }));
+    const result = await h.createEquipment.execute(input("EQ-IMGF", { target: { operationId: "opx" } }, { image: jpeg }));
     expect(result.ok).toBe(false);
     expect(await nothingStored(h, "EQ-IMGF", s.supplierA.id)).toBe(true);
   });
@@ -75,9 +79,9 @@ describe("CreateEquipment with an assignment", () => {
   describe.each([
     ["a past day without a reason", { day: "2025-12-31" }, ReasonRequiredError],
     ["a past day with a blank reason", { day: "2025-12-31", reason: "  " }, ReasonRequiredError],
-    ["an archived operation", { operationId: "opx" }, OperationArchivedError],
+    ["an archived operation", { target: { operationId: "opx" } }, OperationArchivedError],
+    ["an archived site", { target: { siteId: "sx" } }, SiteArchivedError],
     ["an invalid day", { day: "10/01/2026" }, InvalidDayError],
-    ["an invalid kind", { kind: "loan" }, InvalidAssignmentKindError],
   ])("%s", (_name, assignment, errorClass) => {
     it("returns the typed error and stores nothing", async () => {
       const { h, s, input } = await setup();
@@ -92,14 +96,14 @@ describe("CreateEquipment with an assignment", () => {
 
   it("answers not found to a tenant-wide writer for an unknown operation and stores nothing", async () => {
     const { h, s, input } = await setup();
-    const result = await h.createEquipment.execute(input("EQ-UNK", { operationId: "missing" }));
+    const result = await h.createEquipment.execute(input("EQ-UNK", { target: { operationId: "missing" } }));
     expect(!result.ok && result.error.code).toBe("not_found");
     expect(await nothingStored(h, "EQ-UNK", s.supplierA.id)).toBe(true);
   });
 
   it("does not see an operation of another tenant", async () => {
     const { h, s, input } = await setup();
-    const result = await h.createEquipment.execute(input("EQ-FOR", { operationId: "opb" }));
+    const result = await h.createEquipment.execute(input("EQ-FOR", { target: { operationId: "opb" } }));
     expect(!result.ok && result.error.code).toBe("not_found");
     expect(await nothingStored(h, "EQ-FOR", s.supplierA.id)).toBe(true);
   });
@@ -107,7 +111,7 @@ describe("CreateEquipment with an assignment", () => {
   it("refuses an actor scoped to another operation, with nothing stored", async () => {
     const { h, s, input } = await setup();
     const elsewhere = h.analystAt("op2");
-    const result = await h.createEquipment.execute({ ...input("EQ-DENY", { operationId: "op1" }), actor: elsewhere });
+    const result = await h.createEquipment.execute({ ...input("EQ-DENY", { target: { operationId: "op1" } }), actor: elsewhere });
     expect(!result.ok && result.error.code).toBe("forbidden");
     expect(await nothingStored(h, "EQ-DENY", s.supplierA.id)).toBe(true);
   });
@@ -116,7 +120,7 @@ describe("CreateEquipment with an assignment", () => {
     const { h, input } = await setup();
     const viewer = actorWith([grant("viewer", "tenant", "t-a")]);
     for (const operationId of ["missing", "op1", "opx", "opb"]) {
-      const result = await h.createEquipment.execute({ ...input("EQ-V", { operationId, day: "nope", kind: "loan" }), actor: viewer });
+      const result = await h.createEquipment.execute({ ...input("EQ-V", { target: { operationId }, day: "nope" }), actor: viewer });
       expect(!result.ok && result.error.code).toBe("forbidden");
     }
   });

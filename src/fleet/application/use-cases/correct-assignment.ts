@@ -1,14 +1,17 @@
 import { NotFoundError, type DomainError } from "../../../shared/domain/domain-error";
 import type { Actor } from "../../../shared/domain/ports/access-policy";
 import { err, ok, type Result } from "../../../shared/domain/result";
-import { createAssignment, type Assignment } from "../../domain/assignment";
+import { createAssignment, type Assignment, type AssignmentKind } from "../../domain/assignment";
 import { NoChangesError } from "../../domain/errors";
 import {
   authorizeAssignment,
-  authorizeOperation,
+  authorizeTarget,
+  isAt,
+  placeOf,
   recordAssignmentAudit,
-  requireActiveOperation,
+  requireActiveTarget,
   saveAssignment,
+  type AssignmentTarget,
 } from "../assignment-support";
 import { assignmentSnapshot } from "../audit";
 import type { FleetDeps } from "../deps";
@@ -23,18 +26,19 @@ export type CorrectAssignmentInput = {
   /** Fields left undefined keep their value; `validTo: null` makes the assignment open. */
   readonly validFrom?: string;
   readonly validTo?: string | null;
-  readonly operationId?: string;
-  readonly kind?: string;
+  /** An operation (active) or a site (spare); left undefined it keeps the place and the kind. */
+  readonly target?: AssignmentTarget;
 };
 
-type Place = Pick<Assignment, "businessUnitId" | "operationId" | "siteId">;
+type Place = Pick<Assignment, "businessUnitId" | "operationId" | "siteId"> & { readonly kind: AssignmentKind };
 
 const unchanged = (a: Assignment, b: Assignment): boolean =>
-  a.operationId === b.operationId && a.kind === b.kind && a.validFrom === b.validFrom && a.validTo === b.validTo;
+  a.operationId === b.operationId && a.siteId === b.siteId && a.kind === b.kind && a.validFrom === b.validFrom && a.validTo === b.validTo;
 
 /**
- * Changes the days, the operation or the kind of an existing assignment, keeping the no-overlap rule.
- * Needs `catalog.write` at the operation the assignment is in and, when it changes, at the new one; the
+ * Changes the days or the target (an operation, or a site as a spare; the kind follows the target) of an
+ * existing assignment, keeping the no-overlap rule. Needs `catalog.write` at the place the assignment is in
+ * and, when it changes, at the new one; the
  * reason is mandatory. The audit entry stores the row before and after. Nothing is deleted.
  */
 export class CorrectAssignment {
@@ -78,19 +82,21 @@ export class CorrectAssignment {
   }
 
   /**
-   * The place the assignment ends up in. A closed assignment that keeps its operation is history and may
-   * be corrected even if the operation was archived later; one that moves or ends up open must be in an
-   * authorized and active operation, so a reopening cannot put an equipment in an archived one.
+   * The place the assignment ends up in. A closed assignment that keeps its target is history and may be
+   * corrected even if the operation or site was archived later; one that moves or ends up open must be in an
+   * authorized and active target, so a reopening cannot put an equipment in an archived one.
    */
   private async place(tx: FleetTx, input: CorrectAssignmentInput, current: Assignment): Promise<Result<Place, DomainError>> {
-    const sameOperation = input.operationId === undefined || input.operationId === current.operationId;
+    const sameTarget = input.target === undefined || isAt(current, input.target);
     const opensIt = (input.validTo === undefined ? current.validTo : input.validTo) === null;
-    if (sameOperation && !opensIt) return ok(current);
-    const target = await authorizeOperation(tx, this.deps, input.actor, input.operationId ?? current.operationId);
+    if (sameTarget && !opensIt) return ok(current);
+    const wanted = input.target ?? (current.operationId === null ? { siteId: current.siteId } : { operationId: current.operationId });
+    const target = await authorizeTarget(tx, this.deps, input.actor, wanted);
     if (!target.ok) return target;
-    const active = requireActiveOperation(target.value.op);
-    const { op } = target.value;
-    return active.ok ? ok({ businessUnitId: op.businessUnitId, operationId: op.id, siteId: op.siteId }) : active;
+    const active = requireActiveTarget(target.value);
+    // Without a target the kind stays (a spare stored inside an operation before ADR-0013 keeps being a spare).
+    const kind = input.target === undefined ? current.kind : target.value.kind;
+    return active.ok ? ok({ ...placeOf(target.value), kind }) : active;
   }
 
   private build(input: CorrectAssignmentInput, current: Assignment, place: Place): Result<Assignment, DomainError> {
@@ -99,7 +105,6 @@ export class CorrectAssignment {
     const next = createAssignment({
       ...current,
       ...place,
-      kind: input.kind ?? current.kind,
       validFrom: input.validFrom ?? current.validFrom,
       validTo: input.validTo === undefined ? current.validTo : input.validTo,
       reason: reason.value,

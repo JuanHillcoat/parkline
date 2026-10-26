@@ -11,6 +11,7 @@ const equipment = {
   model: "Model Y",
   year: null,
   serialNumber: null,
+  batteryKind: "combustion",
   batteryQuantity: null,
   observations: null,
 };
@@ -65,7 +66,7 @@ describe("createAssetType", () => {
 describe("createEquipment", () => {
   it("normalizes the code, trims the optional text and starts active", () => {
     const result = createEquipment(
-      { ...equipment, brand: " Brand X ", model: " Model Y ", serialNumber: " sn-1 ", observations: " ok ", year: 2020, batteryQuantity: 2 },
+      { ...equipment, brand: " Brand X ", model: " Model Y ", serialNumber: " sn-1 ", observations: " ok ", year: 2020, batteryKind: "lead_acid", batteryQuantity: 2 },
       2026,
     );
     expect(result).toEqual({
@@ -76,6 +77,7 @@ describe("createEquipment", () => {
         serialNumber: "sn-1",
         observations: "ok",
         year: 2020,
+        batteryKind: "lead_acid",
         batteryQuantity: 2,
         archivedAt: null,
       },
@@ -89,7 +91,7 @@ describe("createEquipment", () => {
       { model: "m".repeat(121) },
       { year: 1949 },
       { serialNumber: "s".repeat(61) },
-      { batteryQuantity: 5 },
+      { batteryKind: "lead_acid", batteryQuantity: 5 },
       { observations: "o".repeat(501) },
     ].map((override) => {
       const result = createEquipment({ ...equipment, ...override }, 2026);
@@ -112,6 +114,28 @@ describe("createEquipment", () => {
       return result.ok ? "ok" : `${result.error.code}:${result.error.field ?? ""}`;
     });
     expect(rejected).toEqual(["invalid_text:brand", "invalid_text:brand", "invalid_text:model", "invalid_text:model"]);
+  });
+
+  it.each(["lithium", "lead_acid", "combustion"])("accepts the battery kind %s", (batteryKind) => {
+    const result = createEquipment({ ...equipment, batteryKind }, 2026);
+    expect(result.ok && result.value.batteryKind).toBe(batteryKind);
+  });
+
+  it.each([null, "", "  ", "gas", "Lithium"])("requires a known battery kind: %j is rejected with the field", (batteryKind) => {
+    const result = createEquipment({ ...equipment, batteryKind }, 2026);
+    expect(!result.ok && `${result.error.code}:${result.error.field ?? ""}`).toBe("invalid_battery_kind:batteryKind");
+  });
+
+  it.each(["lithium", "combustion"])("rejects a battery quantity for %s, even zero", (batteryKind) => {
+    for (const batteryQuantity of [0, 2]) {
+      const result = createEquipment({ ...equipment, batteryKind, batteryQuantity }, 2026);
+      expect(!result.ok && `${result.error.code}:${result.error.field ?? ""}`).toBe("battery_quantity_not_allowed:batteryQuantity");
+    }
+  });
+
+  it("keeps the quantity optional for lead acid", () => {
+    expect(createEquipment({ ...equipment, batteryKind: "lead_acid", batteryQuantity: null }, 2026).ok).toBe(true);
+    expect(createEquipment({ ...equipment, batteryKind: "lead_acid", batteryQuantity: 0 }, 2026).ok).toBe(true);
   });
 
   it("uses the injected current year for the year bound", () => {

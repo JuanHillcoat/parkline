@@ -13,10 +13,12 @@ type Row = {
   site_id: string | null;
 };
 
-const positionOf = (tenantId: string, row: Row): ResourcePosition | null =>
-  row.operation_id === null || row.business_unit_id === null || row.site_id === null
-    ? null
-    : { tenantId, businessUnitId: row.business_unit_id, operationId: row.operation_id, siteId: row.site_id };
+/** The position of the open assignment: an operation's, or just the site's for a spare of the site (ADR-0013). */
+const positionOf = (tenantId: string, row: Row): ResourcePosition | null => {
+  if (row.site_id === null) return null;
+  if (row.operation_id === null || row.business_unit_id === null) return { tenantId, siteId: row.site_id };
+  return { tenantId, businessUnitId: row.business_unit_id, operationId: row.operation_id, siteId: row.site_id };
+};
 
 /**
  * Answers the metering module's question about an equipment (the shared `EquipmentDirectory` port),

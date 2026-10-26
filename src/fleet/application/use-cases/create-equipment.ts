@@ -4,7 +4,7 @@ import { ok, type Result } from "../../../shared/domain/result";
 import { nameKey } from "../../../shared/domain/catalog-name";
 import { createEquipment, type Equipment } from "../../domain/entities";
 import { stageAssignment, type StagedAssignment } from "../assign-in-tx";
-import { authorizeOperation, positionOfOperation, type Target } from "../assignment-support";
+import { authorizeTarget, positionOfTarget, type AssignmentTarget, type Target } from "../assignment-support";
 import { equipmentSnapshot, recordAudit } from "../audit";
 import type { FleetDeps } from "../deps";
 import { parseNewImage } from "../equipment-image";
@@ -21,15 +21,17 @@ export type EquipmentFields = {
   readonly model: string | null;
   readonly year: number | null;
   readonly serialNumber: string | null;
+  /** `lithium`, `lead_acid` or `combustion`: required. */
+  readonly batteryKind: string | null;
+  /** Only for `lead_acid`; any value for another kind is refused. */
   readonly batteryQuantity: number | null;
   readonly observations: string | null;
 };
 
 /** The optional first assignment of a new equipment, as the form sends it. */
 export type NewEquipmentAssignment = {
-  readonly operationId: string;
-  /** `active` or `spare`. */
-  readonly kind: string;
+  /** An operation (active) or a site (the equipment is born a spare of it). */
+  readonly target: AssignmentTarget;
   /** First day, `YYYY-MM-DD`. */
   readonly day: string;
   /** Mandatory only when `day` is before today. */
@@ -57,7 +59,7 @@ type Done = { actor: Actor; role: string; equipment: Equipment; parents: Parents
  * tenant and be active; both are share-locked, supplier first, before their `archivedAt` is read.
  * The internal code is unique per supplier among active rows. The image, when given, is validated before
  * anything is written and stored in the same transaction; the audit entry carries its hash.
- * With an `assignment`, the actor also needs `catalog.write` at the operation (checked right after the create
+ * With an `assignment`, the actor also needs `catalog.write` at the operation or site (checked right after the create
  * permission and before any lookup of the supplier, asset type or equipment), and the assignment is stored last,
  * by the same code as `AssignEquipment`; if it is refused nothing is created.
  * With an `initialReading`, the shared `InitialReadingRecorder` opens the meter of the asset type and stores the
@@ -112,21 +114,22 @@ export class CreateEquipment {
     const recorded = await recorder.record(tx, {
       actor, tenantId: actor.tenantId, equipmentId: equipment.id, meterKind: made.parents.assetType.meterKind,
       day: initialReading.day, value: initialReading.value, actorRole: role,
-      ...(target === null ? {} : { position: positionOfOperation(actor.tenantId, target.op) }),
+      ...(target === null ? {} : { position: positionOfTarget(actor.tenantId, target) }),
     });
     return recorded.ok ? ok(undefined) : recorded;
   }
 
-  /** No assignment asked: no target. Otherwise the actor must write at the operation, before anything else is read. */
+  /** No assignment asked: no target. Otherwise the actor must write at the operation or site, before anything else is read. */
   private async authorizeAssignment(tx: FleetTx, actor: Actor, assignment?: NewEquipmentAssignment): Promise<Result<Target | null, DomainError>> {
     if (assignment === undefined) return ok(null);
-    return authorizeOperation(tx, this.deps, actor, assignment.operationId);
+    return authorizeTarget(tx, this.deps, actor, assignment.target);
   }
 
   /** Stores the assignment, if one was asked; its audit entry is written after the equipment's. */
   private async stage(tx: FleetTx, actor: Actor, equipmentId: string, assignment: NewEquipmentAssignment | undefined, target: Target | null): Promise<Result<StagedAssignment | null, DomainError>> {
     if (assignment === undefined || target === null) return ok(null);
-    return stageAssignment(tx, this.deps, actor, { equipmentId, ...assignment }, target);
+    const { day, reason } = assignment;
+    return stageAssignment(tx, this.deps, actor, { equipmentId, day, reason }, target);
   }
 
   private async store(tx: FleetTx, equipment: Equipment, image: StoredImage | null): Promise<Result<void, DomainError>> {

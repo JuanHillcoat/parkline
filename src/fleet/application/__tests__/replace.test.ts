@@ -17,20 +17,20 @@ const setup = async () => {
   return { h, s, old, input };
 };
 
-const shape = (rows: readonly { equipmentId: string; operationId: string; kind: string; validFrom: string; validTo: string | null }[]) =>
+const shape = (rows: readonly { equipmentId: string; operationId: string | null; kind: string; validFrom: string; validTo: string | null }[]) =>
   rows.map((r) => [r.equipmentId, r.operationId, r.kind, r.validFrom, r.validTo]);
 
 describe("ReplaceEquipment keeping the outgoing equipment as a spare", () => {
-  it("assigns the incoming one as active from the day and turns the outgoing one into a spare of the same operation", async () => {
+  it("assigns the incoming one as active from the day and turns the outgoing one into a spare of the site of that operation", async () => {
     const { h, s, old, input } = await setup();
     const result = await h.replaceEquipment.execute(input);
     expect(result.ok && result.value).toMatchObject({
       retired: false,
       incoming: { equipmentId: s.c43.id, operationId: "op1", kind: "active", validFrom: "2026-02-01", validTo: null },
-      outgoing: { equipmentId: s.eq1.id, operationId: "op1", kind: "spare", validFrom: "2026-02-01", validTo: null },
+      outgoing: { equipmentId: s.eq1.id, operationId: null, businessUnitId: null, siteId: "s1", kind: "spare", validFrom: "2026-02-01", validTo: null },
     });
     expect(shape(await h.assignmentsOf(s.eq1.id))).toEqual([
-      [s.eq1.id, "op1", "spare", "2026-02-01", null],
+      [s.eq1.id, null, "spare", "2026-02-01", null],
       [s.eq1.id, "op1", "active", "2026-01-10", "2026-01-31"],
     ]);
     expect((await h.assignmentsOf(s.eq1.id))[1]?.id).toBe(old.id);

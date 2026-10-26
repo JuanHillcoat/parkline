@@ -9,9 +9,11 @@ import { canReadFleet } from "./guards";
 
 /** Where an equipment is now: names are mapped by the page from the organization lists. */
 export type AssignmentSummary = {
-  readonly operationId: string;
+  /** Null for a spare that belongs to a site (ADR-0013). */
+  readonly operationId: string | null;
   readonly siteId: string;
-  readonly businessUnitId: string;
+  /** Null for a spare that belongs to a site. */
+  readonly businessUnitId: string | null;
   readonly kind: AssignmentKind;
   readonly validFrom: Day;
 };

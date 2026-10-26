@@ -23,8 +23,8 @@ const txOver = (state: FleetState, audit: AuditLog, operations: OperationDirecto
   audit,
 });
 
-/** The directory of a store built without one: no operation exists. */
-const NO_OPERATIONS: OperationDirectory = { find: () => Promise.resolve(null) };
+/** The directory of a store built without one: no operation and no site exists. */
+const NO_OPERATIONS: OperationDirectory = { find: () => Promise.resolve(null), findSite: () => Promise.resolve(null) };
 
 /** What a read transaction audits to: nothing, so a read can never persist an entry. */
 const DISCARDING_AUDIT: AuditLog = { record: () => Promise.resolve() };

@@ -74,7 +74,7 @@ describe("equipment row lock", () => {
     const s = await h.seedTenantA();
     const log: Log = [];
     const result = await new AssignEquipment(recording(h, log)).execute({
-      actor: h.admin, equipmentId: s.eq1.id, operationId: "op1", kind: "active", day: "2026-02-01",
+      actor: h.admin, equipmentId: s.eq1.id, target: { operationId: "op1" }, day: "2026-02-01",
     });
     expect(result.ok).toBe(true);
     expect(log.indexOf(`lock ${s.eq1.id}`)).toBeGreaterThanOrEqual(0);
@@ -122,7 +122,7 @@ describe("equipment row lock", () => {
     await h.assign(s.eq1.id, "op1", "2026-01-10");
     const log: Log = [];
     const result = await new MoveEquipment(recording(h, log)).execute({
-      actor: h.admin, equipmentId: s.eq1.id, operationId: "op2", day: "2026-02-01", reason: "Traslado",
+      actor: h.admin, equipmentId: s.eq1.id, target: { operationId: "op2" }, day: "2026-02-01", reason: "Traslado",
     });
     expect(result.ok).toBe(true);
     lockedBetweenReads(log, s.eq1.id, "findOpen");
@@ -145,7 +145,7 @@ describe("equipment row lock", () => {
     const log: Log = [];
     const nobody = h.analystAt("op3");
     await new EndAssignment(recording(h, log)).execute({ actor: nobody, equipmentId: s.eq1.id, day: "2026-02-01", reason: "Fin" });
-    await new MoveEquipment(recording(h, log)).execute({ actor: nobody, equipmentId: s.eq1.id, operationId: "op2", day: "2026-02-01", reason: "x" });
+    await new MoveEquipment(recording(h, log)).execute({ actor: nobody, equipmentId: s.eq1.id, target: { operationId: "op2" }, day: "2026-02-01", reason: "x" });
     await new CorrectAssignment(recording(h, log)).execute({ actor: nobody, assignmentId: first.id, reason: "x", validFrom: "2026-01-11" });
     expect(log.filter((line) => line.startsWith("lock "))).toEqual([]);
   });

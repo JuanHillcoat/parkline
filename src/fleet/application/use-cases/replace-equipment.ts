@@ -4,7 +4,12 @@ import type { OperationInfo } from "../../../shared/domain/ports/operation-direc
 import { err, ok, type Result } from "../../../shared/domain/result";
 import type { Assignment } from "../../domain/assignment";
 import { parseDay, previousDay, type Day } from "../../domain/day";
-import { OpenAssignmentError, OutgoingChoiceRequiredError, SameEquipmentError } from "../../domain/errors";
+import {
+  InvalidAssignmentTargetError,
+  OpenAssignmentError,
+  OutgoingChoiceRequiredError,
+  SameEquipmentError,
+} from "../../domain/errors";
 import { equipmentSubject } from "../archive-subjects";
 import { archiveWithin } from "../archiving";
 import {
@@ -14,8 +19,10 @@ import {
   openAssignment,
   recordAssignmentAudit,
   requireActiveOperation,
+  requireActiveTarget,
   saveAssignment,
   type Source,
+  type Target,
 } from "../assignment-support";
 import { assignmentSnapshot } from "../audit";
 import type { FleetDeps } from "../deps";
@@ -26,7 +33,7 @@ import { parseReason } from "../reason";
 export type ReplaceEquipmentInput = {
   readonly actor: Actor;
   readonly incomingEquipmentId: string;
-  /** The equipment being replaced; the incoming one takes its operation. */
+  /** The equipment being replaced; the incoming one takes its operation (it cannot be a spare at a site). */
   readonly outgoingEquipmentId: string;
   /** First day of the incoming equipment; the outgoing assignment ends the day before. */
   readonly day: string;
@@ -58,7 +65,7 @@ const parseChoice = (raw: string | undefined): Result<Choice, DomainError> =>
 /**
  * The incoming equipment gets an `active` assignment in the operation of the outgoing one from `day`; the
  * outgoing equipment's open assignment is resolved in the same unit of work, by a required choice: it
- * becomes a `spare` assignment in the same operation, or it ends the day before and the equipment is
+ * becomes a `spare` assignment at the SITE of the operation it leaves (ADR-0013), or it ends the day before and the equipment is
  * archived with the reason (that choice also needs `catalog.archive`, and reuses the archive engine).
  */
 export class ReplaceEquipment {
@@ -75,7 +82,7 @@ export class ReplaceEquipment {
     if (!plan.ok) return plan;
     const archive = plan.value.choice === "retire" ? authorize(this.deps.accessPolicy, input.actor, "catalog.archive") : ok("");
     if (!archive.ok) return archive;
-    const op = await this.activeOperation(tx, input.actor, source.value.open.operationId);
+    const op = await this.activeOperation(tx, input.actor, source.value.open);
     return op.ok ? this.apply({ tx, input, source: source.value, plan: plan.value, op: op.value }) : op;
   }
 
@@ -104,9 +111,13 @@ export class ReplaceEquipment {
     return closed.ok ? ok({ choice: choice.value, day: day.value, reason: reason.value, closed: closed.value }) : closed;
   }
 
-  private async activeOperation(tx: FleetTx, actor: Actor, operationId: string): Promise<Result<OperationInfo, DomainError>> {
-    const op = await tx.operations.find(actor.tenantId, operationId);
-    return op === null ? err(new NotFoundError("Operation", operationId)) : requireActiveOperation(op);
+  /** The operation the outgoing equipment leaves: a spare at a site has none for the incoming one to take. */
+  private async activeOperation(tx: FleetTx, actor: Actor, open: Assignment): Promise<Result<OperationInfo, DomainError>> {
+    if (open.operationId === null) {
+      return err(new InvalidAssignmentTargetError("The replaced equipment is a spare at a site: it has no operation to take", "outgoingEquipmentId"));
+    }
+    const op = await tx.operations.find(actor.tenantId, open.operationId);
+    return op === null ? err(new NotFoundError("Operation", open.operationId)) : requireActiveOperation(op);
   }
 
   private async apply(context: Context): Promise<Result<ReplaceOutcome, DomainError>> {
@@ -129,7 +140,8 @@ export class ReplaceEquipment {
     if ((await tx.assignments.findOpen(tenantId, equipment.id)) !== null) {
       return err(new OpenAssignmentError(`Equipment ${equipment.id} already has an open assignment`));
     }
-    const fields = { equipmentId: equipment.id, op, kind: "active", day: plan.day, reason: plan.reason };
+    const target: Target = { kind: "active", op, role: context.source.role };
+    const fields = { equipmentId: equipment.id, target, day: plan.day, reason: plan.reason };
     const created = openAssignment(this.deps, input.actor, fields);
     if (!created.ok) return created;
     const added = await addAssignment(tx, created.value);
@@ -142,7 +154,11 @@ export class ReplaceEquipment {
     const saved = await saveAssignment(tx, plan.closed);
     if (!saved.ok) return saved;
     if (plan.choice === "retire") return this.retire(context);
-    const fields = { equipmentId: input.outgoingEquipmentId, op, kind: "spare", day: plan.day, reason: plan.reason };
+    const found = await tx.operations.findSite(input.actor.tenantId, op.siteId);
+    if (found === null) return err(new NotFoundError("Site", op.siteId));
+    const site = requireActiveTarget({ kind: "spare", site: found, role: context.source.role });
+    if (!site.ok) return site;
+    const fields = { equipmentId: input.outgoingEquipmentId, target: site.value, day: plan.day, reason: plan.reason };
     const spare = openAssignment(this.deps, input.actor, fields);
     if (!spare.ok) return spare;
     const added = await addAssignment(tx, spare.value);

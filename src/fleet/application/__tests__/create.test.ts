@@ -120,12 +120,12 @@ describe("CreateEquipment", () => {
     const s = await h.seedTenantA();
     const result = await h.createEquipment.execute(
       h.equipmentInput(s.supplierA.id, s.forklift.id, " zx 037 ", {
-        brand: " Brand X ", model: "M-1", year: 2020, serialNumber: "SN-1", batteryQuantity: 2, observations: " note ",
+        brand: " Brand X ", model: "M-1", year: 2020, serialNumber: "SN-1", batteryKind: "lead_acid", batteryQuantity: 2, observations: " note ",
       }),
     );
     expect(result.ok && result.value).toMatchObject({
       supplierId: s.supplierA.id, assetTypeId: s.forklift.id, internalCode: "ZX 037", brand: "Brand X",
-      model: "M-1", year: 2020, serialNumber: "SN-1", batteryQuantity: 2, observations: "note", archivedAt: null,
+      model: "M-1", year: 2020, serialNumber: "SN-1", batteryKind: "lead_acid", batteryQuantity: 2, observations: "note", archivedAt: null,
     });
     expect(h.auditOf("fleet.equipment.create").at(-1)).toMatchObject({
       entityType: "equipment",
@@ -133,7 +133,7 @@ describe("CreateEquipment", () => {
       after: {
         supplierId: s.supplierA.id, supplierName: "SUPPLIER A", assetTypeId: s.forklift.id, assetTypeName: "FORKLIFT",
         internalCode: "ZX 037", brand: "Brand X", model: "M-1", year: 2020, serialNumber: "SN-1",
-        batteryQuantity: 2, observations: "note",
+        batteryKind: "lead_acid", batteryQuantity: 2, observations: "note",
       },
     });
   });
@@ -185,7 +185,9 @@ describe("CreateEquipment", () => {
     for (const override of [
       { internalCode: " " }, { internalCode: "9".repeat(41) }, { brand: "b".repeat(121) }, { model: "m".repeat(121) },
       { brand: "  " }, { brand: null }, { model: "" }, { model: null },
-      { year: 1949 }, { year: 2028 }, { serialNumber: "s".repeat(61) }, { batteryQuantity: 5 }, { observations: "o".repeat(501) },
+      { year: 1949 }, { year: 2028 }, { serialNumber: "s".repeat(61) }, { batteryKind: "lead_acid", batteryQuantity: 5 }, { observations: "o".repeat(501) },
+      { batteryKind: null }, { batteryKind: "" }, { batteryKind: "gas" }, { batteryKind: "lithium", batteryQuantity: 1 },
+      { batteryKind: "combustion", batteryQuantity: 0 },
     ]) {
       const result = await h.createEquipment.execute(h.equipmentInput(s.supplierA.id, s.forklift.id, "N-1", override));
       codes.push(result.ok ? "ok" : result.error.code);
@@ -194,6 +196,7 @@ describe("CreateEquipment", () => {
       "invalid_internal_code", "invalid_internal_code", "invalid_text", "invalid_text",
       "invalid_text", "invalid_text", "invalid_text", "invalid_text",
       "invalid_year", "invalid_year", "invalid_text", "invalid_battery_quantity", "invalid_text",
+      "invalid_battery_kind", "invalid_battery_kind", "invalid_battery_kind", "battery_quantity_not_allowed", "battery_quantity_not_allowed",
     ]);
     expect(h.audit.entries).toHaveLength(before);
   });
@@ -203,8 +206,17 @@ describe("CreateEquipment", () => {
     const s = await h.seedTenantA();
     const create = (code: string, overrides: object) =>
       h.createEquipment.execute(h.equipmentInput(s.supplierA.id, s.forklift.id, code, overrides));
-    expect((await create("Y1", { year: 1950, batteryQuantity: 0 })).ok).toBe(true);
-    expect((await create("Y2", { year: 2027, batteryQuantity: 4 })).ok).toBe(true);
+    expect((await create("Y1", { year: 1950, batteryKind: "lead_acid", batteryQuantity: 0 })).ok).toBe(true);
+    expect((await create("Y2", { year: 2027, batteryKind: "lead_acid", batteryQuantity: 4 })).ok).toBe(true);
+    expect((await create("Y3", { batteryKind: "lead_acid", batteryQuantity: null })).ok).toBe(true);
+  });
+
+  it.each(["lithium", "lead_acid", "combustion"])("stores the battery kind %s and audits it", async (batteryKind) => {
+    const h = createHarness();
+    const s = await h.seedTenantA();
+    const result = await h.createEquipment.execute(h.equipmentInput(s.supplierA.id, s.forklift.id, "B-1", { batteryKind }));
+    expect(result.ok && result.value).toMatchObject({ batteryKind, batteryQuantity: null });
+    expect(h.auditOf("fleet.equipment.create").at(-1)).toMatchObject({ after: { batteryKind, batteryQuantity: null } });
   });
 
   it("allows the same internal code under two suppliers and refuses it under one", async () => {

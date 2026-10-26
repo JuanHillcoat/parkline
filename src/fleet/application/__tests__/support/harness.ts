@@ -46,7 +46,8 @@ export const grant = (role: string, scopeType: string, scopeId: string): Grant =
 
 /**
  * Operations of the fake organization. OP1 and OP2 share the division BU1 (sites S1 and S2); OP3 is in
- * BU2 (site S3); OPX is archived; OPB belongs to tenant t-b.
+ * BU2 (site S3); OPX is archived; OPB belongs to tenant t-b. Sites: S1, S2, S3 and SX (archived) of tenant
+ * t-a, S-B of tenant t-b.
  */
 const seedOperations = (): FakeOperationDirectory => {
   const directory = new FakeOperationDirectory();
@@ -58,6 +59,9 @@ const seedOperations = (): FakeOperationDirectory => {
   row("t-a", "opx", "bu1", "s1");
   row("t-b", "opb", "bu-b", "s-b");
   directory.archive("opx", START);
+  for (const id of ["s1", "s2", "s3", "sx"]) directory.addSite({ tenantId: "t-a", id, archivedAt: null });
+  directory.addSite({ tenantId: "t-b", id: "s-b", archivedAt: null });
+  directory.archiveSite("sx", START);
   return directory;
 };
 
@@ -125,6 +129,7 @@ export const createHarness = () => {
     model: "Model",
     year: null,
     serialNumber: null,
+    batteryKind: "combustion",
     batteryQuantity: null,
     observations: null,
     ...overrides,
@@ -160,14 +165,22 @@ export const createHarness = () => {
     operationId: string,
     day: string,
     overrides: Partial<Parameters<AssignEquipment["execute"]>[0]> = {},
-  ) => orThrow(await useCases.assignEquipment.execute({ actor: admin, equipmentId, operationId, kind: "active", day, ...overrides }));
+  ) => orThrow(await useCases.assignEquipment.execute({ actor: admin, equipmentId, target: { operationId }, day, ...overrides }));
+
+  /** Assigns as the admin as a spare of a site (ADR-0013) and returns the stored assignment. */
+  const assignSpare = async (
+    equipmentId: string,
+    siteId: string,
+    day: string,
+    overrides: Partial<Parameters<AssignEquipment["execute"]>[0]> = {},
+  ) => orThrow(await useCases.assignEquipment.execute({ actor: admin, equipmentId, target: { siteId }, day, ...overrides }));
 
   /** Every assignment of an equipment of tenant A, newest first, read from the committed state. */
   const assignmentsOf = (equipmentId: string) => store.read((tx) => tx.assignments.listByEquipment("t-a", equipmentId));
 
   const auditOf = (action: string) => audit.entries.filter((entry) => entry.action === action);
 
-  return { audit, store, deps, initialReadings, clock, operations, assign, assignmentsOf, analystAt, adminAt, admin, adminB, analyst, analystB, auditOf, orThrow, equipmentInput, seedTenantA, ...useCases };
+  return { audit, store, deps, initialReadings, clock, operations, assign, assignSpare, assignmentsOf, analystAt, adminAt, admin, adminB, analyst, analystB, auditOf, orThrow, equipmentInput, seedTenantA, ...useCases };
 };
 
 export type Harness = ReturnType<typeof createHarness>;

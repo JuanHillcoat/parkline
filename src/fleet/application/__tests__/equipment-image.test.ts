@@ -77,7 +77,7 @@ describe("CreateEquipment with an image", () => {
 
 const edit = (h: Harness, id: string, s: { supplierA: { id: string }; forklift: { id: string } }, extra: object) => ({
   actor: h.admin, id, reason: "Photo update", supplierId: s.supplierA.id, assetTypeId: s.forklift.id, internalCode: "EQ-IMG",
-  brand: "Brand", model: "Model", year: null, serialNumber: null, batteryQuantity: null, observations: null, ...extra,
+  brand: "Brand", model: "Model", year: null, serialNumber: null, batteryKind: "combustion", batteryQuantity: null, observations: null, ...extra,
 });
 
 describe("UpdateEquipment image changes", () => {

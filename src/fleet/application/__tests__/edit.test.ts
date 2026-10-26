@@ -133,6 +133,7 @@ const equipmentEdit = (h: Harness, s: Awaited<ReturnType<Harness["seedTenantA"]>
   model: "Model",
   year: null,
   serialNumber: null,
+  batteryKind: "combustion",
   batteryQuantity: null,
   observations: null,
   reason: "Corrected",
@@ -146,7 +147,7 @@ describe("UpdateEquipment", () => {
     const result = await h.updateEquipment.execute(
       equipmentEdit(h, s, {
         supplierId: s.supplierB.id, assetTypeId: s.container.id, internalCode: " eq-9 ", brand: "Brand X", model: "M-1",
-        year: 2019, serialNumber: "SN-9", batteryQuantity: 1, observations: "Moved", reason: " Re-assigned ",
+        year: 2019, serialNumber: "SN-9", batteryKind: "lead_acid", batteryQuantity: 1, observations: "Moved", reason: " Re-assigned ",
       }),
     );
     expect(result.ok && result.value).toMatchObject({ id: s.eq1.id, supplierId: s.supplierB.id, internalCode: "EQ-9", year: 2019 });
@@ -154,12 +155,59 @@ describe("UpdateEquipment", () => {
       entityType: "equipment",
       entityId: s.eq1.id,
       reason: "Re-assigned",
-      before: { supplierId: s.supplierA.id, supplierName: "SUPPLIER A", assetTypeName: "FORKLIFT", internalCode: "EQ-0001", brand: "Brand" },
+      before: {
+        supplierId: s.supplierA.id, supplierName: "SUPPLIER A", assetTypeName: "FORKLIFT", internalCode: "EQ-0001", brand: "Brand",
+        batteryKind: "combustion", batteryQuantity: null,
+      },
       after: {
         supplierId: s.supplierB.id, supplierName: "SUPPLIER B", assetTypeId: s.container.id, assetTypeName: "CONTAINER",
-        internalCode: "EQ-9", brand: "Brand X", model: "M-1", year: 2019, serialNumber: "SN-9", batteryQuantity: 1, observations: "Moved",
+        internalCode: "EQ-9", brand: "Brand X", model: "M-1", year: 2019, serialNumber: "SN-9", batteryKind: "lead_acid", batteryQuantity: 1, observations: "Moved",
       },
     });
+  });
+
+  it("requires the battery kind and takes a quantity only for lead acid", async () => {
+    const h = createHarness();
+    const s = await h.seedTenantA();
+    const results = [];
+    for (const override of [
+      { batteryKind: null }, { batteryKind: "" }, { batteryKind: "gas" },
+      { batteryKind: "lithium", batteryQuantity: 2 }, { batteryKind: "combustion", batteryQuantity: 0 },
+    ]) {
+      const result = await h.updateEquipment.execute(equipmentEdit(h, s, override));
+      results.push(result.ok ? "ok" : result.error.code);
+    }
+    expect(results).toEqual(["invalid_battery_kind", "invalid_battery_kind", "invalid_battery_kind", "battery_quantity_not_allowed", "battery_quantity_not_allowed"]);
+    expect(h.auditOf("fleet.equipment.update")).toHaveLength(0);
+  });
+
+  it("changes the battery kind and quantity, auditing both sides", async () => {
+    const h = createHarness();
+    const s = await h.seedTenantA();
+    const changed = await h.updateEquipment.execute(equipmentEdit(h, s, { batteryKind: "lead_acid", batteryQuantity: 4 }));
+    expect(changed.ok && changed.value).toMatchObject({ batteryKind: "lead_acid", batteryQuantity: 4 });
+    const back = await h.updateEquipment.execute(equipmentEdit(h, s, { batteryKind: "lithium" }));
+    expect(back.ok && back.value).toMatchObject({ batteryKind: "lithium", batteryQuantity: null });
+    expect(h.auditOf("fleet.equipment.update")).toMatchObject([
+      { before: { batteryKind: "combustion", batteryQuantity: null }, after: { batteryKind: "lead_acid", batteryQuantity: 4 } },
+      { before: { batteryKind: "lead_acid", batteryQuantity: 4 }, after: { batteryKind: "lithium", batteryQuantity: null } },
+    ]);
+  });
+
+  it("keeps an old equipment (no battery kind) readable and editable only when the edit supplies a kind", async () => {
+    const h = createHarness();
+    const s = await h.seedTenantA();
+    const old = { ...s.eq1, id: "old-1", internalCode: "OLD-1", batteryKind: null, batteryQuantity: 2 };
+    await h.deps.unitOfWork.run(async (tx) => {
+      await tx.equipment.add(old);
+      return { ok: true as const, value: undefined };
+    });
+    const read = await h.getEquipment.execute({ actor: h.admin, id: "old-1" });
+    expect(read.ok && read.value).toMatchObject({ batteryKind: null, batteryQuantity: 2 });
+    const without = await h.updateEquipment.execute(equipmentEdit(h, s, { id: "old-1", internalCode: "OLD-1", batteryKind: null, batteryQuantity: 2 }));
+    expect(!without.ok && without.error.code).toBe("invalid_battery_kind");
+    const withKind = await h.updateEquipment.execute(equipmentEdit(h, s, { id: "old-1", internalCode: "OLD-1", batteryKind: "lead_acid", batteryQuantity: 2 }));
+    expect(withKind.ok && withKind.value).toMatchObject({ batteryKind: "lead_acid", batteryQuantity: 2 });
   });
 
   it("requires a reason, answers no_changes for equal values and keeps the previous data", async () => {
@@ -195,7 +243,7 @@ describe("UpdateEquipment", () => {
     const codes: string[] = [];
     for (const override of [
       { supplierId: s.spare.id }, { assetTypeId: s.spareType.id }, { supplierId: "missing" }, { assetTypeId: "missing" },
-      { internalCode: "" }, { year: 1900 }, { batteryQuantity: 9 }, { brand: "b".repeat(121) },
+      { internalCode: "" }, { year: 1900 }, { batteryKind: "lead_acid", batteryQuantity: 9 }, { brand: "b".repeat(121) },
       { brand: "  " }, { brand: null }, { model: "" }, { model: null },
     ]) {
       const result = await h.updateEquipment.execute(equipmentEdit(h, s, override));

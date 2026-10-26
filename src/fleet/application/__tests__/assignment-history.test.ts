@@ -5,8 +5,8 @@ const history = async () => {
   const h = createHarness();
   const s = await h.seedTenantA();
   await h.assign(s.eq1.id, "op1", "2026-01-10");
-  await h.moveEquipment.execute({ actor: h.admin, equipmentId: s.eq1.id, operationId: "op2", day: "2026-03-01", reason: "Pedido" });
-  await h.moveEquipment.execute({ actor: h.admin, equipmentId: s.eq1.id, operationId: "op3", day: "2026-05-01", reason: "Pedido" });
+  await h.moveEquipment.execute({ actor: h.admin, equipmentId: s.eq1.id, target: { operationId: "op2" }, day: "2026-03-01", reason: "Pedido" });
+  await h.moveEquipment.execute({ actor: h.admin, equipmentId: s.eq1.id, target: { operationId: "op3" }, day: "2026-05-01", reason: "Pedido" });
   return { h, s };
 };
 

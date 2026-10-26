@@ -5,7 +5,7 @@ const setup = async () => {
   const h = createHarness();
   const s = await h.seedTenantA();
   const first = await h.assign(s.eq1.id, "op1", "2026-01-10");
-  const input = { actor: h.admin, equipmentId: s.eq1.id, operationId: "op2", day: "2026-02-01", reason: "Pedido de la operación" };
+  const input = { actor: h.admin, equipmentId: s.eq1.id, target: { operationId: "op2" }, day: "2026-02-01", reason: "Pedido de la operación" };
   return { h, s, first, input };
 };
 
@@ -38,14 +38,12 @@ describe("MoveEquipment", () => {
     ]);
   });
 
-  it("keeps the kind of the closed assignment unless another is given", async () => {
+  it("derives the kind of the new assignment from the target: an operation is active", async () => {
     const { h, s, input } = await setup();
     await h.endAssignment.execute({ actor: h.admin, equipmentId: s.eq1.id, day: "2026-01-20", reason: "Fin" });
-    await h.assign(s.eq1.id, "op1", "2026-01-21", { kind: "spare" });
-    const kept = await h.moveEquipment.execute(input);
-    expect(kept.ok && kept.value.opened.kind).toBe("spare");
-    const changed = await h.moveEquipment.execute({ ...input, operationId: "op3", day: "2026-03-01", kind: "active" });
-    expect(changed.ok && changed.value.opened.kind).toBe("active");
+    await h.assignSpare(s.eq1.id, "s1", "2026-01-21");
+    const moved = await h.moveEquipment.execute(input);
+    expect(moved.ok && moved.value.opened.kind).toBe("active");
   });
 
   it("requires a reason, even for a future day", async () => {
@@ -73,13 +71,11 @@ describe("MoveEquipment", () => {
     expect(await h.assignmentsOf(s.eq1.id)).toHaveLength(1);
   });
 
-  it("refuses an invalid day, an unknown kind and a move to the same operation", async () => {
+  it("refuses an invalid day and a move to the same operation", async () => {
     const { h, input } = await setup();
     const day = await h.moveEquipment.execute({ ...input, day: "tomorrow" });
-    const kind = await h.moveEquipment.execute({ ...input, kind: "loan" });
-    const same = await h.moveEquipment.execute({ ...input, operationId: "op1" });
+    const same = await h.moveEquipment.execute({ ...input, target: { operationId: "op1" } });
     expect(!day.ok && day.error.code).toBe("invalid_day");
-    expect(!kind.ok && kind.error.code).toBe("invalid_assignment_kind");
     expect(!same.ok && same.error.code).toBe("same_operation");
   });
 
@@ -91,8 +87,8 @@ describe("MoveEquipment", () => {
 
   it("refuses an archived target operation and a missing one, changing nothing", async () => {
     const { h, s, input } = await setup();
-    const archived = await h.moveEquipment.execute({ ...input, operationId: "opx" });
-    const missing = await h.moveEquipment.execute({ ...input, operationId: "missing" });
+    const archived = await h.moveEquipment.execute({ ...input, target: { operationId: "opx" } });
+    const missing = await h.moveEquipment.execute({ ...input, target: { operationId: "missing" } });
     expect(!archived.ok && archived.error.code).toBe("operation_archived");
     expect(!missing.ok && missing.error.code).toBe("not_found");
     expect((await h.assignmentsOf(s.eq1.id)).map((r) => r.validTo)).toEqual([null]);
@@ -111,7 +107,7 @@ describe("MoveEquipment", () => {
 
   it("does not move the equipment of another tenant", async () => {
     const { h, s, input } = await setup();
-    const result = await h.moveEquipment.execute({ ...input, actor: h.adminB, operationId: "opb" });
+    const result = await h.moveEquipment.execute({ ...input, actor: h.adminB, target: { operationId: "opb" } });
     expect(!result.ok && result.error.code).toBe("no_open_assignment");
     expect((await h.assignmentsOf(s.eq1.id)).map((r) => r.validTo)).toEqual([null]);
   });

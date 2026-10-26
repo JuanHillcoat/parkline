@@ -15,7 +15,7 @@ const setup = async () => {
 const stored = async (h: Harness, code: string, supplierId: string) =>
   (await h.store.read((tx) => tx.equipment.findByInternalCode("t-a", supplierId, nameKey(code)))) !== null;
 
-const assignment = { operationId: "op1", kind: "active", day: "2026-01-01", reason: null };
+const assignment = { target: { operationId: "op1" }, day: "2026-01-01", reason: null };
 
 describe("CreateEquipment with an initial reading", () => {
   it("creates the equipment and records its first reading through the port", async () => {

@@ -71,7 +71,7 @@ describe("the overlap race", () => {
     await h.assign(s.eq1.id, "op1", "2026-01-10");
     const before = h.audit.entries.length;
     const result = await new AssignEquipment(blind(h)).execute({
-      actor: h.admin, equipmentId: s.eq1.id, operationId: "op2", kind: "active", day: "2026-02-01",
+      actor: h.admin, equipmentId: s.eq1.id, target: { operationId: "op2" }, day: "2026-02-01",
     });
     expect(!result.ok && result.error.code).toBe("assignment_overlap");
     expect(await h.assignmentsOf(s.eq1.id)).toHaveLength(1);
@@ -99,7 +99,7 @@ describe("the overlap race", () => {
       ...tx,
       assignments: Object.assign(Object.create(tx.assignments) as typeof tx.assignments, { add: () => Promise.resolve("overlap" as const) }),
     }));
-    const result = await new MoveEquipment(deps).execute({ actor: h.admin, equipmentId: s.eq1.id, operationId: "op2", day: "2026-02-01", reason: "Pedido" });
+    const result = await new MoveEquipment(deps).execute({ actor: h.admin, equipmentId: s.eq1.id, target: { operationId: "op2" }, day: "2026-02-01", reason: "Pedido" });
     expect(!result.ok && result.error.code).toBe("assignment_overlap");
     expect((await h.assignmentsOf(s.eq1.id)).map((a) => [a.operationId, a.validTo])).toEqual([["op1", null]]);
   });
