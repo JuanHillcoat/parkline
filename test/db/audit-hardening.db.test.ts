@@ -169,6 +169,8 @@ describe("sensitive-action reason trigger (owner connection)", () => {
     "fleet.assignment.replace",
     "fleet.assignment.end",
     "fleet.assignment.correct",
+    "metering.reading.correct",
+    "metering.meter.replace",
   ])(
     "%s needs a visible reason: null, empty, blank and invisible-only are refused",
     async (action) => {

@@ -8,10 +8,10 @@ const NONE = copy.fleet.noValue;
 
 type Raw = string | readonly string[] | undefined;
 
-export type DetailTab = "info" | "history";
+export type DetailTab = "info" | "history" | "readings";
 
 /** An unknown or repeated tab value falls back to the information tab. */
-export const parseDetailTab = (raw: Raw): DetailTab => (raw === "history" ? "history" : "info");
+export const parseDetailTab = (raw: Raw): DetailTab => (raw === "history" || raw === "readings" ? raw : "info");
 
 /** `YYYY-MM-DD` as `DD/MM/YYYY`, by splitting the text: a day never goes through Date (no timezone). */
 export const formatDay = (day: string): string => {
@@ -25,8 +25,8 @@ export type DetailPlaces = Places & { readonly divisions: readonly Option[] };
 const orDash = (value: string | number | null | undefined): string => value?.toString() ?? NONE;
 const nameOf = (options: readonly Option[], id: string): string => options.find((option) => option.id === id)?.name ?? NONE;
 
-/** The general information card: every field of the equipment, with a dash where it is blank. */
-export const buildInfoRows = (item: EquipmentListItem): InfoRow[] => [
+/** The general information card: every field of the equipment, with a dash where it is blank. `extra` rows (the last reading) go last. */
+export const buildInfoRows = (item: EquipmentListItem, extra: readonly InfoRow[] = []): InfoRow[] => [
   { label: t.info.internalCode, value: item.internalCode },
   { label: t.info.assetType, value: item.assetType.name },
   { label: t.info.supplier, value: item.supplier.name },
@@ -36,6 +36,7 @@ export const buildInfoRows = (item: EquipmentListItem): InfoRow[] => [
   { label: t.info.serialNumber, value: orDash(item.serialNumber) },
   { label: t.info.batteries, value: orDash(item.batteryQuantity) },
   { label: t.info.observations, value: orDash(item.observations) },
+  ...extra,
 ];
 
 export type LocationView = { readonly assigned: boolean; readonly rows: InfoRow[]; readonly hint: string | null };

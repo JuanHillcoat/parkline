@@ -14,6 +14,8 @@ Status: early development. The skeleton (`p0-01`), identity (`p0-02`: sign-in, s
 
 **Equipment image.** An equipment can carry one representative picture (JPEG, PNG or WebP, up to 500 KB, kept in the database at no cost). It is chosen when registering or editing, shown in the detail and as a thumbnail in the list, and large photos are reduced in the browser before they are sent. Brand and model are required. See [ADR-0011](docs/adr/0011-equipment-image.md).
 
+**Meters and readings (tab Lecturas).** An equipment whose asset type measures in hours or kilometers has a meter with immutable readings: a reading cannot go below the previous one (a lower value is a meter replacement, with a reason), a mistake is fixed with a correction that keeps the original, and the hours of the last 30 days are shown. The first reading can be loaded when registering the equipment. Only the administrator and the fleet analyst write; the rest read. See [ADR-0012](docs/adr/0012-meters-and-readings.md).
+
 **Register and assign in one step.** The Nuevo equipo dialog can also assign the equipment to an operation (as active or as a spare, from today or from a past day with a reason); both happen in one transaction, so a refused assignment creates nothing.
 
 ## Requirements
@@ -115,6 +117,6 @@ Import rules between these layers are described in [`src/README.md`](src/README.
 ## Documentation
 
 - [`docs/00-analisis-inicial.md`](docs/00-analisis-inicial.md): initial analysis (Spanish). Scope, business rules, architecture, audit, stack and phases.
-- [`docs/adr/`](docs/adr/): architecture decisions, including [ADR-0003](docs/adr/0003-identity-and-sessions.md) (identity, sessions and install), [ADR-0004](docs/adr/0004-audit-hardening.md) (audit hardening), [ADR-0005](docs/adr/0005-cross-module-authorization.md) (cross-module authorization) [ADR-0006](docs/adr/0006-organization-model.md) (organization model) [ADR-0007](docs/adr/0007-fleet-catalogs.md) (fleet catalogs) [ADR-0010](docs/adr/0010-equipment-assignments.md) (equipment assignments) and [ADR-0011](docs/adr/0011-equipment-image.md) (equipment image).
+- [`docs/adr/`](docs/adr/): architecture decisions, including [ADR-0003](docs/adr/0003-identity-and-sessions.md) (identity, sessions and install), [ADR-0004](docs/adr/0004-audit-hardening.md) (audit hardening), [ADR-0005](docs/adr/0005-cross-module-authorization.md) (cross-module authorization) [ADR-0006](docs/adr/0006-organization-model.md) (organization model) [ADR-0007](docs/adr/0007-fleet-catalogs.md) (fleet catalogs) [ADR-0010](docs/adr/0010-equipment-assignments.md) (equipment assignments) and [ADR-0011](docs/adr/0011-equipment-image.md) (equipment image) and [ADR-0012](docs/adr/0012-meters-and-readings.md) (meters and readings).
 - [`AGENTS.md`](AGENTS.md): project conventions for contributors and agents.
 - [`CHANGELOG.md`](CHANGELOG.md): notable changes.

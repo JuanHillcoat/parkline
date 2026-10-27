@@ -73,12 +73,12 @@ const failure = (run: PromiseLike<unknown>): Promise<PgError | null> =>
   );
 
 describe("organization schema after migrating", () => {
-  it("applies 0005 to 0011 (organization, names, edit, archive, fleet, assignments, equipment images) and the three tables start empty (no seed)", () => {
+  it("applies 0005 to 0012 (organization, names, edit, archive, fleet, assignments, equipment images, metering) and the three tables start empty (no seed)", () => {
     expect(applied).toContain("0005_organization.sql");
     expect(applied).toContain("0006_organization_names.sql");
     expect(applied).toContain("0007_organization_edit.sql");
     expect(applied).toContain("0008_organization_archive.sql");
-    expect(applied.at(-1)).toBe("0011_equipment_images.sql");
+    expect(applied.at(-1)).toBe("0012_metering.sql");
     expect(emptyAfterMigrating).toEqual({ business_units: 0, operations: 0, sites: 0 });
   });
 
@@ -354,6 +354,7 @@ describe("migration 0008 on a database that already has rows", () => {
       "0009_fleet_catalogs.sql",
       "0010_equipment_assignments.sql",
       "0011_equipment_images.sql",
+      "0012_metering.sql",
     ]);
     for (const table of TABLES) {
       const rows = await old.unsafe<{ archived_at: Date | null }[]>(`select archived_at from ${table}`);

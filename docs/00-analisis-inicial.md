@@ -120,7 +120,7 @@ Documentos adicionales de la empresa: cinco comprobantes de C con sus soportes y
 
 ## 4. Actores y alcance de v1
 
-**Actores [S]:** `admin`, `fleet_analyst` (carga y conciliación), `manager` (aprueba presupuestos y reaperturas), `supervisor` (OR y lecturas de su alcance) y `viewer`. Alcance: tenant, unidad de negocio, operación o sitio, asignado por usuario. **Coberturas con muletos [S]:** el `supervisor` del sitio registra la llegada y el retiro; el `fleet_analyst` confirma con evidencia. El sector Flota y Equipos define el estado facturable del muleto al registrarlo [H, confirmado por el usuario] (sección 7.2).
+**Actores [S]:** `admin`, `fleet_analyst` (carga y conciliación), `manager` (aprueba presupuestos y reaperturas), `supervisor` (OR de su alcance; solo lee las lecturas de horómetro, decidido por el usuario el 2026-10-24: carga, corrige y reemplaza solo `admin` y `fleet_analyst`, ver ADR-0012) y `viewer`. Alcance: tenant, unidad de negocio, operación o sitio, asignado por usuario. **Coberturas con muletos [S]:** el `supervisor` del sitio registra la llegada y el retiro; el `fleet_analyst` confirma con evidencia. El sector Flota y Equipos define el estado facturable del muleto al registrarlo [H, confirmado por el usuario] (sección 7.2).
 
 **Fuera de v1: portal de proveedores.** Los documentos de proveedor (comprobantes, OT, presupuestos, declaraciones) los registra la empresa a partir de papel o archivos recibidos. Las declaraciones y comprobantes se importan desde archivo con revisión humana antes de confirmar (sección 7.2). Un portal agregaría identidades externas, alcance por proveedor y superficie de seguridad, sin reducir ningún paso verificado hoy. Se reevalúa en una fase posterior si un proveedor lo exige. [D]
 

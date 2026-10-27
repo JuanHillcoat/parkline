@@ -2,10 +2,11 @@ import { EditImageField, NewImageField } from "../../_components/image-field";
 import { ActionDialog, type DialogAction } from "../../_components/action-dialog";
 import { DateField, ReasonField, SelectField, TextField, type Option } from "../../_components/form-fields";
 import { copy } from "../../_lib/copy";
-import type { EquipmentFormValues, EquipmentRow } from "../../_lib/fleet-view";
+import type { AssetTypeOption, EquipmentFormValues, EquipmentRow } from "../../_lib/fleet-view";
 import { createEquipmentAction, updateEquipmentAction } from "./actions";
+import { InitialReadingFields } from "./initial-reading-fields";
 
-export type EquipmentOptions = { readonly suppliers: readonly Option[]; readonly assetTypes: readonly Option[] };
+export type EquipmentOptions = { readonly suppliers: readonly Option[]; readonly assetTypes: readonly AssetTypeOption[] };
 
 const EMPTY: EquipmentFormValues = {
   internalCode: "", supplierId: "", assetTypeId: "", brand: "", model: "",
@@ -89,6 +90,9 @@ function AssignmentFields({ operations, today }: AssignmentProps) {
 
 type NewProps = AssignmentProps & { readonly options: EquipmentOptions };
 
+const metersOf = (options: EquipmentOptions): Record<string, AssetTypeOption["meterKind"]> =>
+  Object.fromEntries(options.assetTypes.map((type) => [type.id, type.meterKind]));
+
 export function NewEquipmentDialog({ options, operations, today }: NewProps) {
   const t = copy.dialogs.newEquipment;
   return (
@@ -97,6 +101,7 @@ export function NewEquipmentDialog({ options, operations, today }: NewProps) {
       <EquipmentFields idPrefix="new-equipment" options={options} initial={EMPTY} />
       <NewImageField id="new-equipment-image" />
       <AssignmentFields operations={operations} today={today} />
+      <InitialReadingFields selectId="new-equipment-type" meters={metersOf(options)} today={today} />
     </ActionDialog>
   );
 }

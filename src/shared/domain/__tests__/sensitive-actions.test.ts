@@ -25,6 +25,8 @@ describe("SENSITIVE_AUDIT_ACTIONS", () => {
       "fleet.assignment.replace",
       "fleet.assignment.end",
       "fleet.assignment.correct",
+      "metering.reading.correct",
+      "metering.meter.replace",
     ]);
   });
 });
@@ -36,6 +38,7 @@ describe("requiresReason", () => {
 
   it("does not require one for other actions", () => {
     expect(requiresReason("user.create")).toBe(false);
+    expect(requiresReason("metering.reading.create")).toBe(false);
     expect(requiresReason("")).toBe(false);
   });
 });

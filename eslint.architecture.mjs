@@ -17,6 +17,10 @@
  *     infrastructure/      shared adapters; container.ts is the composition root
  *   app/                   Next.js routes; they only call use cases
  *
+ * Modules are discovered by the per-layer `src/<module>/<layer>` patterns below, so adding one (for example `metering`)
+ * needs no entry here: a module may import only the shared kernel and itself, never another module.
+ * Cross-module needs go through ports in `src/shared/domain/ports` (ADR-0005).
+ *
  * Allowed imports (everything else is rejected by `default: "disallow"`):
  *
  *   shared-domain     -> shared-domain
