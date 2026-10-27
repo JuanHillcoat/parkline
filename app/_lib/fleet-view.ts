@@ -38,6 +38,7 @@ export type EquipmentFormValues = {
   readonly model: string;
   readonly year: string;
   readonly serialNumber: string;
+  readonly batteryKind: string;
   readonly batteryQuantity: string;
   readonly observations: string;
 };
@@ -112,6 +113,7 @@ export const equipmentFormValues = (e: Equipment): EquipmentFormValues => ({
   model: text(e.model),
   year: text(e.year),
   serialNumber: text(e.serialNumber),
+  batteryKind: text(e.batteryKind),
   batteryQuantity: text(e.batteryQuantity),
   observations: text(e.observations),
 });
@@ -177,6 +179,9 @@ export const assetTypeNamesOf = (items: readonly EquipmentListItem[]): Option[] 
 /** Operations that are not archived: the options of the operation filter. */
 export const operationOptions = (operations: readonly (Option & { readonly archivedAt: Date | null })[]): Option[] =>
   operations.filter((operation) => operation.archivedAt === null).map(({ id, name }) => ({ id, name }));
+
+/** Sites that are not archived: the sites that can hold a spare (the "Site" select). */
+export const siteOptions = operationOptions;
 
 const activeOptions = (rows: readonly (Supplier | AssetType)[]): Option[] =>
   rows.filter((row) => row.archivedAt === null).map((row) => ({ id: row.id, name: row.name }));

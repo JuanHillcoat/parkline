@@ -1349,6 +1349,26 @@ dialog.dialog::backdrop {
   object-fit: cover;
 }
 
+/* The chosen file beside its input: a small square that never makes the row taller (issue 54) */
+.image-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.image-row .input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.image-preview.image-thumb {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  max-width: 44px;
+  aspect-ratio: 1;
+}
+
 .image-none {
   margin: 0;
 }
@@ -1401,5 +1421,53 @@ dialog.dialog::backdrop {
   .photo-image {
     flex: 1 1 100%;
     width: 100%;
+  }
+}
+
+/* Wide dialogs with a multi-column form (issue 54): the new equipment dialog fits a desktop screen without scrolling */
+dialog.dialog-wide {
+  width: min(1000px, calc(100vw - 32px));
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px 16px;
+  align-items: start;
+  margin-top: 14px;
+}
+
+.form-grid .field {
+  min-width: 0;
+  margin-top: 0;
+}
+
+.form-grid .field-span-2,
+.form-grid > .choice-group {
+  grid-column: span 2;
+}
+
+.form-grid .field-span-full {
+  grid-column: 1 / -1;
+}
+
+.form-grid textarea.input {
+  min-height: 60px;
+}
+
+@media (max-width: 900px) {
+  .form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .form-grid .field-span-2,
+  .form-grid > .choice-group {
+    grid-column: auto;
   }
 }

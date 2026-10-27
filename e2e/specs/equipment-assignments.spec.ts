@@ -32,17 +32,18 @@ import {
 import { resetCatalogs } from "../support/data";
 import { expectDialogClosed, fill, openDialog, openDialogOf, submitDialog } from "../support/fleet-flows";
 import { archiveButton, archiveOrRestore, rowOf } from "../support/organization-flows";
-import { storageStatePath, WORLD_ORG } from "../support/world";
+import { readWorld, storageStatePath, WORLD_ORG } from "../support/world";
 
 const PAST = "2026-01-05";
 const WORLD_OP = WORLD_ORG.operation;
+const siteId = (): string => readWorld().ids.site;
 const ddmmyyyy = (iso: string): string => iso.split("-").reverse().join("/");
 
 /** An equipment that has been in OP_A since PAST (a backdated assignment seeded with a reason). */
-async function seedAssigned(code: string, kind: "active" | "spare" = "active"): Promise<{ fixture: Fixture; id: string }> {
+async function seedAssigned(code: string): Promise<{ fixture: Fixture; id: string }> {
   const fixture = await seedFixture([code]);
   const id = idOf(fixture, code);
-  await withSeeder((seeder) => seeder.assign({ equipmentId: id, operationId: fixture.opA, kind, day: PAST, reason: "Loaded late" }));
+  await withSeeder((seeder) => seeder.assign({ equipmentId: id, operationId: fixture.opA, day: PAST, reason: "Loaded late" }));
   return { fixture, id };
 }
 
@@ -79,7 +80,7 @@ test.describe("assign an equipment from the detail page", () => {
       await expect(buttonNamed(page, name), name).toHaveCount(1);
     }
     expect(await storedAssignments(id)).toEqual([
-      { valid_from: today(), valid_to: null, kind: "active", operation_id: fixture.opA, reason: null },
+      { valid_from: today(), valid_to: null, kind: "active", operation_id: fixture.opA, site_id: siteId(), reason: null },
     ]);
     const [entry, ...others] = await assignmentAudit(id);
     expect(others).toHaveLength(0);
@@ -103,15 +104,17 @@ test.describe("assign an equipment from the detail page", () => {
     await expect(row).toContainText(t.kinds.active);
   });
 
-  test("assigns a muleto and shows the Muleto state", async ({ page }) => {
+  test("assigns a muleto to a site and shows the Muleto state, with no operation", async ({ page }) => {
     const fixture = await seedFixture(["ASG-3"]);
     const id = idOf(fixture, "ASG-3");
     await gotoDetail(page, id, "ASG-3");
-    await submitAssign(page, { operation: OP_A, kind: "spare" });
+    await submitAssign(page, { site: WORLD_ORG.site });
     await expectDialogClosed(page);
     await expect(pillOf(page)).toHaveText(copy.fleet.state.spare);
     await expect(valueOf(locationCard(page), t.location.kind)).toHaveText(t.kinds.spare);
-    expect((await storedAssignments(id)).map((row) => row.kind)).toEqual(["spare"]);
+    await expect(valueOf(locationCard(page), t.location.site)).toHaveText(WORLD_ORG.site);
+    await expect(locationCard(page).getByText(t.location.operation, { exact: true })).toHaveCount(0);
+    expect((await storedAssignments(id)).map((row) => [row.kind, row.operation_id, row.site_id])).toEqual([["spare", null, siteId()]]);
   });
 
   test("a past day without a reason shows the reason error and stores nothing; with a reason it works and is audited", async ({ page }) => {
@@ -127,7 +130,7 @@ test.describe("assign an equipment from the detail page", () => {
     await expectDialogClosed(page);
     await expect(valueOf(locationCard(page), t.location.since)).toHaveText(ddmmyyyy(PAST));
     expect(await storedAssignments(id)).toEqual([
-      { valid_from: PAST, valid_to: null, kind: "active", operation_id: fixture.opA, reason: "Loaded late" },
+      { valid_from: PAST, valid_to: null, kind: "active", operation_id: fixture.opA, site_id: siteId(), reason: "Loaded late" },
     ]);
     const audit = await assignmentAudit(id);
     expect(audit).toHaveLength(1);
@@ -154,7 +157,7 @@ test.describe("assign an equipment from the detail page", () => {
     const dialog = await submitAssign(stale, { operation: OP_B });
     await expect(alertOf(dialog)).toHaveText(messages.open_assignment_exists);
     expect(await storedAssignments(id)).toEqual([
-      { valid_from: today(), valid_to: null, kind: "active", operation_id: fixture.opA, reason: null },
+      { valid_from: today(), valid_to: null, kind: "active", operation_id: fixture.opA, site_id: siteId(), reason: null },
     ]);
     expect(await assignmentAudit(id)).toHaveLength(1);
   });
@@ -189,28 +192,28 @@ test.describe("move an equipment from the detail page", () => {
   test.use({ storageState: storageStatePath("fleet_analyst") });
   test.beforeEach(resetCatalogs);
 
-  test("closes the old row the day before and opens a new one, keeping the kind", async ({ page }) => {
-    const { fixture, id } = await seedAssigned("MOV-1", "spare");
+  test("closes the old row the day before and opens a new one", async ({ page }) => {
+    const { fixture, id } = await seedAssigned("MOV-1");
     await gotoDetail(page, id, "MOV-1");
     await submitMove(page, { operation: OP_B, day: "2026-02-10", reason: "Contract started" });
     await expectDialogClosed(page);
     await expect(valueOf(locationCard(page), t.location.operation)).toHaveText(OP_B);
     await expect(valueOf(locationCard(page), t.location.since)).toHaveText("10/02/2026");
-    await expect(pillOf(page)).toHaveText(copy.fleet.state.spare);
+    await expect(pillOf(page)).toHaveText(copy.fleet.state.active);
     await gotoDetail(page, id, "MOV-1", "history");
     await expect(historyRows(page)).toHaveCount(2);
     const [open, closed] = [historyRows(page).nth(0), historyRows(page).nth(1)];
     await expect(open).toContainText("10/02/2026");
     await expect(open).toContainText(t.history.open);
     await expect(open).toContainText(OP_B);
-    await expect(open).toContainText(t.kinds.spare);
+    await expect(open).toContainText(t.kinds.active);
     await expect(closed).toContainText("05/01/2026");
     await expect(closed).toContainText("09/02/2026");
     await expect(closed).toContainText(OP_A);
-    await expect(closed).toContainText(t.kinds.spare);
+    await expect(closed).toContainText(t.kinds.active);
     expect(await storedAssignments(id)).toEqual([
-      { valid_from: PAST, valid_to: "2026-02-09", kind: "spare", operation_id: fixture.opA, reason: "Contract started" },
-      { valid_from: "2026-02-10", valid_to: null, kind: "spare", operation_id: fixture.opB, reason: "Contract started" },
+      { valid_from: PAST, valid_to: "2026-02-09", kind: "active", operation_id: fixture.opA, site_id: siteId(), reason: "Contract started" },
+      { valid_from: "2026-02-10", valid_to: null, kind: "active", operation_id: fixture.opB, site_id: siteId(), reason: "Contract started" },
     ]);
     const moves = (await assignmentAudit(id)).filter((entry) => entry.action === "fleet.assignment.move");
     expect(moves).toHaveLength(1);
@@ -282,7 +285,7 @@ test.describe("end an assignment from the detail page", () => {
     await expect(historyRows(page).first()).toContainText("Parked");
     await expect(historyRows(page).first()).not.toContainText(t.history.open);
     expect(await storedAssignments(id)).toEqual([
-      { valid_from: PAST, valid_to: "2026-03-01", kind: "active", operation_id: fixture.opA, reason: "Parked" },
+      { valid_from: PAST, valid_to: "2026-03-01", kind: "active", operation_id: fixture.opA, site_id: siteId(), reason: "Parked" },
     ]);
     const ends = (await assignmentAudit(id)).filter((entry) => entry.action === "fleet.assignment.end");
     expect(ends).toHaveLength(1);
@@ -323,7 +326,6 @@ test.describe("correct an assignment from the Historial", () => {
     const dialog = await openCorrection(page, 1);
     await expect(dialog.getByLabel(d.correctAssignment.fromLabel, { exact: true })).toHaveValue(PAST);
     await expect(dialog.getByLabel(d.correctAssignment.toLabel, { exact: true })).toHaveValue("2026-02-09");
-    await expect(dialog.getByLabel(d.correctAssignment.kindLabel, { exact: true })).toHaveValue("active");
     await expect(dialog.getByLabel(d.correctAssignment.operationLabel, { exact: true }).locator("option:checked")).toHaveText(OP_A);
     await fillCorrection(dialog, { from: "2026-01-03" });
     await submitDialog(dialog, d.correctAssignment.submit);
@@ -335,7 +337,7 @@ test.describe("correct an assignment from the Historial", () => {
     await expect(historyRows(page).nth(1)).toContainText("03/01/2026");
     await expect(historyRows(page).nth(1)).toContainText("Wrong start day");
     const stored = await storedAssignments(id);
-    expect(stored[0]).toMatchObject({ valid_from: "2026-01-03", valid_to: "2026-02-09", operation_id: fixture.opA, reason: "Wrong start day" });
+    expect(stored[0]).toMatchObject({ valid_from: "2026-01-03", valid_to: "2026-02-09", operation_id: fixture.opA, site_id: siteId(), reason: "Wrong start day" });
     const [entry] = (await assignmentAudit(id)).filter((row) => row.action === "fleet.assignment.correct");
     expect(entry).toMatchObject({ reason: "Wrong start day", entity_type: "equipment_assignment" });
     expect(entry?.before).toMatchObject({ validFrom: PAST, validTo: "2026-02-09", reason: "Contract started" });
@@ -351,17 +353,32 @@ test.describe("correct an assignment from the Historial", () => {
     expect((await storedAssignments(id))[1]).toMatchObject({ valid_to: "2026-03-10", reason: "Left later" });
   });
 
-  test("changes the kind and the operation of a row", async ({ page }) => {
+  test("changes the operation of a row and keeps it active", async ({ page }) => {
     const { fixture, id } = await seedTwoClosed("COR-3");
     await gotoDetail(page, id, "COR-3", "history");
-    await submitCorrection(page, 1, { kind: "spare", operation: WORLD_OP, reason: "Was a spare at the base" });
+    await submitCorrection(page, 1, { operation: WORLD_OP, reason: "Was at the base" });
+    await expectDialogClosed(page);
+    const row = historyRows(page).nth(1);
+    await expect(row).toContainText(t.kinds.active);
+    await expect(row).toContainText(WORLD_OP);
+    const stored = await storedAssignments(id);
+    expect(stored[0]).toMatchObject({ kind: "active", reason: "Was at the base" });
+    expect(stored[0]?.operation_id).not.toBe(fixture.opA);
+    const [entry] = (await assignmentAudit(id)).filter((audit) => audit.action === "fleet.assignment.correct");
+    expect(entry?.before).toMatchObject({ kind: "active", operationId: fixture.opA });
+    expect(entry?.after).toMatchObject({ kind: "active" });
+  });
+
+  test("changes the place of a row to Muleto at a site: it becomes a spare with no operation", async ({ page }) => {
+    const { fixture, id } = await seedTwoClosed("COR-5");
+    await gotoDetail(page, id, "COR-5", "history");
+    await submitCorrection(page, 1, { site: WORLD_ORG.site, reason: "Was a spare at the base" });
     await expectDialogClosed(page);
     const row = historyRows(page).nth(1);
     await expect(row).toContainText(t.kinds.spare);
-    await expect(row).toContainText(WORLD_OP);
-    const stored = await storedAssignments(id);
-    expect(stored[0]).toMatchObject({ kind: "spare", reason: "Was a spare at the base" });
-    expect(stored[0]?.operation_id).not.toBe(fixture.opA);
+    await expect(row).toContainText(WORLD_ORG.site);
+    await expect(row.locator(`td[data-label="${t.history.operation}"]`)).toHaveText(copy.fleet.noValue);
+    expect((await storedAssignments(id))[0]).toMatchObject({ kind: "spare", operation_id: null, site_id: siteId(), reason: "Was a spare at the base" });
     const [entry] = (await assignmentAudit(id)).filter((audit) => audit.action === "fleet.assignment.correct");
     expect(entry?.before).toMatchObject({ kind: "active", operationId: fixture.opA });
     expect(entry?.after).toMatchObject({ kind: "spare" });
@@ -443,13 +460,14 @@ test.describe("the Historial after a sequence of changes", () => {
     await submitEnd(page, { day: "2026-03-01", reason: "Parked" });
     await expectDialogClosed(page);
     await expect(pillOf(page)).toHaveText(copy.fleet.state.unassigned);
-    await submitAssign(page, { operation: OP_A, kind: "spare", day: "2026-03-02", reason: "Back as spare" });
+    await submitAssign(page, { site: WORLD_ORG.site, day: "2026-03-02", reason: "Back as spare" });
     await expectDialogClosed(page);
     await expect(pillOf(page)).toHaveText(copy.fleet.state.spare);
     await gotoDetail(page, id, "SEQ-1", "history");
     await expect(historyRows(page)).toHaveCount(3);
     const [latest, middle, first] = [historyRows(page).nth(0), historyRows(page).nth(1), historyRows(page).nth(2)];
-    for (const text of ["02/03/2026", t.history.open, OP_A, t.kinds.spare, "Back as spare"]) await expect(latest).toContainText(text);
+    for (const text of ["02/03/2026", t.history.open, WORLD_ORG.site, t.kinds.spare, "Back as spare"]) await expect(latest).toContainText(text);
+    await expect(latest.locator(`td[data-label="${t.history.operation}"]`)).toHaveText(copy.fleet.noValue);
     for (const text of ["10/02/2026", "01/03/2026", OP_B, t.kinds.active, "Parked"]) await expect(middle).toContainText(text);
     for (const text of ["05/01/2026", "09/02/2026", OP_A, t.kinds.active, "Contract started"]) await expect(first).toContainText(text);
     const days = (await storedAssignments(id)).map((row) => [row.valid_from, row.valid_to]);

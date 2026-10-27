@@ -11,8 +11,8 @@ import {
   type OrganizationState,
 } from "./in-memory-organization-repositories";
 
-/** The directory of a store built without one: no operation has open assignments. */
-const NO_ASSIGNMENTS: AssignmentDirectory = { countOpen: () => Promise.resolve(0) };
+/** The directory of a store built without one: no operation or site has open assignments. */
+const NO_ASSIGNMENTS: AssignmentDirectory = { countOpen: () => Promise.resolve(0), countOpenSpares: () => Promise.resolve(0) };
 
 const txOver = (state: OrganizationState, audit: AuditLog, assignments: AssignmentDirectory): OrganizationTx => ({
   businessUnits: new InMemoryBusinessUnitRepository(state),

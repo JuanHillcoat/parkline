@@ -1,5 +1,5 @@
 import type { TransactionSql } from "postgres";
-import type { OperationDirectory, OperationInfo } from "../../shared/domain/ports/operation-directory";
+import type { OperationDirectory, OperationInfo, SiteInfo } from "../../shared/domain/ports/operation-directory";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -43,6 +43,20 @@ export class PostgresOperationDirectory implements OperationDirectory {
     await this.sql`select 1 from business_units where tenant_id = ${tenantId} and id = ${parents.business_unit_id} for share`;
     await this.sql`select 1 from sites where tenant_id = ${tenantId} and id = ${parents.site_id} for share`;
     await this.sql`select 1 from operations where tenant_id = ${tenantId} and id = ${operationId} for share`;
+  }
+
+  /**
+   * A site for a spare: a SHARED row lock on the site (the lock an assign to one of its operations also takes,
+   * after the division), so the archive of the site, which takes it exclusive before it counts the open spares,
+   * waits for the caller transaction instead of slipping between the check and the insert. A malformed id or
+   * a row of another tenant answers null.
+   */
+  async findSite(tenantId: string, siteId: string): Promise<SiteInfo | null> {
+    if (!UUID.test(tenantId) || !UUID.test(siteId)) return null;
+    const rows = await this.sql<{ id: string; archived_at: Date | null }[]>`
+      select id, archived_at from sites where tenant_id = ${tenantId} and id = ${siteId} for share`;
+    const row = rows[0];
+    return row === undefined ? null : { id: row.id, archivedAt: row.archived_at };
   }
 
   /** Read after the locks, so the archive state is the one that stays true until the caller commits. */

@@ -59,22 +59,22 @@ describe("EndAssignment", () => {
 });
 
 describe("CorrectAssignment", () => {
-  it("changes the start, the end, the operation and the kind, auditing before and after with the reason", async () => {
+  it("changes the start, the end and the target (an operation becomes a site spare), auditing before and after with the reason", async () => {
     const { h, s, first } = await setup();
     const result = await h.correctAssignment.execute({
       actor: h.admin, assignmentId: first.id, reason: "Fecha mal cargada",
-      validFrom: "2026-01-05", validTo: "2026-02-20", operationId: "op3", kind: "spare",
+      validFrom: "2026-01-05", validTo: "2026-02-20", target: { siteId: "s3" },
     });
     expect(result.ok && result.value).toMatchObject({
-      id: first.id, operationId: "op3", businessUnitId: "bu2", siteId: "s3", kind: "spare",
+      id: first.id, operationId: null, businessUnitId: null, siteId: "s3", kind: "spare",
       validFrom: "2026-01-05", validTo: "2026-02-20", reason: "Fecha mal cargada",
     });
     expect(await h.assignmentsOf(s.eq1.id)).toHaveLength(1);
     expect(h.auditOf("fleet.assignment.correct")).toMatchObject([
       {
-        reason: "Fecha mal cargada", subjectEquipmentId: s.eq1.id, operationId: "op3",
+        reason: "Fecha mal cargada", subjectEquipmentId: s.eq1.id, siteId: "s3",
         before: { operationId: "op1", kind: "active", validFrom: "2026-01-10", validTo: null },
-        after: { operationId: "op3", kind: "spare", validFrom: "2026-01-05", validTo: "2026-02-20" },
+        after: { operationId: null, siteId: "s3", kind: "spare", validFrom: "2026-01-05", validTo: "2026-02-20" },
       },
     ]);
   });
@@ -109,14 +109,12 @@ describe("CorrectAssignment", () => {
     expect(h.auditOf("fleet.assignment.correct")).toHaveLength(0);
   });
 
-  it("refuses an end before the start, a bad day and an unknown kind", async () => {
+  it("refuses an end before the start and a bad day", async () => {
     const { h, first } = await setup();
     const period = await h.correctAssignment.execute({ actor: h.admin, assignmentId: first.id, reason: "x", validTo: "2026-01-09" });
     const day = await h.correctAssignment.execute({ actor: h.admin, assignmentId: first.id, reason: "x", validFrom: "2026-02-30" });
-    const kind = await h.correctAssignment.execute({ actor: h.admin, assignmentId: first.id, reason: "x", kind: "loan" });
     expect(!period.ok && period.error.code).toBe("invalid_period");
     expect(!day.ok && day.error.code).toBe("invalid_day");
-    expect(!kind.ok && kind.error.code).toBe("invalid_assignment_kind");
   });
 
   it("keeps the no-overlap rule against the other assignments of the equipment", async () => {
@@ -136,8 +134,8 @@ describe("CorrectAssignment", () => {
 
   it("refuses an archived or missing target operation but allows correcting an archived equipment history", async () => {
     const { h, s, first } = await setup();
-    const archived = await h.correctAssignment.execute({ actor: h.admin, assignmentId: first.id, reason: "x", operationId: "opx" });
-    const missing = await h.correctAssignment.execute({ actor: h.admin, assignmentId: first.id, reason: "x", operationId: "missing" });
+    const archived = await h.correctAssignment.execute({ actor: h.admin, assignmentId: first.id, reason: "x", target: { operationId: "opx" } });
+    const missing = await h.correctAssignment.execute({ actor: h.admin, assignmentId: first.id, reason: "x", target: { operationId: "missing" } });
     expect(!archived.ok && archived.error.code).toBe("operation_archived");
     expect(!missing.ok && missing.error.code).toBe("not_found");
     await h.endAssignment.execute({ actor: h.admin, equipmentId: s.eq1.id, day: "2026-02-01", reason: "Fin" });
@@ -148,7 +146,7 @@ describe("CorrectAssignment", () => {
 
   it("needs catalog.write at the source operation and, when it changes, at the target operation", async () => {
     const { h, s, first } = await setup();
-    const input = { assignmentId: first.id, reason: "Corrige", operationId: "op2" };
+    const input = { assignmentId: first.id, reason: "Corrige", target: { operationId: "op2" } };
     const sourceOnly = await h.correctAssignment.execute({ ...input, actor: h.analystAt("op1") });
     const targetOnly = await h.correctAssignment.execute({ ...input, actor: h.analystAt("op2") });
     expect(!sourceOnly.ok && sourceOnly.error.code).toBe("forbidden");
@@ -160,9 +158,9 @@ describe("CorrectAssignment", () => {
 
   it("answers not found to a tenant-wide writer and forbidden to a scoped one for a missing id, and treats other tenants as missing", async () => {
     const { h, first } = await setup();
-    const wide = await h.correctAssignment.execute({ actor: h.admin, assignmentId: "missing", reason: "x", kind: "spare" });
-    const scoped = await h.correctAssignment.execute({ actor: h.adminAt("op1"), assignmentId: "missing", reason: "x", kind: "spare" });
-    const foreign = await h.correctAssignment.execute({ actor: h.adminB, assignmentId: first.id, reason: "x", kind: "spare" });
+    const wide = await h.correctAssignment.execute({ actor: h.admin, assignmentId: "missing", reason: "x", target: { siteId: "s1" } });
+    const scoped = await h.correctAssignment.execute({ actor: h.adminAt("op1"), assignmentId: "missing", reason: "x", target: { siteId: "s1" } });
+    const foreign = await h.correctAssignment.execute({ actor: h.adminB, assignmentId: first.id, reason: "x", target: { siteId: "s1" } });
     expect(!wide.ok && wide.error.code).toBe("not_found");
     expect(!scoped.ok && scoped.error.code).toBe("forbidden");
     expect(!foreign.ok && foreign.error.code).toBe("not_found");

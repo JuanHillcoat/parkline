@@ -31,7 +31,7 @@ type Plan = {
 };
 
 const FIELDS = [
-  "supplierId", "assetTypeId", "internalCode", "brand", "model", "year", "serialNumber", "batteryQuantity", "observations",
+  "supplierId", "assetTypeId", "internalCode", "brand", "model", "year", "serialNumber", "batteryKind", "batteryQuantity", "observations",
 ] as const;
 
 const unchanged = (a: Equipment, b: Equipment): boolean => FIELDS.every((field) => a[field] === b[field]);

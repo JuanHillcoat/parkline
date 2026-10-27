@@ -25,6 +25,7 @@ export const equipmentSnapshot = (equipment: Equipment, supplier: Supplier, asse
   model: equipment.model,
   year: equipment.year,
   serialNumber: equipment.serialNumber,
+  batteryKind: equipment.batteryKind,
   batteryQuantity: equipment.batteryQuantity,
   observations: equipment.observations,
 });

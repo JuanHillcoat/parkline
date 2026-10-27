@@ -3,11 +3,14 @@ import { ForbiddenError } from "../../../src/identity/domain/authorizer";
 import {
   AlreadyArchivedError,
   AssignmentOverlapError,
+  BatteryQuantityNotAllowedError,
   ArchivedError,
   HasActiveEquipmentError,
   HasOpenAssignmentError,
   InternalCodeTakenError,
   InvalidAssignmentKindError,
+  InvalidAssignmentTargetError,
+  InvalidBatteryKindError,
   InvalidBatteryQuantityError,
   InvalidDayError,
   InvalidInternalCodeError,
@@ -30,6 +33,8 @@ import {
   ReasonTooLongError,
   SameEquipmentError,
   SameOperationError,
+  SameSiteError,
+  SiteArchivedError,
 } from "../../../src/fleet/domain/errors";
 import { NotFoundError } from "../../../src/shared/domain/domain-error";
 import { copy } from "../copy";
@@ -53,6 +58,8 @@ const cases = [
   ["preventive_interval_not_allowed", new PreventiveIntervalNotAllowedError()],
   ["invalid_year", new InvalidYearError("bad year")],
   ["invalid_battery_quantity", new InvalidBatteryQuantityError("bad batteries")],
+  ["invalid_battery_kind", new InvalidBatteryKindError()],
+  ["battery_quantity_not_allowed", new BatteryQuantityNotAllowedError()],
   ["invalid_text", new InvalidTextError("The brand has at most 120 characters", "brand")],
   ["invalid_day", new InvalidDayError("bad day")],
   ["invalid_period", new InvalidPeriodError("bad period")],
@@ -60,11 +67,14 @@ const cases = [
   ["outgoing_required", new OutgoingChoiceRequiredError()],
   ["same_equipment", new SameEquipmentError()],
   ["same_operation", new SameOperationError()],
+  ["same_site", new SameSiteError()],
+  ["invalid_assignment_target", new InvalidAssignmentTargetError()],
   ["assignment_overlap", new AssignmentOverlapError("period overlaps a1")],
   ["open_assignment_exists", new OpenAssignmentError("Equipment e1 already has an open assignment")],
   ["no_open_assignment", new NoOpenAssignmentError("Equipment e1 has no open assignment")],
   ["has_open_assignment", new HasOpenAssignmentError("Equipment e1 still has an open assignment")],
   ["operation_archived", new OperationArchivedError("Operation op1 is archived")],
+  ["site_archived", new SiteArchivedError("Site s1 is archived")],
   ["not_found", new NotFoundError("Equipment", "e1")],
   ["forbidden", new ForbiddenError("catalog.write")],
 ] as const;
@@ -103,7 +113,7 @@ describe("parent_archived for the fleet module", () => {
   it("names the supplier and the asset type, not the organization rows", () => {
     const message = errorMessage(new ParentArchivedError("parent"));
     expect(message).toMatch(/proveedor/);
-    expect(message).toMatch(/tipo de activo/);
+    expect(message).toMatch(/tipo de equipo/);
     expect(message).not.toMatch(/división|sitio/);
   });
 });

@@ -23,7 +23,13 @@ export type InfoRow = { readonly label: string; readonly value: string };
 export type DetailPlaces = Places & { readonly divisions: readonly Option[] };
 
 const orDash = (value: string | number | null | undefined): string => value?.toString() ?? NONE;
-const nameOf = (options: readonly Option[], id: string): string => options.find((option) => option.id === id)?.name ?? NONE;
+const nameOf = (options: readonly Option[], id: string | null): string => options.find((option) => option.id === id)?.name ?? NONE;
+
+/** The kind of battery (a dash for an old row without one) and, for lead acid only, how many there are. */
+const batteryRows = (item: EquipmentListItem): InfoRow[] => [
+  { label: t.info.batteryKind, value: item.batteryKind === null ? NONE : copy.fleet.batteryKind[item.batteryKind] },
+  ...(item.batteryKind === "lead_acid" ? [{ label: t.info.batteries, value: orDash(item.batteryQuantity) }] : []),
+];
 
 /** The general information card: every field of the equipment, with a dash where it is blank. `extra` rows (the last reading) go last. */
 export const buildInfoRows = (item: EquipmentListItem, extra: readonly InfoRow[] = []): InfoRow[] => [
@@ -34,12 +40,23 @@ export const buildInfoRows = (item: EquipmentListItem, extra: readonly InfoRow[]
   { label: t.info.model, value: orDash(item.model) },
   { label: t.info.year, value: orDash(item.year) },
   { label: t.info.serialNumber, value: orDash(item.serialNumber) },
-  { label: t.info.batteries, value: orDash(item.batteryQuantity) },
+  ...batteryRows(item),
   { label: t.info.observations, value: orDash(item.observations) },
   ...extra,
 ];
 
 export type LocationView = { readonly assigned: boolean; readonly rows: InfoRow[]; readonly hint: string | null };
+
+type OpenAssignment = NonNullable<EquipmentListItem["assignment"]>;
+
+/** A spare of a site has no operation and no division, so those rows are not shown for it. */
+const locationRows = (open: OpenAssignment, places: DetailPlaces): InfoRow[] => [
+  ...(open.operationId === null ? [] : [{ label: t.location.operation, value: nameOf(places.operations, open.operationId) }]),
+  { label: t.location.site, value: nameOf(places.sites, open.siteId) },
+  ...(open.businessUnitId === null ? [] : [{ label: t.location.division, value: nameOf(places.divisions, open.businessUnitId) }]),
+  { label: t.location.kind, value: t.kinds[open.kind] },
+  { label: t.location.since, value: formatDay(open.validFrom) },
+];
 
 /** The current location card: names come from the organization lists; a name the actor cannot read is a dash. */
 export const buildLocation = (item: EquipmentListItem, places: DetailPlaces): LocationView => {
@@ -47,17 +64,7 @@ export const buildLocation = (item: EquipmentListItem, places: DetailPlaces): Lo
   if (open === null) {
     return { assigned: false, rows: [], hint: item.archivedAt === null ? t.location.noneHint : t.location.noneHintArchived };
   }
-  return {
-    assigned: true,
-    hint: null,
-    rows: [
-      { label: t.location.operation, value: nameOf(places.operations, open.operationId) },
-      { label: t.location.site, value: nameOf(places.sites, open.siteId) },
-      { label: t.location.division, value: nameOf(places.divisions, open.businessUnitId) },
-      { label: t.location.kind, value: t.kinds[open.kind] },
-      { label: t.location.since, value: formatDay(open.validFrom) },
-    ],
-  };
+  return { assigned: true, hint: null, rows: locationRows(open, places) };
 };
 
 export type StatePill = { readonly label: string; readonly tone: "ok" | "warn" | "neutral" };
@@ -71,11 +78,15 @@ export const detailState = (item: EquipmentListItem): StatePill => {
     : { label: copy.fleet.state.active, tone: "ok" };
 };
 
-/** What the correction dialog shows first: the days as text (an open end is empty), the operation and the kind. */
+/**
+ * What the correction dialog shows first: the days as text (an open end is empty) and the place, which is an
+ * operation or, for a spare of a site, that site (the operation is then blank).
+ */
 export type CorrectionValues = {
   readonly validFrom: string;
   readonly validTo: string;
   readonly operationId: string;
+  readonly siteId: string;
   readonly kind: AssignmentKind;
 };
 
@@ -103,7 +114,8 @@ const historyRow = (assignment: Assignment, places: DetailPlaces): HistoryRow =>
   form: {
     validFrom: assignment.validFrom,
     validTo: assignment.validTo ?? "",
-    operationId: assignment.operationId,
+    operationId: assignment.operationId ?? "",
+    siteId: assignment.operationId === null ? assignment.siteId : "",
     kind: assignment.kind,
   },
 });
@@ -163,11 +175,44 @@ export const incomingCandidates = (items: readonly EquipmentListItem[], outgoing
     .sort((a, b) => a.name.localeCompare(b.name, "es"));
 
 type OperationRow = Option & { readonly businessUnitId: string; readonly siteId: string; readonly archivedAt: Date | null };
+type SiteRow = Option & { readonly archivedAt: Date | null };
 
 /** Active operations where the actor may write: the choices of the assign and move dialogs. */
 export const writableOperations = (operations: readonly OperationRow[], canWriteAt: (operation: OperationRow) => boolean): Option[] =>
   operations.filter((operation) => operation.archivedAt === null && canWriteAt(operation)).map(({ id, name }) => ({ id, name }));
 
+/** Active sites where the actor may write (a spare belongs to a site): the Site choices of the dialogs. */
+export const writableSites = (sites: readonly SiteRow[], canWriteAt: (site: SiteRow) => boolean): Option[] =>
+  sites.filter((site) => site.archivedAt === null && canWriteAt(site)).map(({ id, name }) => ({ id, name }));
+
+/** The site choices of the correction dialog always include the site the row is in, so it can stay selected. */
+export const correctionSites = (choices: readonly Option[], currentId: string, known: readonly Option[]): Option[] =>
+  currentId === "" || choices.some((choice) => choice.id === currentId) ? [...choices] : [...choices, { id: currentId, name: nameOf(known, currentId) }];
+
+/** The site choices of the move dialog leave out the site where the equipment is already a spare (it would not move). */
+export const moveSites = (choices: readonly Option[], open: OpenAssignment | null): Option[] =>
+  choices.filter((choice) => !(open?.kind === "spare" && open.siteId === choice.id));
+
+/** The operations of the move dialog leave out the operation where the equipment already is. */
+export const moveOperations = (choices: readonly Option[], open: OpenAssignment | null): Option[] =>
+  choices.filter((choice) => choice.id !== open?.operationId);
+
 /** The choices of the correction dialog always include the operation the row is in, so it can stay selected. */
 export const correctionOperations = (choices: readonly Option[], currentId: string, known: readonly Option[]): Option[] =>
-  choices.some((choice) => choice.id === currentId) ? [...choices] : [...choices, { id: currentId, name: nameOf(known, currentId) }];
+  currentId === "" || choices.some((choice) => choice.id === currentId) ? [...choices] : [...choices, { id: currentId, name: nameOf(known, currentId) }];
+
+type OpenPlacement = { readonly siteId: string; readonly businessUnitId: string | null; readonly operationId: string | null };
+
+/**
+ * The authorization position of an equipment: its open assignment, or the whole company without one. A spare
+ * parked at a site has only the site (no division and no operation), so only company-wide grants match it.
+ */
+export const positionOfPlacement = (tenantId: string, open: OpenPlacement | null) =>
+  open === null
+    ? { tenantId }
+    : {
+        tenantId,
+        siteId: open.siteId,
+        ...(open.businessUnitId === null ? {} : { businessUnitId: open.businessUnitId }),
+        ...(open.operationId === null ? {} : { operationId: open.operationId }),
+      };

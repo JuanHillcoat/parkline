@@ -105,7 +105,7 @@ async function createEquipment(label: string, imageBytes: Uint8Array | null = nu
   const equipment = must(
     await c.fleet.createEquipment.execute({
       actor: adminActor, supplierId: p.supplierId, assetTypeId: p.assetTypeId, internalCode: `EQ-${p.n}`,
-      brand: "Brand", model: "Model", year: null, serialNumber: null, batteryQuantity: null, observations: null, image: imageBytes,
+      brand: "Brand", model: "Model", year: null, serialNumber: null, batteryKind: "combustion", batteryQuantity: null, observations: null, image: imageBytes,
     }),
   );
   return { equipment, ...p };
@@ -115,7 +115,7 @@ type Created = Awaited<ReturnType<typeof createEquipment>>;
 const editInput = (e: Created, extra: object) => ({
   actor: adminActor, id: e.equipment.id, reason: "Photo change", supplierId: e.supplierId, assetTypeId: e.assetTypeId,
   internalCode: e.equipment.internalCode, brand: "Brand", model: "Model", year: null, serialNumber: null,
-  batteryQuantity: null, observations: null, ...extra,
+  batteryKind: "combustion", batteryQuantity: null, observations: null, ...extra,
 });
 
 type ImageRow = { content_type: string; byte_size: number; sha256: string; n: number };
@@ -259,7 +259,7 @@ describe("image flows through the container as parkline_app", () => {
     const create = (bytes: Uint8Array) =>
       c.fleet.createEquipment.execute({
         actor: adminActor, supplierId: p.supplierId, assetTypeId: p.assetTypeId, internalCode: `EQ-${p.n}`,
-        brand: "Brand", model: "Model", year: null, serialNumber: null, batteryQuantity: null, observations: null, image: bytes,
+        brand: "Brand", model: "Model", year: null, serialNumber: null, batteryKind: "combustion", batteryQuantity: null, observations: null, image: bytes,
       });
     const svg = new TextEncoder().encode("<svg xmlns=\"http://www.w3.org/2000/svg\"></svg>");
     expect(code(await create(svg))).toBe("image_unsupported_type");
@@ -313,7 +313,7 @@ describe("image flows through the container as parkline_app", () => {
       c.organization.createOperation.execute({ actor: adminActor, businessUnitId: division.id, siteId: site.id, name, costCenter });
     const here = must(await op(`Img Op A ${n}`, String(2000 + Number(n)).padStart(4, "0")));
     const there = must(await op(`Img Op B ${n}`, String(3000 + Number(n)).padStart(4, "0")));
-    must(await c.fleet.assignEquipment.execute({ actor: adminActor, equipmentId: e.equipment.id, operationId: here.id, kind: "active", day: new Date().toISOString().slice(0, 10), reason: null }));
+    must(await c.fleet.assignEquipment.execute({ actor: adminActor, equipmentId: e.equipment.id, target: { operationId: here.id }, day: new Date().toISOString().slice(0, 10), reason: null }));
     const inScope = await scopedStaff(`in-${n}@example.test`, "viewer", { type: "operation", id: here.id });
     const outScope = await scopedStaff(`out-${n}@example.test`, "viewer", { type: "operation", id: there.id });
     expect(code(await c.fleet.getEquipmentImage.execute({ actor: inScope, id: e.equipment.id }))).toBe("ok");

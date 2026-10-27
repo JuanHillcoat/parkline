@@ -1,6 +1,8 @@
 import { andThen, err, map, ok, type Result } from "../../shared/domain/result";
 import {
   PreventiveIntervalNotAllowedError,
+  type BatteryQuantityNotAllowedError,
+  type InvalidBatteryKindError,
   type InvalidBatteryQuantityError,
   type InvalidInternalCodeError,
   type InvalidMeterKindError,
@@ -14,7 +16,7 @@ import {
   MAX_MODEL_LENGTH,
   MAX_OBSERVATIONS_LENGTH,
   MAX_SERIAL_NUMBER_LENGTH,
-  parseBatteryQuantity,
+  parseBattery,
   parseInternalCode,
   parseMeterKind,
   parseName,
@@ -22,6 +24,7 @@ import {
   parsePreventiveInterval,
   parseRequiredText,
   parseYear,
+  type BatteryKind,
   type MeterKind,
 } from "./values";
 
@@ -54,6 +57,9 @@ export type Equipment = Archivable & {
   readonly model: string | null;
   readonly year: number | null;
   readonly serialNumber: string | null;
+  /** Required when registering or editing; rows stored before the battery kind existed hold null. */
+  readonly batteryKind: BatteryKind | null;
+  /** Only lead acid equipment has a quantity (0 to 4, optional). */
   readonly batteryQuantity: number | null;
   readonly observations: string | null;
 };
@@ -63,7 +69,8 @@ type WithArchivedAt = { readonly archivedAt?: Date | null };
 export type SupplierInput = Omit<Supplier, "archivedAt"> & WithArchivedAt;
 /** The meter kind arrives as typed text and is parsed here. */
 export type AssetTypeInput = Omit<AssetType, "archivedAt" | "meterKind"> & WithArchivedAt & { readonly meterKind: string };
-export type EquipmentInput = Omit<Equipment, "archivedAt"> & WithArchivedAt;
+/** The battery kind arrives as typed text and is parsed here. */
+export type EquipmentInput = Omit<Equipment, "archivedAt" | "batteryKind"> & WithArchivedAt & { readonly batteryKind: string | null };
 
 export type AssetTypeError =
   | InvalidNameError
@@ -75,7 +82,9 @@ export type EquipmentError =
   | InvalidInternalCodeError
   | InvalidTextError
   | InvalidYearError
-  | InvalidBatteryQuantityError;
+  | InvalidBatteryKindError
+  | InvalidBatteryQuantityError
+  | BatteryQuantityNotAllowedError;
 
 export const createSupplier = (input: SupplierInput): Result<Supplier, InvalidNameError> =>
   map(parseName(input.name), (name) => ({ ...input, name, archivedAt: input.archivedAt ?? null }));
@@ -124,14 +133,15 @@ export const createEquipment = (input: EquipmentInput, currentYear: number): Res
   if (!texts.ok) return texts;
   const year = parseYear(input.year, currentYear);
   if (!year.ok) return year;
-  const batteryQuantity = parseBatteryQuantity(input.batteryQuantity);
-  if (!batteryQuantity.ok) return batteryQuantity;
+  const battery = parseBattery(input.batteryKind, input.batteryQuantity);
+  if (!battery.ok) return battery;
   return ok({
     ...input,
     ...texts.value,
     internalCode: internalCode.value,
     year: year.value,
-    batteryQuantity: batteryQuantity.value,
+    batteryKind: battery.value.kind,
+    batteryQuantity: battery.value.quantity,
     archivedAt: input.archivedAt ?? null,
   });
 };

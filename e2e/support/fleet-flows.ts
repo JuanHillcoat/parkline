@@ -87,6 +87,8 @@ export type EquipmentValues = {
   model?: string;
   year?: string;
   serial?: string;
+  /** Required by the form. Giving a quantity without a kind (or with the default) means lead acid, the only kind with one. */
+  batteryKind?: "lithium" | "lead_acid" | "combustion";
   batteries?: string;
   observations?: string;
 };
@@ -100,7 +102,14 @@ const setObservations = (dialog: Locator, value: string): Promise<void> =>
   }, value);
 
 /** Brand and model are required: the new equipment flows fill these unless a test gives its own (an empty string leaves it blank). */
-export const REQUIRED_TEXT_DEFAULTS = { brand: "MARCA", model: "MODELO" } as const;
+export const REQUIRED_TEXT_DEFAULTS = { brand: "MARCA", model: "MODELO", batteryKind: "combustion" } as const;
+
+/** The battery kind, then its quantity (the field exists only for lead acid, so a quantity chooses that kind). */
+async function fillBattery(dialog: Locator, v: EquipmentValues): Promise<void> {
+  const kind = v.batteries !== undefined && v.batteryKind === "combustion" ? "lead_acid" : v.batteryKind;
+  if (kind !== undefined) await dialog.getByLabel(f.batteryKindLabel, { exact: true }).selectOption(kind);
+  if (v.batteries !== undefined) await fill(dialog, f.batteryQuantityLabel, v.batteries);
+}
 
 /** Fills the equipment form; only the fields that are given are touched. */
 export async function fillEquipment(dialog: Locator, v: EquipmentValues): Promise<void> {
@@ -108,10 +117,10 @@ export async function fillEquipment(dialog: Locator, v: EquipmentValues): Promis
   if (v.supplier !== undefined) await dialog.getByLabel(f.supplierLabel, { exact: true }).selectOption({ label: v.supplier });
   if (v.assetType !== undefined) await dialog.getByLabel(f.assetTypeLabel, { exact: true }).selectOption({ label: v.assetType });
   const optional: readonly (readonly [string, string | undefined])[] = [
-    [f.brandLabel, v.brand], [f.modelLabel, v.model], [f.yearLabel, v.year],
-    [f.serialNumberLabel, v.serial], [f.batteryQuantityLabel, v.batteries],
+    [f.brandLabel, v.brand], [f.modelLabel, v.model], [f.yearLabel, v.year], [f.serialNumberLabel, v.serial],
   ];
   for (const [label, value] of optional) if (value !== undefined) await fill(dialog, label, value);
+  await fillBattery(dialog, v);
   if (v.observations !== undefined) await setObservations(dialog, v.observations);
 }
 

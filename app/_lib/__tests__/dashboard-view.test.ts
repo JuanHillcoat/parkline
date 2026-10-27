@@ -13,6 +13,7 @@ const unit = (id: string, supplierId: string, assetTypeId: string, archivedAt: D
   model: null,
   year: null,
   serialNumber: null,
+  batteryKind: null,
   batteryQuantity: null,
   observations: null,
   archivedAt,

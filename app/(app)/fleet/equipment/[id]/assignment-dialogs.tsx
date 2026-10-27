@@ -1,5 +1,6 @@
 import { ActionDialog } from "../../../../_components/action-dialog";
 import { DateField, RadioGroupField, ReasonField, SelectField, type Option } from "../../../../_components/form-fields";
+import { PlacementFields } from "../../../../_components/placement-fields";
 import { copy } from "../../../../_lib/copy";
 import { OUTGOING_DEFAULT, outgoingChoices, type CorrectionValues } from "../../../../_lib/equipment-detail-view";
 import {
@@ -10,40 +11,36 @@ import {
   replaceEquipmentAction,
 } from "./actions";
 
-const KINDS: readonly Option[] = [
-  { id: "active", name: copy.fleet.detail.kinds.active },
-  { id: "spare", name: copy.fleet.detail.kinds.spare },
-];
-
 type Target = { readonly id: string; readonly code: string };
 type DayProps = { readonly target: Target; readonly today: string };
-type OperationProps = DayProps & { readonly operations: readonly Option[] };
+/** The places an equipment can go: operations and, as a muleto, sites. */
+type PlaceChoices = { readonly operations: readonly Option[]; readonly sites: readonly Option[] };
+type OperationProps = DayProps & PlaceChoices;
 
 /** The first assignment: the reason is optional here, the server asks for it only when the day is in the past. */
-export function AssignDialog({ target, today, operations }: OperationProps) {
+export function AssignDialog({ target, today, operations, sites }: OperationProps) {
   const t = copy.dialogs.assignEquipment;
   const key = `assign-${target.id}`;
   return (
     <ActionDialog triggerLabel={t.trigger} triggerClassName="btn btn-primary" title={t.title(target.code)}
       description={t.description} submitLabel={t.submit} action={assignEquipmentAction}>
       <input type="hidden" name="equipmentId" value={target.id} />
-      <SelectField id={`${key}-operation`} name="operationId" label={t.operationLabel} prompt={t.selectOperation} options={operations} />
-      <SelectField id={`${key}-kind`} name="kind" label={t.kindLabel} prompt={t.selectKind} options={KINDS} initial="active" />
+      <PlacementFields idPrefix={key} label={t.operationLabel} prompt={t.selectOperation} operations={operations} sites={sites} />
       <DateField id={`${key}-day`} name="day" label={t.dayLabel} initial={today} required />
       <ReasonField id={`${key}-reason`} placeholder={t.reasonPlaceholder} optional={{ label: t.reasonLabel, hint: t.reasonHint }} />
     </ActionDialog>
   );
 }
 
-/** Moves the equipment to another operation; the operations offered exclude the current one. */
-export function MoveDialog({ target, today, operations }: OperationProps) {
+/** Moves the equipment to another operation or, as a muleto, to a site; the places offered exclude the current one. */
+export function MoveDialog({ target, today, operations, sites }: OperationProps) {
   const t = copy.dialogs.moveEquipment;
   const key = `move-${target.id}`;
   return (
     <ActionDialog triggerLabel={t.trigger} triggerClassName="btn" title={t.title(target.code)}
       description={t.description} submitLabel={t.submit} action={moveEquipmentAction}>
       <input type="hidden" name="equipmentId" value={target.id} />
-      <SelectField id={`${key}-operation`} name="operationId" label={t.operationLabel} prompt={t.selectOperation} options={operations} />
+      <PlacementFields idPrefix={key} label={t.operationLabel} prompt={t.selectOperation} operations={operations} sites={sites} />
       <DateField id={`${key}-day`} name="day" label={t.dayLabel} initial={today} required />
       <ReasonField id={`${key}-reason`} placeholder={t.reasonPlaceholder} />
     </ActionDialog>
@@ -88,11 +85,10 @@ type CorrectProps = {
   readonly equipmentId: string;
   readonly assignmentId: string;
   readonly values: CorrectionValues;
-  readonly operations: readonly Option[];
-};
+} & PlaceChoices;
 
 /** Corrects a row of the history, prefilled with its current values. An empty end opens it again. */
-export function CorrectDialog({ equipmentId, assignmentId, values, operations }: CorrectProps) {
+export function CorrectDialog({ equipmentId, assignmentId, values, operations, sites }: CorrectProps) {
   const t = copy.dialogs.correctAssignment;
   const key = `correct-${assignmentId}`;
   return (
@@ -102,9 +98,8 @@ export function CorrectDialog({ equipmentId, assignmentId, values, operations }:
       <input type="hidden" name="assignmentId" value={assignmentId} />
       <DateField id={`${key}-from`} name="validFrom" label={t.fromLabel} initial={values.validFrom} required />
       <DateField id={`${key}-to`} name="validTo" label={t.toLabel} initial={values.validTo} hint={t.toHint} />
-      <SelectField id={`${key}-operation`} name="operationId" label={t.operationLabel} prompt={t.selectOperation}
-        options={operations} initial={values.operationId} />
-      <SelectField id={`${key}-kind`} name="kind" label={t.kindLabel} prompt={t.selectKind} options={KINDS} initial={values.kind} />
+      <PlacementFields idPrefix={key} label={t.operationLabel} prompt={t.selectOperation} operations={operations} sites={sites}
+        initial={{ operationId: values.operationId, siteId: values.siteId }} />
       <ReasonField id={`${key}-reason`} placeholder={t.reasonPlaceholder} />
     </ActionDialog>
   );

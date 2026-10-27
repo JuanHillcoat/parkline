@@ -12,7 +12,7 @@ const seed = async () => {
   const s = await h.seedTenantA();
   const idle = h.orThrow(await h.createEquipment.execute(h.equipmentInput(s.supplierA.id, s.forklift.id, "EQ-0009")));
   await h.assign(s.eq1.id, "op1", "2026-01-10");
-  await h.assign(s.c43.id, "op3", "2026-03-01", { kind: "spare" });
+  await h.assignSpare(s.c43.id, "s3", "2026-03-01");
   return { h, s, idle };
 };
 

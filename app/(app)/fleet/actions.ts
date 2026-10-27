@@ -6,7 +6,7 @@ import type { Actor } from "../../../src/shared/domain/ports/access-policy";
 import type { Result } from "../../../src/shared/domain/result";
 import { getContainer } from "../../../src/shared/infrastructure/container";
 import { field, type ActionState } from "../../_lib/action-state";
-import { assetTypeFields, assignmentOnCreate, equipmentFields, imageChange, newImage } from "../../_lib/fleet-form";
+import { assetTypeFields, assignmentOnCreate, equipmentFields, imageChange, newImage, registrationWording } from "../../_lib/fleet-form";
 import { initialReadingOnCreate } from "../../_lib/readings-form";
 import { runMutation } from "../../_lib/run-action";
 
@@ -53,14 +53,16 @@ export async function updateAssetTypeAction(_previous: ActionState, form: FormDa
 
 export async function createEquipmentAction(_previous: ActionState, form: FormData): Promise<ActionState> {
   const image = await newImage(form);
-  return runMutation(PATH, (actor) =>
-    fleet().createEquipment.execute({
-      actor: toActor(actor),
-      ...equipmentFields(form),
-      image,
-      assignment: assignmentOnCreate(form),
-      initialReading: initialReadingOnCreate(form),
-    }),
+  return runMutation(PATH, async (actor) =>
+    registrationWording(
+      await fleet().createEquipment.execute({
+        actor: toActor(actor),
+        ...equipmentFields(form),
+        image,
+        assignment: assignmentOnCreate(form),
+        initialReading: initialReadingOnCreate(form),
+      }),
+    ),
   );
 }
 

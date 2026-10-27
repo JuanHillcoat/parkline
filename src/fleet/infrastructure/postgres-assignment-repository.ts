@@ -10,8 +10,8 @@ type AssignmentRow = {
   id: string;
   tenant_id: string;
   equipment_id: string;
-  business_unit_id: string;
-  operation_id: string;
+  business_unit_id: string | null;
+  operation_id: string | null;
   site_id: string;
   kind: AssignmentKind;
   valid_from: string;

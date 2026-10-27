@@ -14,6 +14,7 @@ import {
   submitDialog,
 } from "../support/fleet-flows";
 import {
+  fileInput,
   IMAGE_ACTIONS,
   MAX_STORED_BYTES,
   chooseImage,
@@ -260,14 +261,28 @@ test.describe("changing the image of an equipment", () => {
     const id = idOf(ids, "IMG-ADD");
     const dialog = await openEdit(page, "IMG-ADD");
     await expect(dialog.getByText(copy.dialogs.imageField.none)).toBeVisible();
+    await expect(dialog.getByRole("radio")).toHaveCount(0);
+    await expect(dialog.getByLabel(IMAGE_ACTIONS.keep, { exact: true })).toHaveCount(0);
     await expect(dialog.getByLabel(IMAGE_ACTIONS.remove, { exact: true })).toHaveCount(0);
-    await chooseImageAction(dialog, IMAGE_ACTIONS.add);
+    await expect(fileInput(dialog)).toHaveCount(1);
+    await expect(dialog.getByLabel(IMAGE_ACTIONS.add, { exact: true })).toBeVisible();
     await chooseImage(dialog, png());
     await fill(dialog, copy.common.reason, "First photo");
     await submitDialog(dialog, d.editEquipment.submit);
     await expectDialogClosed(page);
     expect((await storedImage(id))?.content_type).toBe("image/png");
     await expectLoaded(thumbOf(page, "IMG-ADD"));
+  });
+
+  test("an equipment without an image, edited without choosing a file, stays without one", async ({ page }) => {
+    const ids = await seedUnits([{ code: "IMG-NONE2" }]);
+    const id = idOf(ids, "IMG-NONE2");
+    const dialog = await openEdit(page, "IMG-NONE2");
+    await fill(dialog, d.equipmentFields.brandLabel, "NEW BRAND");
+    await fill(dialog, copy.common.reason, "Brand correction");
+    await submitDialog(dialog, d.editEquipment.submit);
+    await expectDialogClosed(page);
+    expect(await storedImage(id)).toBeNull();
   });
 
   test("an image-only change needs the reason and saves nothing without it", async ({ page }) => {
@@ -290,6 +305,7 @@ test.describe("changing the image of an equipment", () => {
     const before = await storedImage(id);
     const dialog = await openEdit(page, "IMG-KEEP2");
     await expect(dialog.getByLabel(IMAGE_ACTIONS.keep, { exact: true })).toBeChecked();
+    await expect(dialog.getByRole("radio")).toHaveCount(3);
     await expect(dialog.locator("img.image-preview")).toHaveAttribute("alt", copy.dialogs.imageField.currentAlt);
     await fill(dialog, d.equipmentFields.brandLabel, "NEW BRAND");
     await fill(dialog, copy.common.reason, "Brand correction");

@@ -1,11 +1,13 @@
 /**
- * Steps for registering an equipment that is assigned to an operation in the same step (issue 50): the
- * optional "Asignación" group of the Nuevo equipo dialog, plus readers of what was stored.
+ * Steps for registering an equipment that is assigned in the same step (issues 50 and 54): the "Operación"
+ * (or Muleto and its Site), "Fecha de ingreso" and "Observaciones" fields of the Nuevo equipo dialog, plus readers
+ * of what was stored.
  */
 import { expect, type Locator, type Page } from "@playwright/test";
 import postgres from "postgres";
 import { copy } from "../../app/_lib/copy";
 import { openSeeder } from "./data";
+import { setPlace } from "./assignment-flows";
 import { fillEquipment, gotoFleet, openDialog, REQUIRED_TEXT_DEFAULTS, seedBase, skipBrowserValidation, submitDialog } from "./fleet-flows";
 import { readWorld } from "./world";
 
@@ -29,20 +31,17 @@ export async function seedRegisterFixture(): Promise<Seeded> {
   }
 }
 
-export type AssignmentChoice = { operation?: string; kind?: "active" | "spare"; day?: string; reason?: string };
+/** `reason` is typed in Observaciones: the registration has no separate reason field. */
+export type AssignmentChoice = { operation?: string; site?: string; day?: string; reason?: string };
 
-const fieldOf = (dialog: Locator, label: string): Locator => dialog.getByLabel(label, { exact: true });
-
-/** The group of the dialog that holds the optional assignment. */
-export const groupOf = (dialog: Locator): Locator => dialog.getByRole("group", { name: d.newEquipment.assignmentLegend });
+export const fieldOf = (dialog: Locator, label: string): Locator => dialog.getByLabel(label, { exact: true });
 
 /** Fills only the assignment fields that are given. */
 export async function fillAssignment(dialog: Locator, choice: AssignmentChoice): Promise<void> {
-  const t = d.assignEquipment;
-  if (choice.operation !== undefined) await fieldOf(dialog, t.operationLabel).selectOption({ label: choice.operation });
-  if (choice.kind !== undefined) await fieldOf(dialog, t.kindLabel).selectOption(choice.kind);
+  const t = d.newEquipment;
+  await setPlace(dialog, t.operationLabel, choice);
   if (choice.day !== undefined) await fieldOf(dialog, t.dayLabel).fill(choice.day);
-  if (choice.reason !== undefined) await fieldOf(dialog, t.reasonLabel).fill(choice.reason);
+  if (choice.reason !== undefined) await fieldOf(dialog, d.equipmentFields.observationsLabel).fill(choice.reason);
 }
 
 /** Opens the Nuevo equipo dialog on the board, with the browser's own checks off. */
@@ -99,7 +98,7 @@ export async function actionsFor(entityId: string): Promise<string[]> {
 }
 
 /** The options of the Operación select, as the person reads them. */
-export const operationOptions = (dialog: Locator): Locator => fieldOf(dialog, d.assignEquipment.operationLabel).locator("option");
+export const operationOptions = (dialog: Locator): Locator => fieldOf(dialog, d.newEquipment.operationLabel).locator("option");
 
 export async function expectNothingRegistered(code: string): Promise<void> {
   expect(await equipmentIds(code)).toEqual([]);

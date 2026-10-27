@@ -4,6 +4,7 @@ import { resetCatalogs } from "../support/data";
 import { expectDialogClosed, fillEquipment, gotoFleet, openDialog, REQUIRED_TEXT_DEFAULTS, skipBrowserValidation, submitDialog } from "../support/fleet-flows";
 import { chooseImage, png } from "../support/image-flows";
 import { allActions, dayOffset, ddmmyyyy, gotoReadings, historyRows, hoursOf, messages, OTHER_OPERATION, panelOf, r, seedReadingsBase, storedMeters, storedReadings, today, TYPES } from "../support/readings-flows";
+import { storedAssignments } from "../support/assignment-flows";
 import { actionsFor, equipmentIds, expectNothingRegistered, fillAssignment, registeredId } from "../support/register-assigned-flows";
 import { boxOf, VIEWPORT_HEIGHT, VIEWPORT_WIDTH } from "../support/mobile-flows";
 import { storageStatePath } from "../support/world";
@@ -16,9 +17,10 @@ const fresh = async (): Promise<void> => {
   await seedReadingsBase();
 };
 
-const group = (dialog: Locator): Locator => dialog.getByRole("group", { name: n.readingLegend });
-const valueField = (dialog: Locator): Locator => dialog.getByLabel(new RegExp(`^${n.readingValueLabel}`, "u"));
-const dayField = (dialog: Locator): Locator => dialog.getByLabel(n.readingDayLabel, { exact: true });
+/** The meter field is "Horómetro" for hours and "Kilometraje" for km; it has no group and no day of its own. */
+const valueField = (dialog: Locator, kind: "hours" | "km" = "hours"): Locator => dialog.getByLabel(n.readingLabel[kind], { exact: true });
+/** The reading takes the "Fecha de ingreso" of the registration, shared with the assignment. */
+const dayField = (dialog: Locator): Locator => dialog.getByLabel(n.dayLabel, { exact: true });
 
 /** Opens the registration dialog on the board and fills the equipment of the given asset type. */
 async function openRegistration(page: Page, code: string, type: keyof typeof TYPES): Promise<Locator> {
@@ -55,15 +57,15 @@ for (const role of ["admin", "fleet_analyst"] as const) {
       const code = `REGRD-ALL-${role.toUpperCase()}`;
       const dialog = await openRegistration(page, code, "km");
       await chooseImage(dialog, png());
-      await fillAssignment(dialog, { operation: OTHER_OPERATION, day: today() });
-      await valueField(dialog).fill("500");
-      await dayField(dialog).fill(dayOffset(-1));
+      await fillAssignment(dialog, { operation: OTHER_OPERATION, day: dayOffset(-1), reason: "Cargado ayer" });
+      await valueField(dialog, "km").fill("500");
       await submitDialog(dialog, n.submit);
       await expectDialogClosed(page);
       const id = await registeredId(code);
       expect((await storedReadings(id)).map((x) => [x.read_on, x.value_tenths, x.meter_kind])).toEqual([[dayOffset(-1), 5000, "km"]]);
       expect((await actionsFor(id)).sort()).toEqual(["fleet.equipment.create"]);
       expect(await allActions(id)).toEqual(expect.arrayContaining(["fleet.equipment.create", "fleet.assignment.create", "metering.reading.create"]));
+      expect(await storedAssignments(id)).toMatchObject([{ valid_from: dayOffset(-1), reason: "Cargado ayer" }]);
       await page.goto(`/fleet/equipment/${id}?tab=readings`);
       await expect(historyRows(page).first()).toContainText("500,0 km");
       await expect(hoursOf(page)).toHaveText("0,0 km");
@@ -84,17 +86,20 @@ for (const role of ["admin", "fleet_analyst"] as const) {
       await expect(panelOf(page)).toContainText(r.empty);
     });
 
-    test("the group follows the asset type: hidden for none, shown for hours and for km", async ({ page }) => {
+    test("the field follows the equipment type: hidden for none, Horómetro for hours, Kilometraje for km", async ({ page }) => {
       const dialog = await openRegistration(page, `REGRD-GROUP-${role.toUpperCase()}`, "none");
-      await expect(group(dialog)).toHaveCount(0);
-      await dialog.getByLabel(copy.dialogs.equipmentFields.assetTypeLabel, { exact: true }).selectOption({ label: TYPES.hours });
-      await expect(group(dialog)).toBeVisible();
-      await expect(valueField(dialog)).toHaveAccessibleName(`${n.readingValueLabel} (${r.units.hours})`);
+      const type = dialog.getByLabel(copy.dialogs.equipmentFields.assetTypeLabel, { exact: true });
+      await expect(dialog.getByLabel(n.readingLabel.hours, { exact: true })).toHaveCount(0);
+      await expect(dialog.getByLabel(n.readingLabel.km, { exact: true })).toHaveCount(0);
+      await type.selectOption({ label: TYPES.hours });
+      await expect(valueField(dialog, "hours")).toBeVisible();
+      await expect(dialog.getByLabel(n.readingLabel.km, { exact: true })).toHaveCount(0);
       await expect(dayField(dialog)).toHaveValue(today());
-      await dialog.getByLabel(copy.dialogs.equipmentFields.assetTypeLabel, { exact: true }).selectOption({ label: TYPES.km });
-      await expect(valueField(dialog)).toHaveAccessibleName(`${n.readingValueLabel} (${r.units.km})`);
-      await dialog.getByLabel(copy.dialogs.equipmentFields.assetTypeLabel, { exact: true }).selectOption({ label: TYPES.none });
-      await expect(group(dialog)).toHaveCount(0);
+      await type.selectOption({ label: TYPES.km });
+      await expect(valueField(dialog, "km")).toBeVisible();
+      await expect(dialog.getByLabel(n.readingLabel.hours, { exact: true })).toHaveCount(0);
+      await type.selectOption({ label: TYPES.none });
+      await expect(dialog.getByLabel(n.readingLabel.km, { exact: true })).toHaveCount(0);
     });
 
     test("a value typed before switching to a type without a meter is not sent", async ({ page }) => {
@@ -161,12 +166,12 @@ test.describe("the initial reading on a phone", () => {
   test.use({ storageState: storageStatePath("fleet_analyst") });
   test.beforeEach(fresh);
 
-  test("@mobile the group fits the viewport and the dialog still reaches its submit button", async ({ page }) => {
+  test("@mobile the field fits the viewport and the dialog still reaches its submit button", async ({ page }) => {
     await gotoFleet(page, "equipment");
     await page.getByRole("button", { name: n.trigger, exact: true }).tap();
     const dialog = page.getByRole("dialog", { name: n.title });
     await dialog.getByLabel(copy.dialogs.equipmentFields.assetTypeLabel, { exact: true }).selectOption({ label: TYPES.hours });
-    await expect(group(dialog)).toBeVisible();
+    await expect(valueField(dialog)).toBeVisible();
     const box = await boxOf(dialog);
     expect(box.x + box.width).toBeLessThanOrEqual(VIEWPORT_WIDTH);
     expect(box.y + box.height).toBeLessThanOrEqual(VIEWPORT_HEIGHT);

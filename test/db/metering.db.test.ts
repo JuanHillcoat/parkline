@@ -112,11 +112,11 @@ async function equipmentFixture(label: string, meterKind = "hours", operationId:
   const equipment = must(
     await c.fleet.createEquipment.execute({
       actor: adminActor, supplierId: supplier.id, assetTypeId: type.id, internalCode: `EQ-${n}`,
-      brand: "Brand", model: "Model", year: null, serialNumber: null, batteryQuantity: null, observations: null,
+      brand: "Brand", model: "Model", year: null, serialNumber: null, batteryKind: "combustion", batteryQuantity: null, observations: null,
     }),
   );
   if (operationId !== null) {
-    must(await c.fleet.assignEquipment.execute({ actor: adminActor, equipmentId: equipment.id, operationId, kind: "active", day: today() }));
+    must(await c.fleet.assignEquipment.execute({ actor: adminActor, equipmentId: equipment.id, target: { operationId }, day: today() }));
   }
   return equipment.id;
 }
@@ -558,7 +558,7 @@ describe("PostgresEquipmentDirectory", () => {
     const first = await operationFixture("DirMoveA");
     const second = await operationFixture("DirMoveB");
     const eq = await equipmentFixture("DirMove", "hours", first.operation.id);
-    must(await c.fleet.moveEquipment.execute({ actor: adminActor, equipmentId: eq, operationId: second.operation.id, day: shiftDay(today(), 1), reason: "Reassigned" }));
+    must(await c.fleet.moveEquipment.execute({ actor: adminActor, equipmentId: eq, target: { operationId: second.operation.id }, day: shiftDay(today(), 1), reason: "Reassigned" }));
     const info = await inTx((h) => new PostgresEquipmentDirectory(h).find(adminActor.tenantId, eq, { lock: false }));
     expect(info?.position?.operationId).toBe(second.operation.id);
   });

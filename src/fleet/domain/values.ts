@@ -1,6 +1,8 @@
 import { MAX_NAME_LENGTH, parseNormalizedText } from "../../shared/domain/catalog-name";
 import { err, mapErr, ok, type Result } from "../../shared/domain/result";
 import {
+  BatteryQuantityNotAllowedError,
+  InvalidBatteryKindError,
   InvalidBatteryQuantityError,
   InvalidInternalCodeError,
   InvalidMeterKindError,
@@ -21,6 +23,9 @@ export const MAX_OBSERVATIONS_LENGTH = 500;
 
 export const METER_KINDS = ["hours", "km", "none"] as const;
 export type MeterKind = (typeof METER_KINDS)[number];
+
+export const BATTERY_KINDS = ["lithium", "lead_acid", "combustion"] as const;
+export type BatteryKind = (typeof BATTERY_KINDS)[number];
 
 /** The stored name: the shared normalization (uppercase, collapsed whitespace), at most 120 characters. */
 export const parseName = (raw: string): Result<string, InvalidNameError> =>
@@ -57,6 +62,29 @@ export const parseBatteryQuantity = (raw: number | null): Result<number | null, 
   const valid = Number.isInteger(raw) && raw >= 0 && raw <= MAX_BATTERY_QUANTITY;
   const message = `The battery quantity is a whole number from 0 to ${String(MAX_BATTERY_QUANTITY)}`;
   return valid ? ok(raw) : err(new InvalidBatteryQuantityError(message));
+};
+
+/** Required: one of lithium, lead_acid or combustion; blank or unknown is a typed error. */
+export const parseBatteryKind = (raw: string | null): Result<BatteryKind, InvalidBatteryKindError> =>
+  raw !== null && (BATTERY_KINDS as readonly string[]).includes(raw) ? ok(raw as BatteryKind) : err(new InvalidBatteryKindError());
+
+type BatteryError = InvalidBatteryKindError | InvalidBatteryQuantityError | BatteryQuantityNotAllowedError;
+
+/**
+ * The battery of an equipment: its kind is required and the quantity (0 to 4, optional) exists only for lead
+ * acid; a quantity given for another kind, even zero, is a typed error.
+ */
+export const parseBattery = (
+  rawKind: string | null,
+  rawQuantity: number | null,
+): Result<{ readonly kind: BatteryKind; readonly quantity: number | null }, BatteryError> => {
+  const kind = parseBatteryKind(rawKind);
+  if (!kind.ok) return kind;
+  if (kind.value !== "lead_acid") {
+    return rawQuantity === null ? ok({ kind: kind.value, quantity: null }) : err(new BatteryQuantityNotAllowedError());
+  }
+  const quantity = parseBatteryQuantity(rawQuantity);
+  return quantity.ok ? ok({ kind: kind.value, quantity: quantity.value }) : quantity;
 };
 
 /** Optional free text: trimmed, blank becomes null, bounded. `field` names the offending input. */

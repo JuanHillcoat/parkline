@@ -53,18 +53,22 @@ describe("correctReadingFields and replaceMeterFields", () => {
 describe("initialReadingOnCreate", () => {
   it("sends nothing unless a value was typed", () => {
     expect(initialReadingOnCreate(form({}))).toBeUndefined();
-    expect(initialReadingOnCreate(form({ readingValue: "  ", readingDay: "2026-01-05" }))).toBeUndefined();
+    expect(initialReadingOnCreate(form({ readingValue: "  ", day: "2026-01-05" }))).toBeUndefined();
   });
 
-  it("sends the day and the value when typed", () => {
-    expect(initialReadingOnCreate(form({ readingValue: "120,5", readingDay: "2026-01-05" }))).toEqual({ day: "2026-01-05", value: 120.5 });
+  it("sends the value with the day of the registration (Fecha de ingreso), shared with the assignment", () => {
+    expect(initialReadingOnCreate(form({ readingValue: "120,5", day: " 2026-01-05 " }))).toEqual({ day: "2026-01-05", value: 120.5 });
+  });
+
+  it("does not read a separate reading day: the registration has none", () => {
+    expect(initialReadingOnCreate(form({ readingValue: "7", day: "2026-01-05", readingDay: "2025-01-01" }))?.day).toBe("2026-01-05");
   });
 
   it("sends an empty day with a typed value, so the server answers with its typed day error", () => {
-    expect(initialReadingOnCreate(form({ readingValue: "5", readingDay: "" }))).toEqual({ day: "", value: 5 });
+    expect(initialReadingOnCreate(form({ readingValue: "5", day: "" }))).toEqual({ day: "", value: 5 });
   });
 
   it("sends a value that is not a number as NaN", () => {
-    expect(initialReadingOnCreate(form({ readingValue: "abc", readingDay: "2026-01-05" }))?.value).toBeNaN();
+    expect(initialReadingOnCreate(form({ readingValue: "abc", day: "2026-01-05" }))?.value).toBeNaN();
   });
 });

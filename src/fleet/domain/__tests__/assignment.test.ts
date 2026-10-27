@@ -31,6 +31,28 @@ describe("parseAssignmentKind", () => {
   });
 });
 
+describe("createAssignment: where the assignment is", () => {
+  const spare = { kind: "spare", businessUnitId: null, operationId: null };
+
+  it("builds a spare at a site: no operation and no division", () => {
+    const created = createAssignment(input(spare));
+    expect(created.ok && created.value).toMatchObject({ kind: "spare", operationId: null, businessUnitId: null, siteId: "s1" });
+  });
+
+  it("keeps a spare inside an operation (rows from before) valid", () => {
+    expect(createAssignment(input({ kind: "spare" })).ok).toBe(true);
+  });
+
+  it.each([
+    { name: "an active assignment without operation", override: { operationId: null, businessUnitId: null } },
+    { name: "an operation without division", override: { kind: "spare", businessUnitId: null } },
+    { name: "a division without operation", override: { kind: "spare", operationId: null } },
+  ])("rejects $name", ({ override }) => {
+    const created = createAssignment(input(override));
+    expect(!created.ok && created.error.code).toBe("invalid_assignment_target");
+  });
+});
+
 describe("createAssignment", () => {
   it("builds an open assignment", () => {
     const created = createAssignment(input());

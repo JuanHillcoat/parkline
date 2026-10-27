@@ -6,6 +6,15 @@ import type { AssignmentDirectory } from "../../../shared/domain/ports/assignmen
  */
 export class FakeAssignmentDirectory implements AssignmentDirectory {
   private readonly open = new Map<string, number>();
+  private readonly spares = new Map<string, number>();
+
+  setOpenSpares(tenantId: string, siteId: string, count: number): void {
+    this.spares.set(`${tenantId}:${siteId}`, count);
+  }
+
+  countOpenSpares(tenantId: string, siteId: string): Promise<number> {
+    return Promise.resolve(this.spares.get(`${tenantId}:${siteId}`) ?? 0);
+  }
 
   setOpen(tenantId: string, operationId: string, count: number): void {
     this.open.set(`${tenantId}:${operationId}`, count);

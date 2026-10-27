@@ -3,12 +3,13 @@
 import { useEffect, useRef, useState, type ChangeEvent, type RefObject } from "react";
 import { downscaleImage, replaceInputFile } from "../_lib/browser-image";
 import { copy } from "../_lib/copy";
+import { imageChoicesOf, type ImageChoice } from "../_lib/equipment-fields-view";
 
 const t = copy.dialogs.imageField;
 
 export const ACCEPTED_TYPES = "image/jpeg,image/png,image/webp";
 
-type Choice = "keep" | "replace" | "remove";
+type Choice = ImageChoice;
 
 /** Runs `onReset` when the form that contains the element is reset (a successful dialog resets its form). */
 function useOnFormReset(ref: RefObject<HTMLElement | null>, onReset: () => void): void {
@@ -52,27 +53,38 @@ function useChosenImage(inputRef: RefObject<HTMLInputElement | null>) {
   return { preview, picked, change };
 }
 
-type PickerProps = { readonly id: string; readonly label: string; readonly required?: boolean };
+type PickerProps = {
+  readonly id: string;
+  readonly label: string;
+  readonly required?: boolean;
+  /** Extra class of the field, for example to span two columns of a form grid. */
+  readonly className?: string;
+  /** The `imageAction` sent when a file is picked; an equipment with no image sends no action until then. */
+  readonly pickedAction?: string;
+};
 
-/** The file input with its hint and the preview of the file that will be sent. */
-function ImagePicker({ id, label, required = false }: PickerProps) {
+/** The file input with a small thumbnail beside it (it never makes the row taller) and its hint. */
+function ImagePicker({ id, label, required = false, className = "", pickedAction }: PickerProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const { preview, picked, change } = useChosenImage(inputRef);
   return (
-    <div className="field">
+    <div className={`field ${className}`.trim()}>
       <label htmlFor={id}>{label}</label>
-      <input ref={inputRef} id={id} name="image" type="file" accept={ACCEPTED_TYPES} required={required}
-        className="input" onChange={(event) => { void change(event); }} />
+      <div className="image-row">
+        <input ref={inputRef} id={id} name="image" type="file" accept={ACCEPTED_TYPES} required={required}
+          className="input" onChange={(event) => { void change(event); }} />
+        {preview !== null && <img src={preview} alt={t.previewAlt} className="image-preview image-thumb" />}
+      </div>
       {picked && <input type="hidden" name="imageChosen" value="1" />}
+      {picked && pickedAction !== undefined && <input type="hidden" name="imageAction" value={pickedAction} />}
       <span className="hint">{t.hint}</span>
-      {preview !== null && <img src={preview} alt={t.previewAlt} className="image-preview" />}
     </div>
   );
 }
 
-/** The image field of the new equipment dialog: optional. */
+/** The image field of the new equipment dialog: optional, a full row of the form grid. */
 export function NewImageField({ id }: { readonly id: string }) {
-  return <ImagePicker id={id} label={t.label} />;
+  return <ImagePicker id={id} label={t.label} className="field-span-full" />;
 }
 
 function CurrentImage({ url }: { readonly url: string | null }) {
@@ -87,18 +99,14 @@ type ChoicesProps = {
 };
 
 function ImageChoices({ hasImage, choice, onChoose }: ChoicesProps) {
-  const options: readonly (readonly [Choice, string])[] = [
-    ["keep", t.keep],
-    ["replace", hasImage ? t.replace : t.add],
-    ...(hasImage ? ([["remove", t.remove]] as const) : []),
-  ];
+  const labels: Record<Choice, string> = { keep: t.keep, replace: hasImage ? t.replace : t.add, remove: t.remove };
   return (
     <>
-      {options.map(([value, label]) => (
+      {imageChoicesOf(hasImage).map((value) => (
         <label key={value} className="choice">
           <input type="radio" name="imageAction" value={value} checked={choice === value}
             onChange={() => { onChoose(value); }} />
-          {label}
+          {labels[value]}
         </label>
       ))}
     </>
@@ -107,15 +115,20 @@ function ImageChoices({ hasImage, choice, onChoose }: ChoicesProps) {
 
 type EditProps = { readonly id: string; readonly currentUrl: string | null };
 
-/** The image field of the edit dialog: the current image and a choice to keep, replace or remove it. */
+/**
+ * The image field of the edit dialog. With an image: the current image and a choice to keep (the default),
+ * replace or remove it. Without one: only the optional file input; no file means no change.
+ */
 export function EditImageField({ id, currentUrl }: EditProps) {
   const groupRef = useRef<HTMLFieldSetElement>(null);
   const [choice, setChoice] = useState<Choice>("keep");
   useOnFormReset(groupRef, () => { setChoice("keep"); });
+  const choices = imageChoicesOf(currentUrl !== null);
   return (
     <fieldset ref={groupRef} className="field choice-group">
       <legend>{t.label}</legend>
       <CurrentImage url={currentUrl} />
+      {choices.length === 0 && <ImagePicker id={id} label={t.add} pickedAction="replace" />}
       <ImageChoices hasImage={currentUrl !== null} choice={choice} onChoose={setChoice} />
       {choice === "replace" && <ImagePicker id={id} label={t.fileLabel} required />}
     </fieldset>

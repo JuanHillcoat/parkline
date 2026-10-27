@@ -79,18 +79,21 @@ export const valueOf = (card: Locator, label: string): Locator =>
 /** The alert of a dialog that failed. */
 export const alertOf = (dialog: Locator): Locator => dialog.getByRole("alert");
 
-export type Kind = "active" | "spare";
+/** Where an equipment goes in a dialog: an operation, or a site as a muleto (a spare belongs to a site). */
+export type PlaceValues = { operation?: string; site?: string };
 
-async function setOperation(dialog: Locator, label: string, operation: string | undefined): Promise<void> {
-  if (operation !== undefined) await dialog.getByLabel(label, { exact: true }).selectOption({ label: operation });
+const MULETO = d.placement.muleto;
+
+/** Chooses the place: an operation by name, or Muleto and then its Site; nothing given touches nothing. */
+export async function setPlace(dialog: Locator, label: string, v: PlaceValues): Promise<void> {
+  if (v.operation !== undefined) await dialog.getByLabel(label, { exact: true }).selectOption({ label: v.operation });
+  if (v.site === undefined) return;
+  await dialog.getByLabel(label, { exact: true }).selectOption({ label: MULETO });
+  await dialog.getByLabel(d.placement.siteLabel, { exact: true }).selectOption({ label: v.site });
 }
 
 async function setText(dialog: Locator, label: string, value: string | undefined): Promise<void> {
   if (value !== undefined) await dialog.getByLabel(label, { exact: true }).fill(value);
-}
-
-async function setKind(dialog: Locator, label: string, kind: Kind | undefined): Promise<void> {
-  if (kind !== undefined) await dialog.getByLabel(label, { exact: true }).selectOption(kind);
 }
 
 /** Opens a dialog from the header buttons, fills it and submits it; the caller reads the outcome. */
@@ -102,24 +105,23 @@ async function submitHeaderDialog(page: Page, trigger: string, submit: string, f
   return dialog;
 }
 
-export type AssignValues = { operation?: string; kind?: Kind; day?: string; reason?: string };
+export type AssignValues = PlaceValues & { day?: string; reason?: string };
 
 export function submitAssign(page: Page, v: AssignValues): Promise<Locator> {
   const a = d.assignEquipment;
   return submitHeaderDialog(page, a.trigger, a.submit, async (dialog) => {
-    await setOperation(dialog, a.operationLabel, v.operation);
-    await setKind(dialog, a.kindLabel, v.kind);
+    await setPlace(dialog, a.operationLabel, v);
     await setText(dialog, a.dayLabel, v.day);
     await setText(dialog, a.reasonLabel, v.reason);
   });
 }
 
-export type MoveValues = { operation?: string; day?: string; reason?: string };
+export type MoveValues = PlaceValues & { day?: string; reason?: string };
 
 export function submitMove(page: Page, v: MoveValues): Promise<Locator> {
   const m = d.moveEquipment;
   return submitHeaderDialog(page, m.trigger, m.submit, async (dialog) => {
-    await setOperation(dialog, m.operationLabel, v.operation);
+    await setPlace(dialog, m.operationLabel, v);
     await setText(dialog, m.dayLabel, v.day);
     await setText(dialog, copy.common.reason, v.reason);
   });
@@ -135,15 +137,14 @@ export function submitEnd(page: Page, v: EndValues): Promise<Locator> {
   });
 }
 
-export type CorrectValues = { from?: string; to?: string; operation?: string; kind?: Kind; reason?: string };
+export type CorrectValues = PlaceValues & { from?: string; to?: string; reason?: string };
 
 /** Fills the correction dialog of a history row; empty strings clear a date. */
 export async function fillCorrection(dialog: Locator, v: CorrectValues): Promise<void> {
   const c = d.correctAssignment;
   await setText(dialog, c.fromLabel, v.from);
   await setText(dialog, c.toLabel, v.to);
-  await setOperation(dialog, c.operationLabel, v.operation);
-  await setKind(dialog, c.kindLabel, v.kind);
+  await setPlace(dialog, c.operationLabel, v);
   await setText(dialog, copy.common.reason, v.reason);
 }
 
@@ -165,7 +166,9 @@ export type StoredAssignment = {
   readonly valid_from: string;
   readonly valid_to: string | null;
   readonly kind: string;
-  readonly operation_id: string;
+  /** Null for a spare of a site (ADR-0013). */
+  readonly operation_id: string | null;
+  readonly site_id: string;
   readonly reason: string | null;
 };
 
@@ -177,7 +180,7 @@ export async function storedAssignments(equipmentId: string): Promise<StoredAssi
   try {
     return await sql<StoredAssignment[]>`
       select to_char(valid_from, 'YYYY-MM-DD') as valid_from, to_char(valid_to, 'YYYY-MM-DD') as valid_to,
-             kind, operation_id, reason
+             kind, operation_id, site_id, reason
       from equipment_assignments where equipment_id = ${equipmentId} order by equipment_assignments.valid_from`;
   } finally {
     await sql.end();

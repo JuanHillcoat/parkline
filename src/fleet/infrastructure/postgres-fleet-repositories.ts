@@ -10,7 +10,7 @@ import type {
   SupplierRepository,
 } from "../application/ports/repositories";
 import type { AssetType, Equipment, Supplier } from "../domain/entities";
-import type { MeterKind } from "../domain/values";
+import type { BatteryKind, MeterKind } from "../domain/values";
 import {
   assetTypeConflictOf,
   equipmentConflictOf,
@@ -36,6 +36,7 @@ type EquipmentRow = {
   model: string | null;
   year: number | null;
   serial_number: string | null;
+  battery_kind: BatteryKind | null;
   battery_quantity: number | null;
   observations: string | null;
   archived_at: Date | null;
@@ -64,6 +65,7 @@ const toEquipment = (row: EquipmentRow): Equipment => ({
   model: row.model,
   year: row.year,
   serialNumber: row.serial_number,
+  batteryKind: row.battery_kind,
   batteryQuantity: row.battery_quantity,
   observations: row.observations,
   archivedAt: row.archived_at,
@@ -261,7 +263,7 @@ export class PostgresEquipmentRepository implements EquipmentRepository {
   }
 
   private get columns() {
-    return this.sql`id, tenant_id, supplier_id, asset_type_id, internal_code, brand, model, year, serial_number, battery_quantity, observations, archived_at`;
+    return this.sql`id, tenant_id, supplier_id, asset_type_id, internal_code, brand, model, year, serial_number, battery_kind, battery_quantity, observations, archived_at`;
   }
 
   async findById(tenantId: string, id: string): Promise<Equipment | null> {
@@ -300,10 +302,10 @@ export class PostgresEquipmentRepository implements EquipmentRepository {
   async add(equipment: Equipment): Promise<EquipmentAdd> {
     const rows = await this.sql`
       insert into equipments (id, tenant_id, supplier_id, asset_type_id, internal_code, brand, model, year,
-                              serial_number, battery_quantity, observations)
+                              serial_number, battery_kind, battery_quantity, observations)
       values (${equipment.id}, ${equipment.tenantId}, ${equipment.supplierId}, ${equipment.assetTypeId},
               ${equipment.internalCode}, ${equipment.brand}, ${equipment.model}, ${equipment.year},
-              ${equipment.serialNumber}, ${equipment.batteryQuantity}, ${equipment.observations})
+              ${equipment.serialNumber}, ${equipment.batteryKind}, ${equipment.batteryQuantity}, ${equipment.observations})
       on conflict (tenant_id, supplier_id, internal_code_key) where archived_at is null do nothing
       returning id`;
     return rows.length === 1 ? "added" : "internal_code_taken";
@@ -317,7 +319,7 @@ export class PostgresEquipmentRepository implements EquipmentRepository {
         set supplier_id = ${equipment.supplierId}, asset_type_id = ${equipment.assetTypeId},
             internal_code = ${equipment.internalCode}, brand = ${equipment.brand}, model = ${equipment.model},
             year = ${equipment.year}, serial_number = ${equipment.serialNumber},
-            battery_quantity = ${equipment.batteryQuantity}, observations = ${equipment.observations}
+            battery_kind = ${equipment.batteryKind}, battery_quantity = ${equipment.batteryQuantity}, observations = ${equipment.observations}
         where tenant_id = ${equipment.tenantId} and id = ${equipment.id}`,
       equipmentConflictOf,
     );

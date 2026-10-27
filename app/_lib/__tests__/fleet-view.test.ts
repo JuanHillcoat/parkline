@@ -46,6 +46,7 @@ const equipment = (id: string, code: string, supplierId: string, assetTypeId: st
   model: null,
   year: null,
   serialNumber: null,
+  batteryKind: "combustion",
   batteryQuantity: null,
   observations: null,
   archivedAt: null,
@@ -164,6 +165,12 @@ describe("buildEquipmentRows", () => {
     expect(idle).toMatchObject({ state: "unassigned", operationId: null, operationName: null, siteName: null });
   });
 
+  it("shows a spare of a site as Muleto with its site and no operation", () => {
+    const spare = { ...here, kind: "spare" as const, operationId: null, businessUnitId: null };
+    const [row] = buildEquipmentRows([asItem(units[0] as Equipment, spare)], places);
+    expect(row).toMatchObject({ state: "spare", operationId: null, operationName: null, siteName: "SITE ONE" });
+  });
+
   it("leaves a name null when the organization list does not carry it", () => {
     const [row] = buildEquipmentRows([asItem(units[0] as Equipment, { ...here, operationId: "gone", siteId: "gone" })], places);
     expect(row).toMatchObject({ state: "active", operationId: "gone", operationName: null, siteName: null });
@@ -210,6 +217,7 @@ describe("equipmentFormValues", () => {
       model: "M-1",
       year: "2020",
       serialNumber: "SN-1",
+      batteryKind: "combustion",
       batteryQuantity: "2",
       observations: "Left mast",
     });

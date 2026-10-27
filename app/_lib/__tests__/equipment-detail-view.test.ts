@@ -14,8 +14,13 @@ import {
   incomingCandidates,
   OUTGOING_DEFAULT,
   outgoingChoices,
+  positionOfPlacement,
   parseDetailTab,
+  correctionSites,
+  moveOperations,
+  moveSites,
   writableOperations,
+  writableSites,
 } from "../equipment-detail-view";
 
 const d = copy.fleet.detail;
@@ -31,6 +36,7 @@ const item = (extra: Partial<EquipmentListItem> = {}): EquipmentListItem => ({
   model: null,
   year: null,
   serialNumber: null,
+  batteryKind: null,
   batteryQuantity: null,
   observations: null,
   archivedAt: null,
@@ -96,14 +102,24 @@ describe("buildInfoRows", () => {
       [d.info.model, NONE],
       [d.info.year, NONE],
       [d.info.serialNumber, NONE],
-      [d.info.batteries, NONE],
+      [d.info.batteryKind, NONE],
       [d.info.observations, NONE],
     ]);
   });
 
-  it("shows the values that are set, including a zero battery count", () => {
-    const rows = buildInfoRows(item({ brand: "BRAND X", model: "M-1", year: 2020, serialNumber: "SN-1", batteryQuantity: 0, observations: "Left mast" }));
-    expect(rows.map((row) => row.value)).toEqual(["EQ-0001", "FORKLIFT", "SUPPLIER A", "BRAND X", "M-1", "2020", "SN-1", "0", "Left mast"]);
+  it("shows the battery kind and, for lead acid only, the quantity (a zero included)", () => {
+    const leadAcid = { brand: "BRAND X", model: "M-1", year: 2020, serialNumber: "SN-1", batteryKind: "lead_acid", batteryQuantity: 0, observations: "Left mast" } as const;
+    const rows = buildInfoRows(item(leadAcid));
+    expect(rows.map((row) => row.value)).toEqual(["EQ-0001", "FORKLIFT", "SUPPLIER A", "BRAND X", "M-1", "2020", "SN-1", "Plomo ácido", "0", "Left mast"]);
+    expect(rows.map((row) => row.label)).toContain(d.info.batteries);
+  });
+
+  it("names lithium and combustion without a quantity row", () => {
+    for (const [kind, name] of [["lithium", "Litio"], ["combustion", "Combustión"]] as const) {
+      const rows = buildInfoRows(item({ batteryKind: kind }));
+      expect(rows).toContainEqual({ label: d.info.batteryKind, value: name });
+      expect(rows.map((row) => row.label)).not.toContain(d.info.batteries);
+    }
   });
 });
 
@@ -124,6 +140,16 @@ describe("buildLocation", () => {
   it("uses a dash for a name the organization lists do not carry", () => {
     const view = buildLocation(item({ assignment: { ...placed, kind: "spare" } }), { operations: [], sites: [], divisions: [] });
     expect(view.rows.map((row) => row.value)).toEqual([NONE, NONE, NONE, d.kinds.spare, "10/01/2026"]);
+  });
+
+  it("shows a spare of a site without operation and division rows", () => {
+    const spare = { siteId: "si1", businessUnitId: null, operationId: null, kind: "spare" as const, validFrom: "2026-01-10" };
+    const view = buildLocation(item({ assignment: spare }), places);
+    expect(view.rows.map((row) => [row.label, row.value])).toEqual([
+      [d.location.site, "SITE ONE"],
+      [d.location.kind, d.kinds.spare],
+      [d.location.since, "10/01/2026"],
+    ]);
   });
 
   it("says Sin asignar with a hint when there is no assignment", () => {
@@ -165,8 +191,14 @@ describe("buildHistoryRows", () => {
 
   it("prefills the correction form with the current values, an empty end for an open row", () => {
     const [open, closed] = buildHistoryRows([assignment("a2"), assignment("a1", { validTo: "2026-02-28", kind: "spare" })], places);
-    expect(open?.form).toEqual({ validFrom: "2026-01-10", validTo: "", operationId: "o1", kind: "active" });
-    expect(closed?.form).toEqual({ validFrom: "2026-01-10", validTo: "2026-02-28", operationId: "o1", kind: "spare" });
+    expect(open?.form).toEqual({ validFrom: "2026-01-10", validTo: "", operationId: "o1", siteId: "", kind: "active" });
+    expect(closed?.form).toEqual({ validFrom: "2026-01-10", validTo: "2026-02-28", operationId: "o1", siteId: "", kind: "spare" });
+  });
+
+  it("shows a spare of a site with an empty operation and the site as the place to correct", () => {
+    const [row] = buildHistoryRows([assignment("a3", { businessUnitId: null, operationId: null, kind: "spare" })], places);
+    expect(row).toMatchObject({ operationName: NONE, siteName: "SITE ONE", kindLabel: d.kinds.spare });
+    expect(row?.form).toMatchObject({ operationId: "", siteId: "si1", kind: "spare" });
   });
 });
 
@@ -254,5 +286,62 @@ describe("correctionOperations", () => {
     expect(correctionOperations(choices, "o1", [{ id: "o1", name: "ONE" }])).toEqual([{ id: "o2", name: "TWO" }, { id: "o1", name: "ONE" }]);
     expect(correctionOperations(choices, "x", [])).toEqual([{ id: "o2", name: "TWO" }, { id: "x", name: NONE }]);
     expect(correctionOperations(choices, "o2", [])).toEqual(choices);
+  });
+});
+
+describe("sites for a spare", () => {
+  const sites = [
+    { id: "si1", name: "SITE ONE", archivedAt: null },
+    { id: "si2", name: "SITE TWO", archivedAt: null },
+    { id: "si3", name: "SITE THREE", archivedAt: new Date() },
+  ];
+
+  it("offers only active sites where the actor may write", () => {
+    expect(writableSites(sites, () => true)).toEqual([{ id: "si1", name: "SITE ONE" }, { id: "si2", name: "SITE TWO" }]);
+    expect(writableSites(sites, (site) => site.id === "si2")).toEqual([{ id: "si2", name: "SITE TWO" }]);
+    expect(writableSites(sites, () => false)).toEqual([]);
+  });
+
+  it("keeps the site of the row in the correction choices, and adds nothing for a row in an operation", () => {
+    const choices = [{ id: "si2", name: "SITE TWO" }];
+    expect(correctionSites(choices, "si1", sites)).toEqual([...choices, { id: "si1", name: "SITE ONE" }]);
+    expect(correctionSites(choices, "si2", sites)).toEqual(choices);
+    expect(correctionSites(choices, "", sites)).toEqual(choices);
+  });
+
+  it("leaves out of the move choices the site where the equipment is already a spare", () => {
+    const choices = [{ id: "si1", name: "SITE ONE" }, { id: "si2", name: "SITE TWO" }];
+    const spare = { ...placed, operationId: null, businessUnitId: null, kind: "spare" as const };
+    expect(moveSites(choices, spare)).toEqual([{ id: "si2", name: "SITE TWO" }]);
+    expect(moveSites(choices, placed)).toEqual(choices);
+    expect(moveSites(choices, null)).toEqual(choices);
+  });
+
+  it("leaves out of the move choices the operation where the equipment already is", () => {
+    const choices = [{ id: "o1", name: "OPERATION ONE" }, { id: "o2", name: "OPERATION TWO" }];
+    expect(moveOperations(choices, placed)).toEqual([{ id: "o2", name: "OPERATION TWO" }]);
+    expect(moveOperations(choices, { ...placed, operationId: null, businessUnitId: null, kind: "spare" })).toEqual(choices);
+    expect(moveOperations(choices, null)).toEqual(choices);
+  });
+
+  it("keeps the correction operations free of a blank option for a spare of a site", () => {
+    const choices = [{ id: "o2", name: "OPERATION TWO" }];
+    expect(correctionOperations(choices, "", places.operations)).toEqual(choices);
+  });
+});
+
+describe("positionOfPlacement", () => {
+  it("is the whole company without an open assignment", () => {
+    expect(positionOfPlacement("t1", null)).toEqual({ tenantId: "t1" });
+  });
+
+  it("carries the division, the site and the operation of an active assignment", () => {
+    expect(positionOfPlacement("t1", { siteId: "s1", businessUnitId: "b1", operationId: "o1" })).toEqual({
+      tenantId: "t1", siteId: "s1", businessUnitId: "b1", operationId: "o1",
+    });
+  });
+
+  it("carries only the site of a spare parked at a site, so a division or operation grant never matches it", () => {
+    expect(positionOfPlacement("t1", { siteId: "s1", businessUnitId: null, operationId: null })).toEqual({ tenantId: "t1", siteId: "s1" });
   });
 });

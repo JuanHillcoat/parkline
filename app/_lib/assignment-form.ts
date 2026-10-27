@@ -1,21 +1,26 @@
+import type { AssignmentTarget } from "../../src/fleet/application/assignment-support";
 import { field } from "./action-state";
-import { optionalText } from "./fleet-form";
+import { optionalText, targetOf } from "./fleet-form";
+
+export { targetOf };
 
 /** A day arrives as the text of `<input type="date">`; the use cases parse it, never a JS Date. */
 const day = (form: FormData, name: string): string => field(form, name).trim();
 
+/** A missing target stays a blank operation, which the use case answers as a typed error (no default place). */
+const requiredTarget = (form: FormData): AssignmentTarget => targetOf(form) ?? { operationId: "" };
+
 /** The first assignment of an equipment. A blank reason is "not set": only a past day makes it mandatory. */
 export const assignFields = (form: FormData) => ({
   equipmentId: field(form, "equipmentId"),
-  operationId: field(form, "operationId"),
-  kind: field(form, "kind"),
+  target: requiredTarget(form),
   day: day(form, "day"),
   reason: optionalText(field(form, "reason")),
 });
 
 export const moveFields = (form: FormData) => ({
   equipmentId: field(form, "equipmentId"),
-  operationId: field(form, "operationId"),
+  target: requiredTarget(form),
   day: day(form, "day"),
   reason: field(form, "reason"),
 });
@@ -41,12 +46,14 @@ export const endFields = (form: FormData) => ({
   reason: field(form, "reason"),
 });
 
-/** An empty end means the assignment is open again (`null`); the other fields are always sent. */
+/**
+ * An empty end means the assignment is open again (`null`). Without an operation or a site in the form the
+ * target stays undefined and the correction keeps the place.
+ */
 export const correctFields = (form: FormData) => ({
   assignmentId: field(form, "assignmentId"),
   validFrom: day(form, "validFrom"),
   validTo: optionalText(field(form, "validTo")) === null ? null : day(form, "validTo"),
-  operationId: field(form, "operationId"),
-  kind: field(form, "kind"),
+  target: targetOf(form),
   reason: field(form, "reason"),
 });

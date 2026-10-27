@@ -11,17 +11,18 @@ type Props = {
   /** Only writers see "Corregir"; the server action enforces the permission again. */
   readonly canCorrect: boolean;
   readonly operationsFor: (row: HistoryRow) => readonly Option[];
+  readonly sitesFor: (row: HistoryRow) => readonly Option[];
 };
 
 function KindPill({ row }: { row: HistoryRow }) {
   return <span className={row.form.kind === "spare" ? "badge badge-warn" : "badge badge-ok"}>{row.kindLabel}</span>;
 }
 
-function CorrectCell({ row, equipmentId, operationsFor }: Props & { row: HistoryRow }) {
+function CorrectCell({ row, equipmentId, operationsFor, sitesFor }: Props & { row: HistoryRow }) {
   return (
     <td className="cell-actions">
       <div className="row-actions">
-        <CorrectDialog equipmentId={equipmentId} assignmentId={row.id} values={row.form} operations={operationsFor(row)} />
+        <CorrectDialog equipmentId={equipmentId} assignmentId={row.id} values={row.form} operations={operationsFor(row)} sites={sitesFor(row)} />
       </div>
     </td>
   );

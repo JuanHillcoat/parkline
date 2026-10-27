@@ -22,6 +22,8 @@ type Props = {
   readonly description: string;
   readonly submitLabel: string;
   readonly danger?: boolean;
+  /** A wide dialog for a long form: its fields sit in a multi-column grid (one column on a phone). */
+  readonly wide?: boolean;
   readonly action: DialogAction;
   readonly children: ReactNode;
 };
@@ -81,7 +83,7 @@ export function ActionDialog(props: Props) {
   return (
     <>
       <button type="button" className={props.triggerClassName} onClick={open}>{props.triggerLabel}</button>
-      <dialog ref={ui.dialog} className="dialog" aria-labelledby={titleId} onClose={ui.dismiss}>
+      <dialog ref={ui.dialog} className={props.wide === true ? "dialog dialog-wide" : "dialog"} aria-labelledby={titleId} onClose={ui.dismiss}>
         <form ref={ui.form} onSubmit={ui.submit}>
           <h2 id={titleId}>{props.title}</h2>
           <p className="dialog-sub">{props.description}</p>

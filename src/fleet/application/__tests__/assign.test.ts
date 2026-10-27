@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   ArchivedError,
   AssignmentOverlapError,
-  InvalidAssignmentKindError,
   InvalidDayError,
   OpenAssignmentError,
   OperationArchivedError,
@@ -15,7 +14,7 @@ import { actorWith, createHarness, grant, START } from "./support/harness";
 const base = async () => {
   const h = createHarness();
   const s = await h.seedTenantA();
-  return { h, s, input: { actor: h.admin, equipmentId: s.eq1.id, operationId: "op1", kind: "active", day: "2026-01-10" } };
+  return { h, s, input: { actor: h.admin, equipmentId: s.eq1.id, target: { operationId: "op1" }, day: "2026-01-10" } };
 };
 
 describe("AssignEquipment", () => {
@@ -36,10 +35,10 @@ describe("AssignEquipment", () => {
     ]);
   });
 
-  it("creates a spare assignment", async () => {
+  it("derives the kind from the target: an operation is active, a site is a spare without operation", async () => {
     const { h, input } = await base();
-    const result = await h.assignEquipment.execute({ ...input, kind: "spare" });
-    expect(result.ok && result.value.kind).toBe("spare");
+    const result = await h.assignEquipment.execute({ ...input, target: { siteId: "s1" } });
+    expect(result.ok && result.value).toMatchObject({ kind: "spare", operationId: null, businessUnitId: null, siteId: "s1" });
   });
 
   it("needs no reason for today or a future day, and keeps one when it is given", async () => {
@@ -75,18 +74,16 @@ describe("AssignEquipment", () => {
     expect(!result.ok && result.error).toBeInstanceOf(ReasonRequiredError);
   });
 
-  it("returns typed validation errors for a bad day or kind, never throws", async () => {
+  it("returns a typed validation error for a bad day, never throws", async () => {
     const { h, input } = await base();
     const day = await h.assignEquipment.execute({ ...input, day: "10/01/2026" });
-    const kind = await h.assignEquipment.execute({ ...input, kind: "loan" });
     expect(!day.ok && day.error).toBeInstanceOf(InvalidDayError);
-    expect(!kind.ok && kind.error).toBeInstanceOf(InvalidAssignmentKindError);
   });
 
   it("refuses a second open assignment of the same equipment", async () => {
     const { h, s, input } = await base();
     await h.assignEquipment.execute(input);
-    const again = await h.assignEquipment.execute({ ...input, operationId: "op2", day: "2026-02-01" });
+    const again = await h.assignEquipment.execute({ ...input, target: { operationId: "op2" }, day: "2026-02-01" });
     expect(!again.ok && again.error).toBeInstanceOf(OpenAssignmentError);
     expect(!again.ok && again.error.code).toBe("open_assignment_exists");
     expect(await h.assignmentsOf(s.eq1.id)).toHaveLength(1);
@@ -96,7 +93,7 @@ describe("AssignEquipment", () => {
     const { h, s, input } = await base();
     await h.assignEquipment.execute(input);
     await h.endAssignment.execute({ actor: h.admin, equipmentId: s.eq1.id, day: "2026-01-31", reason: "Fin" });
-    const contiguous = await h.assignEquipment.execute({ ...input, operationId: "op2", day: "2026-02-01" });
+    const contiguous = await h.assignEquipment.execute({ ...input, target: { operationId: "op2" }, day: "2026-02-01" });
     expect(contiguous.ok).toBe(true);
     await h.endAssignment.execute({ actor: h.admin, equipmentId: s.eq1.id, day: "2026-02-28", reason: "Fin" });
     const overlapping = await h.assignEquipment.execute({ ...input, day: "2026-02-28" });
@@ -130,7 +127,7 @@ describe("AssignEquipment", () => {
 
   it("refuses an archived operation", async () => {
     const { h, input } = await base();
-    const result = await h.assignEquipment.execute({ ...input, operationId: "opx" });
+    const result = await h.assignEquipment.execute({ ...input, target: { operationId: "opx" } });
     expect(!result.ok && result.error).toBeInstanceOf(OperationArchivedError);
     expect(!result.ok && result.error.code).toBe("operation_archived");
   });
@@ -138,15 +135,15 @@ describe("AssignEquipment", () => {
   it("answers not found for a missing equipment or operation to a tenant-wide writer", async () => {
     const { h, input } = await base();
     const equipment = await h.assignEquipment.execute({ ...input, equipmentId: "missing" });
-    const operation = await h.assignEquipment.execute({ ...input, operationId: "missing" });
+    const operation = await h.assignEquipment.execute({ ...input, target: { operationId: "missing" } });
     expect(!equipment.ok && equipment.error.code).toBe("not_found");
     expect(!operation.ok && operation.error.code).toBe("not_found");
   });
 
   it("does not see equipment or operations of another tenant", async () => {
     const { h, s, input } = await base();
-    const foreignEquipment = await h.assignEquipment.execute({ ...input, actor: h.adminB, operationId: "opb" });
-    const foreignOperation = await h.assignEquipment.execute({ ...input, equipmentId: s.eq1.id, operationId: "opb" });
+    const foreignEquipment = await h.assignEquipment.execute({ ...input, actor: h.adminB, target: { operationId: "opb" } });
+    const foreignOperation = await h.assignEquipment.execute({ ...input, equipmentId: s.eq1.id, target: { operationId: "opb" } });
     expect(!foreignEquipment.ok && foreignEquipment.error.code).toBe("not_found");
     expect(!foreignOperation.ok && foreignOperation.error.code).toBe("not_found");
     expect(await h.assignmentsOf(s.eq1.id)).toHaveLength(0);

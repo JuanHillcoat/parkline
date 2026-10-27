@@ -57,6 +57,24 @@ export class InvalidBatteryQuantityError extends ValidationError {
   }
 }
 
+/** The battery kind is missing or is not lithium, lead acid or combustion. */
+export class InvalidBatteryKindError extends ValidationError {
+  readonly code: string = "invalid_battery_kind";
+
+  constructor() {
+    super("The battery kind is lithium, lead_acid or combustion", "batteryKind");
+  }
+}
+
+/** Only a lead acid equipment counts batteries: the other kinds take no quantity. */
+export class BatteryQuantityNotAllowedError extends ValidationError {
+  readonly code: string = "battery_quantity_not_allowed";
+
+  constructor() {
+    super("Only lead acid equipment has a battery quantity", "batteryQuantity");
+  }
+}
+
 /** Brand or model blank, or brand, model, serial number or observations longer than their maximum once trimmed. */
 export class InvalidTextError extends ValidationError {
   readonly code: string = "invalid_text";
@@ -166,12 +184,30 @@ export class SameEquipmentError extends ValidationError {
   }
 }
 
-/** A move goes to another operation. */
+/** A move goes to another place: another operation, or another site as a spare. */
 export class SameOperationError extends ValidationError {
   readonly code: string = "same_operation";
 
   constructor() {
     super("The equipment is already in that operation", "operationId");
+  }
+}
+
+/** The equipment is already a spare at that site. */
+export class SameSiteError extends ValidationError {
+  readonly code: string = "same_site";
+
+  constructor() {
+    super("The equipment is already a spare at that site", "siteId");
+  }
+}
+
+/** An active assignment needs an operation; the operation and the division go together; a target is an operation or a site. */
+export class InvalidAssignmentTargetError extends ValidationError {
+  readonly code: string = "invalid_assignment_target";
+
+  constructor(message = "An assignment is in an operation or, as a spare, at a site", field = "operationId") {
+    super(message, field);
   }
 }
 
@@ -193,6 +229,11 @@ export class NoOpenAssignmentError extends ConflictError {
 /** An equipment with an open assignment cannot be archived: end its assignment first. */
 export class HasOpenAssignmentError extends ConflictError {
   readonly code: string = "has_open_assignment";
+}
+
+/** The site is archived: it cannot receive a spare. */
+export class SiteArchivedError extends ConflictError {
+  readonly code: string = "site_archived";
 }
 
 /** The operation (or its site or division) is archived: it cannot receive an assignment. */

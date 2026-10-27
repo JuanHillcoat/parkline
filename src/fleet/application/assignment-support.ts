@@ -1,6 +1,6 @@
 import { NotFoundError, type DomainError } from "../../shared/domain/domain-error";
 import type { Actor, ResourcePosition } from "../../shared/domain/ports/access-policy";
-import type { OperationInfo } from "../../shared/domain/ports/operation-directory";
+import type { OperationInfo, SiteInfo } from "../../shared/domain/ports/operation-directory";
 import { err, ok, type Result } from "../../shared/domain/result";
 import { hasReason } from "../../shared/domain/sensitive-actions";
 import { createAssignment, type Assignment } from "../domain/assignment";
@@ -10,6 +10,7 @@ import {
   InvalidPeriodError,
   NoOpenAssignmentError,
   OperationArchivedError,
+  SiteArchivedError,
 } from "../domain/errors";
 import { overlapsAny } from "../domain/periods";
 import { assignmentSnapshot, recordAudit } from "./audit";
@@ -20,8 +21,16 @@ import { parseReason } from "./reason";
 
 const WRITE = "catalog.write";
 
-/** An operation that passed the write check, with the role that granted it. */
-export type Target = { readonly op: OperationInfo; readonly role: string };
+/** Where an assignment goes, as a caller names it: an operation (active) or a site (spare). */
+export type AssignmentTarget = { readonly operationId: string } | { readonly siteId: string };
+
+/**
+ * A target that passed the write check, with the role that granted it: an operation (kind `active`) or a
+ * site (kind `spare`, ADR-0013). The kind is derived from it.
+ */
+export type Target =
+  | { readonly kind: "active"; readonly op: OperationInfo; readonly role: string }
+  | { readonly kind: "spare"; readonly site: SiteInfo; readonly role: string };
 
 /** The open assignment of an equipment that passed the write check at its position. */
 export type Source = { readonly open: Assignment; readonly role: string };
@@ -33,12 +42,36 @@ export const positionOfOperation = (tenantId: string, op: OperationInfo): Resour
   siteId: op.siteId,
 });
 
-export const positionOfAssignment = (assignment: Assignment): ResourcePosition => ({
-  tenantId: assignment.tenantId,
-  businessUnitId: assignment.businessUnitId,
-  operationId: assignment.operationId,
-  siteId: assignment.siteId,
-});
+/**
+ * The position of a spare at a site: the tenant and the site, no division and no operation (ADR-0013). Only
+ * a grant that covers the whole company (or the site itself) matches it.
+ */
+export const positionOfSite = (tenantId: string, siteId: string): ResourcePosition => ({ tenantId, siteId });
+
+export const positionOfAssignment = (assignment: Assignment): ResourcePosition =>
+  assignment.operationId === null || assignment.businessUnitId === null
+    ? positionOfSite(assignment.tenantId, assignment.siteId)
+    : {
+        tenantId: assignment.tenantId,
+        businessUnitId: assignment.businessUnitId,
+        operationId: assignment.operationId,
+        siteId: assignment.siteId,
+      };
+
+export const positionOfTarget = (tenantId: string, target: Target): ResourcePosition =>
+  target.kind === "active" ? positionOfOperation(tenantId, target.op) : positionOfSite(tenantId, target.site.id);
+
+/** Division, operation and site an assignment stores for a target (operation and division null for a site). */
+export const placeOf = (target: Target): Pick<Assignment, "businessUnitId" | "operationId" | "siteId"> =>
+  target.kind === "active"
+    ? { businessUnitId: target.op.businessUnitId, operationId: target.op.id, siteId: target.op.siteId }
+    : { businessUnitId: null, operationId: null, siteId: target.site.id };
+
+/** Whether the assignment already is where the target says (same operation and kind, or the same site as a spare). */
+export const isAt = (assignment: Assignment, target: AssignmentTarget): boolean =>
+  "operationId" in target
+    ? assignment.kind === "active" && assignment.operationId === target.operationId
+    : assignment.operationId === null && assignment.siteId === target.siteId;
 
 /**
  * Reads the operation through the shared directory and checks `catalog.write` at its position. The
@@ -53,8 +86,33 @@ export const authorizeOperation = async (
   const op = await tx.operations.find(actor.tenantId, operationId);
   if (op === null) return missingRow(deps.accessPolicy, actor, WRITE, new NotFoundError("Operation", operationId));
   const role = deps.accessPolicy.check(actor, WRITE, positionOfOperation(actor.tenantId, op));
-  return role.ok ? ok({ op, role: role.value }) : role;
+  return role.ok ? ok({ kind: "active", op, role: role.value }) : role;
 };
+
+/**
+ * Reads the site through the shared directory and checks `catalog.write` at the position of a site spare.
+ * A missing site answers like an unreachable one, as a missing operation does.
+ */
+export const authorizeSite = async (
+  tx: FleetTx,
+  deps: FleetDeps,
+  actor: Actor,
+  siteId: string,
+): Promise<Result<Target, DomainError>> => {
+  const site = await tx.operations.findSite(actor.tenantId, siteId);
+  if (site === null) return missingRow(deps.accessPolicy, actor, WRITE, new NotFoundError("Site", siteId));
+  const role = deps.accessPolicy.check(actor, WRITE, positionOfSite(actor.tenantId, site.id));
+  return role.ok ? ok({ kind: "spare", site, role: role.value }) : role;
+};
+
+/** `authorizeOperation` or `authorizeSite`, by what the target names. */
+export const authorizeTarget = async (
+  tx: FleetTx,
+  deps: FleetDeps,
+  actor: Actor,
+  target: AssignmentTarget,
+): Promise<Result<Target, DomainError>> =>
+  "operationId" in target ? authorizeOperation(tx, deps, actor, target.operationId) : authorizeSite(tx, deps, actor, target.siteId);
 
 /** Checks `catalog.write` at the position of a stored assignment (the source of a move, end or correction). */
 export const authorizeAssignment = (deps: FleetDeps, actor: Actor, assignment: Assignment): Result<string, DomainError> =>
@@ -97,6 +155,15 @@ export const authorizeOpenLocked = async (
 export const requireActiveOperation = (op: OperationInfo): Result<OperationInfo, DomainError> =>
   op.archivedAt === null ? ok(op) : err(new OperationArchivedError(`Operation ${op.id} is archived`));
 
+/** The target can receive an assignment: an active operation, or a site that is not archived. */
+export const requireActiveTarget = (target: Target): Result<Target, DomainError> => {
+  if (target.kind === "active") {
+    const active = requireActiveOperation(target.op);
+    return active.ok ? ok(target) : active;
+  }
+  return target.site.archivedAt === null ? ok(target) : err(new SiteArchivedError(`Site ${target.site.id} is archived`));
+};
+
 export const overlapConflict = (): Result<never, DomainError> =>
   err(new AssignmentOverlapError("The equipment already has an assignment in that period"));
 
@@ -123,22 +190,22 @@ export const closedOn = (open: Assignment, validTo: Day, reason: string): Result
 /** What a new assignment needs besides the actor and the ports. */
 export type NewAssignment = {
   readonly equipmentId: string;
-  readonly op: OperationInfo;
-  readonly kind: string;
+  readonly target: Target;
   readonly day: Day;
   readonly reason: string | null;
 };
 
-/** An open assignment from `day`, with the division and site copied from the operation (D1). */
+/**
+ * An open assignment from `day`. Its kind comes from the target; for an operation the division and site are
+ * copied from it (D1), for a site the operation and division stay null.
+ */
 export const openAssignment = (deps: FleetDeps, actor: Actor, fields: NewAssignment): Result<Assignment, DomainError> =>
   createAssignment({
     id: deps.ids.next(),
     tenantId: actor.tenantId,
     equipmentId: fields.equipmentId,
-    businessUnitId: fields.op.businessUnitId,
-    operationId: fields.op.id,
-    siteId: fields.op.siteId,
-    kind: fields.kind,
+    ...placeOf(fields.target),
+    kind: fields.target.kind,
     validFrom: fields.day,
     validTo: null,
     reason: fields.reason,
@@ -172,8 +239,8 @@ export const recordAssignmentAudit = (tx: FleetTx, deps: FleetDeps, entry: Assig
     entityType: "equipment_assignment",
     entityId: subject.id,
     subjectEquipmentId: subject.equipmentId,
-    businessUnitId: subject.businessUnitId,
-    operationId: subject.operationId,
+    businessUnitId: subject.businessUnitId ?? undefined,
+    operationId: subject.operationId ?? undefined,
     siteId: subject.siteId,
     before: entry.before === undefined ? undefined : assignmentSnapshot(entry.before),
     after: entry.after,

@@ -63,6 +63,8 @@ export type ReplaceWorld = {
   readonly busy: string;
   readonly gone: string;
   readonly otherOperation: string;
+  /** The site of `otherOperation`. */
+  readonly otherSite: string;
   readonly codes: { readonly outgoing: string; readonly incoming: string; readonly busy: string; readonly gone: string };
 };
 
@@ -87,7 +89,7 @@ export async function seedReplaceWorld(tag: string): Promise<ReplaceWorld> {
     await seeder.assign({ equipmentId: busy, operationId: otherOperation, day: DAYS.start, reason: "Loaded late" });
     const gone = await unit(codes.gone);
     await seeder.archiveEquipment(gone, "Loaded by mistake");
-    return { outgoing, incoming: await unit(codes.incoming), busy, gone, otherOperation, codes };
+    return { outgoing, incoming: await unit(codes.incoming), busy, gone, otherOperation, otherSite: site, codes };
   } finally {
     await seeder.close();
   }
@@ -146,17 +148,19 @@ export type StoredAssignment = {
   readonly kind: string;
   readonly from: string;
   readonly to: string | null;
-  readonly operationId: string;
+  /** Null for a muleto: a spare belongs to a site (ADR-0013). */
+  readonly operationId: string | null;
+  readonly siteId: string;
   readonly reason: string | null;
 };
 
 /** Every assignment row of an equipment, oldest first, with the days as `YYYY-MM-DD` text. */
 export const storedAssignments = (equipmentId: string): Promise<StoredAssignment[]> =>
   withOwner(async (sql) => {
-    const rows = await sql<{ kind: string; from: string; to: string | null; operation_id: string; reason: string | null }[]>`
-      select kind, valid_from::text as "from", valid_to::text as "to", operation_id, reason
+    const rows = await sql<{ kind: string; from: string; to: string | null; operation_id: string | null; site_id: string; reason: string | null }[]>`
+      select kind, valid_from::text as "from", valid_to::text as "to", operation_id, site_id, reason
       from equipment_assignments where equipment_id = ${equipmentId} order by valid_from, created_at`;
-    return rows.map((row) => ({ kind: row.kind, from: row.from, to: row.to, operationId: row.operation_id, reason: row.reason }));
+    return rows.map((row) => ({ kind: row.kind, from: row.from, to: row.to, operationId: row.operation_id, siteId: row.site_id, reason: row.reason }));
   });
 
 export const isStoredArchived = (equipmentId: string): Promise<boolean> =>

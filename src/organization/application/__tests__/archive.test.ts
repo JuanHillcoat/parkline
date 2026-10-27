@@ -246,6 +246,53 @@ describe("blocks while an operation has open assignments (D7 of P0-08)", () => {
   });
 });
 
+describe("blocks while a site has open spares (ADR-0013)", () => {
+  it("refuses to archive a site with open spares, writing and auditing nothing", async () => {
+    const h = createHarness();
+    const s = await h.seedTenantA();
+    h.assignments.setOpenSpares("t-a", s.lote.id, 2);
+    const blocked = await h.archiveSite.execute({ actor: h.analyst, id: s.lote.id, reason: "Cierre" });
+    expect(!blocked.ok && blocked.error).toBeInstanceOf(HasOpenAssignmentsError);
+    expect(!blocked.ok && blocked.error.code).toBe("has_open_assignments");
+    expect(h.auditOf("organization.archive")).toHaveLength(0);
+    expect((await read(h, "site", s.lote.id))?.archivedAt).toBeNull();
+  });
+
+  it("names the active operations first when the site has both active operations and open spares", async () => {
+    const h = createHarness();
+    const s = await h.seedTenantA();
+    h.assignments.setOpenSpares("t-a", s.patio.id, 2);
+    const blocked = await h.archiveSite.execute({ actor: h.analyst, id: s.patio.id, reason: "Cierre" });
+    expect(!blocked.ok && blocked.error.code).toBe("has_active_operations");
+    await h.archiveOperation.execute({ actor: h.analyst, id: s.planta.id, reason: "Cierre" });
+    await h.archiveOperation.execute({ actor: h.analyst, id: s.mina2.id, reason: "Cierre" });
+    const stillBlocked = await h.archiveSite.execute({ actor: h.analyst, id: s.patio.id, reason: "Cierre" });
+    expect(!stillBlocked.ok && stillBlocked.error.code).toBe("has_open_assignments");
+  });
+
+  it("archives it once the spares are ended, and only counts the spares of its own site", async () => {
+    const h = createHarness();
+    const s = await h.seedTenantA();
+    const other = h.orThrow(await h.createSite.execute({ actor: h.admin, name: "Other site" }));
+    h.assignments.setOpenSpares("t-a", other.id, 1);
+    expect((await h.archiveSite.execute({ actor: h.analyst, id: s.lote.id, reason: "Cierre" })).ok).toBe(true);
+    h.assignments.setOpenSpares("t-a", other.id, 0);
+    expect((await h.archiveSite.execute({ actor: h.analyst, id: other.id, reason: "Cierre" })).ok).toBe(true);
+  });
+
+  it("authorizes before it counts and does not block restoring a site", async () => {
+    const h = createHarness();
+    const s = await h.seedTenantA();
+    h.assignments.setOpenSpares("t-a", s.lote.id, 1);
+    const denied = await h.archiveSite.execute({ actor: h.admin, id: s.lote.id, reason: "Cierre" });
+    expect(!denied.ok && denied.error.code).toBe("forbidden");
+    h.assignments.setOpenSpares("t-a", s.lote.id, 0);
+    await h.archiveSite.execute({ actor: h.analyst, id: s.lote.id, reason: "Cierre" });
+    h.assignments.setOpenSpares("t-a", s.lote.id, 3);
+    expect((await h.restoreSite.execute({ actor: h.analyst, id: s.lote.id, reason: "Volver" })).ok).toBe(true);
+  });
+});
+
 describe("restoring an operation (D4)", () => {
   it("fails with parent_archived while its division or its site is archived", async () => {
     const h = createHarness();

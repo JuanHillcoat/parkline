@@ -24,12 +24,13 @@ import {
   valueOf,
   type ReplaceWorld,
 } from "../support/replace-flows";
-import { readWorld, storageStatePath } from "../support/world";
+import { readWorld, storageStatePath, WORLD_ORG } from "../support/world";
 
 const t = copy.fleet.detail;
 const r = copy.dialogs.replaceEquipment;
 const byCode = copy.errors.byCode;
 const REASON = "New unit arrived from the supplier";
+const siteId = (): string => readWorld().ids.site;
 
 /** Opens the Historial tab of an equipment. */
 async function historyOf(page: Page, id: string, code: string): Promise<void> {
@@ -49,7 +50,7 @@ test.describe("replacing an equipment as a fleet analyst", () => {
     await expect(dialog.getByText(r.incomingHint)).toBeVisible();
   });
 
-  test("with the outgoing equipment as muleto: the incoming is Activo and the outgoing becomes Muleto in the same operation", async ({ page }) => {
+  test("with the outgoing equipment as muleto: the incoming is Activo and the outgoing becomes a Muleto of the site, with no operation", async ({ page }) => {
     const w = await seedReplaceWorld("A2");
     const operation = readWorld().ids.operation;
     await gotoDetail(page, w.outgoing, w.codes.outgoing);
@@ -59,17 +60,18 @@ test.describe("replacing an equipment as a fleet analyst", () => {
     // The page of the outgoing equipment refreshed: Muleto from the replacement day.
     await expect(pillOf(page)).toHaveText(copy.fleet.state.spare);
     await expect(valueOf(locationCard(page), t.location.kind)).toHaveText(t.kinds.spare);
-    await expect(valueOf(locationCard(page), t.location.operation)).toHaveText("OPERATION E2E");
+    await expect(valueOf(locationCard(page), t.location.site)).toHaveText(WORLD_ORG.site);
+    await expect(locationCard(page).getByText(t.location.operation, { exact: true })).toHaveCount(0);
     await expect(valueOf(locationCard(page), t.location.since)).toHaveText(SHOWN.replace);
     await expectButtons(page, ["move", "replace", "end", "edit"]);
 
     // Stored rows: the old one closed the day before, a spare one open; the incoming one is active and open.
     expect(await storedAssignments(w.outgoing)).toEqual([
-      { kind: "active", from: DAYS.start, to: DAYS.before, operationId: operation, reason: REASON },
-      { kind: "spare", from: DAYS.replace, to: null, operationId: operation, reason: REASON },
+      { kind: "active", from: DAYS.start, to: DAYS.before, operationId: operation, siteId: siteId(), reason: REASON },
+      { kind: "spare", from: DAYS.replace, to: null, operationId: null, siteId: siteId(), reason: REASON },
     ]);
     expect(await storedAssignments(w.incoming)).toEqual([
-      { kind: "active", from: DAYS.replace, to: null, operationId: operation, reason: REASON },
+      { kind: "active", from: DAYS.replace, to: null, operationId: operation, siteId: siteId(), reason: REASON },
     ]);
     expect(await isStoredArchived(w.outgoing)).toBe(false);
   });
@@ -125,7 +127,7 @@ test.describe("replacing an equipment as a fleet analyst", () => {
     await expectButtons(page, ["restore"]);
     expect(await isStoredArchived(w.outgoing)).toBe(true);
     expect(await storedAssignments(w.outgoing)).toEqual([
-      { kind: "active", from: DAYS.start, to: DAYS.before, operationId: operation, reason: REASON },
+      { kind: "active", from: DAYS.start, to: DAYS.before, operationId: operation, siteId: siteId(), reason: REASON },
     ]);
     const replace = await replaceEntries(w.outgoing);
     expect(replace).toHaveLength(1);
@@ -258,10 +260,10 @@ test.describe("replace validations and atomicity", () => {
       await expect(dialog).toBeVisible();
 
       expect(await storedAssignments(w.outgoing)).toEqual([
-        { kind: "active", from: DAYS.start, to: null, operationId: readWorld().ids.operation, reason: "Loaded late" },
+        { kind: "active", from: DAYS.start, to: null, operationId: readWorld().ids.operation, siteId: siteId(), reason: "Loaded late" },
       ]);
       expect(await storedAssignments(w.incoming)).toEqual([
-        { kind: "active", from: DAYS.start, to: null, operationId: w.otherOperation, reason: "Assigned meanwhile" },
+        { kind: "active", from: DAYS.start, to: null, operationId: w.otherOperation, siteId: w.otherSite, reason: "Assigned meanwhile" },
       ]);
       expect(await isStoredArchived(w.outgoing)).toBe(false);
       expect(await replaceEntries(w.outgoing)).toHaveLength(0);
