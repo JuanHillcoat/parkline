@@ -403,7 +403,7 @@ const es = {
       submit: "Registrar equipo",
       operationLabel: "Operación",
       noOperation: "Sin operación (sin asignar)",
-      dayLabel: "Desde el día",
+      dayLabel: "Fecha de ingreso",
       readingLabel: { hours: "Horómetro", km: "Kilometraje" },
     },
     placement: {

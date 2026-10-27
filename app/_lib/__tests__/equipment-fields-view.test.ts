@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { BATTERY_KINDS } from "../../../src/fleet/domain/values";
 import {
   batteryKindOptions,
+  imageChoicesOf,
   isMuleto,
   MULETO,
   NO_PLACEMENT,
@@ -71,5 +72,15 @@ describe("siteOptions", () => {
       { id: "si2", name: "SITE TWO", archivedAt: new Date("2026-01-01T00:00:00Z") },
     ];
     expect(siteOptions(rows)).toEqual([{ id: "si1", name: "SITE ONE" }]);
+  });
+});
+
+describe("imageChoicesOf", () => {
+  it("offers no choice for an equipment without an image: there is nothing to keep or remove", () => {
+    expect(imageChoicesOf(false)).toEqual([]);
+  });
+
+  it("offers keep first (the default), replace and remove for an equipment with an image", () => {
+    expect(imageChoicesOf(true)).toEqual(["keep", "replace", "remove"]);
   });
 });

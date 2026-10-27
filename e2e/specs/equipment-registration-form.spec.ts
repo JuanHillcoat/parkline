@@ -1,6 +1,6 @@
 /**
  * The compact registration form (issue 54, S1 to S6): field order, the battery rules, Horómetro, Operación or
- * Muleto and its Site, "Desde el día" shared by the assignment and the reading, Observaciones as the reason, the
+ * Muleto and its Site, "Fecha de ingreso" shared by the assignment and the reading, Observaciones as the reason, the
  * one-screen layout, roles, the edit dialog and the target select of the detail dialogs.
  */
 import { expect, test, type Page } from "@playwright/test";
@@ -9,6 +9,7 @@ import {
   buttonsOf, gotoDetail, historyRows, locationCard, pillOf, storedAssignments, submitAssign, submitCorrection, submitMove, today, valueOf,
 } from "../support/assignment-flows";
 import { resetCatalogs } from "../support/data";
+import { chooseImage, png, previewOf } from "../support/image-flows";
 import { expectDialogClosed, openDialog, rowOf, submitDialog } from "../support/fleet-flows";
 import { boxOf, expectNoHorizontalScroll, VIEWPORT_HEIGHT, VIEWPORT_WIDTH } from "../support/mobile-flows";
 import { dayOffset, storedReadings } from "../support/readings-flows";
@@ -67,6 +68,8 @@ test.describe("the registration form as a fleet analyst", () => {
     test("fits one screen at 1280 x 800 without scrolling, even with every conditional field shown", async ({ page }) => {
       const dialog = await openRegistration(page);
       await showEverything(dialog);
+      await chooseImage(dialog, png());
+      await expect(previewOf(dialog)).toBeVisible();
       await expect(dialog.getByLabel(p.siteLabel, { exact: true })).toBeVisible();
       const sizes = await dialog.evaluate((element) => ({ scroll: element.scrollHeight, client: element.clientHeight }));
       expect(sizes.scroll).toBeLessThanOrEqual(sizes.client);
@@ -74,6 +77,30 @@ test.describe("the registration form as a fleet analyst", () => {
       expect(submit.y + submit.height).toBeLessThanOrEqual(800);
       const box = await boxOf(dialog);
       expect(box.width, "a wide dialog with several columns").toBeGreaterThan(800);
+    });
+
+    test("the image preview is a small thumbnail and no field of the grid stretches because of it", async ({ page }) => {
+      const dialog = await openRegistration(page);
+      await showEverything(dialog);
+      const day = dialog.getByLabel(n.dayLabel, { exact: true });
+      const place = dialog.getByLabel(n.operationLabel, { exact: true });
+      const before = await boxOf(day);
+      await chooseImage(dialog, png());
+      await expect(previewOf(dialog)).toBeVisible();
+      const thumb = await boxOf(previewOf(dialog));
+      expect(thumb.width).toBeLessThanOrEqual(48);
+      expect(thumb.height).toBeLessThanOrEqual(48);
+      for (const field of [place, day, dialog.getByLabel(f.batteryQuantityLabel, { exact: true }), dialog.getByLabel(f.supplierLabel, { exact: true })]) {
+        expect((await boxOf(field)).height, "a field of the grid keeps its own height").toBeLessThanOrEqual(60);
+      }
+      const image = await boxOf(dialog.getByLabel(copy.dialogs.imageField.label, { exact: true }));
+      const notes = await boxOf(dialog.getByLabel(f.observationsLabel, { exact: true }));
+      const dayBox = await boxOf(day);
+      expect(image.y, "Imagen sits on its own row below Fecha de ingreso").toBeGreaterThan(dayBox.y + dayBox.height);
+      expect(notes.y, "Observaciones comes after Imagen").toBeGreaterThan(image.y + image.height);
+      const after = await boxOf(day);
+      expect(after.height).toBe(before.height);
+      expect(after.width).toBe(before.width);
     });
   });
 
@@ -240,8 +267,8 @@ test.describe("the registration form as a fleet analyst", () => {
     });
   });
 
-  test.describe("Desde el día and Observaciones", () => {
-    test("Desde el día is today by default and Observaciones is optional for today", async ({ page }) => {
+  test.describe("Fecha de ingreso and Observaciones", () => {
+    test("Fecha de ingreso is today by default and Observaciones is optional for today", async ({ page }) => {
       const dialog = await openRegistration(page);
       await expect(dialog.getByLabel(n.dayLabel, { exact: true })).toHaveValue(today());
       await expect(dialog.getByLabel(f.observationsLabel, { exact: true })).not.toHaveAttribute("required", /.*/u);
@@ -288,8 +315,8 @@ test.describe("the registration form as a fleet analyst", () => {
       await expect(dialog.getByLabel(f.batteryKindLabel, { exact: true })).toHaveValue("lead_acid");
       await expect(dialog.getByLabel(f.batteryQuantityLabel, { exact: true })).toHaveValue("3");
       expect(await visibleLabels(dialog)).toEqual([
-        f.internalCodeLabel, f.supplierLabel, f.assetTypeLabel, f.brandLabel, f.modelLabel, f.yearLabel, f.serialNumberLabel,
-        f.batteryKindLabel, f.batteryQuantityLabel, f.observationsLabel, copy.common.reason,
+        f.internalCodeLabel, f.assetTypeLabel, f.brandLabel, f.modelLabel, f.serialNumberLabel, f.yearLabel,
+        f.batteryKindLabel, f.batteryQuantityLabel, f.supplierLabel, copy.dialogs.imageField.add, f.observationsLabel, copy.common.reason,
       ]);
     });
 

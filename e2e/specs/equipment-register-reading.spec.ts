@@ -19,7 +19,7 @@ const fresh = async (): Promise<void> => {
 
 /** The meter field is "Horómetro" for hours and "Kilometraje" for km; it has no group and no day of its own. */
 const valueField = (dialog: Locator, kind: "hours" | "km" = "hours"): Locator => dialog.getByLabel(n.readingLabel[kind], { exact: true });
-/** The reading takes the "Desde el día" of the registration, shared with the assignment. */
+/** The reading takes the "Fecha de ingreso" of the registration, shared with the assignment. */
 const dayField = (dialog: Locator): Locator => dialog.getByLabel(n.dayLabel, { exact: true });
 
 /** Opens the registration dialog on the board and fills the equipment of the given asset type. */

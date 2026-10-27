@@ -56,7 +56,7 @@ describe("initialReadingOnCreate", () => {
     expect(initialReadingOnCreate(form({ readingValue: "  ", day: "2026-01-05" }))).toBeUndefined();
   });
 
-  it("sends the value with the day of the registration (Desde el día), shared with the assignment", () => {
+  it("sends the value with the day of the registration (Fecha de ingreso), shared with the assignment", () => {
     expect(initialReadingOnCreate(form({ readingValue: "120,5", day: " 2026-01-05 " }))).toEqual({ day: "2026-01-05", value: 120.5 });
   });
 

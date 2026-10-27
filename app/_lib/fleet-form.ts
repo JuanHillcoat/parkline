@@ -51,7 +51,7 @@ export const targetOf = (form: FormData): AssignmentTarget | undefined => {
 
 /**
  * The optional first assignment of a new equipment. Nothing is sent unless an operation or a site (the
- * equipment is born a spare of it) was chosen; then the day ("Desde el día") and the reason travel with it. The
+ * equipment is born a spare of it) was chosen; then the day ("Fecha de ingreso") and the reason travel with it. The
  * reason is the Observaciones of the form: blank is "not set", and only a past day makes it mandatory.
  */
 export const assignmentOnCreate = (form: FormData) => {

@@ -1,6 +1,6 @@
 /**
  * Steps for the compact registration form (issue 54): the fixture, the way a person fills the Nuevo equipo
- * dialog (battery kind, Horómetro, Operación or Muleto and its Site, "Desde el día", Observaciones), readers of the
+ * dialog (battery kind, Horómetro, Operación or Muleto and its Site, "Fecha de ingreso", Observaciones), readers of the
  * visible fields and of what was stored.
  */
 import { expect, type Locator, type Page } from "@playwright/test";
@@ -118,15 +118,15 @@ export const visibleLabels = (dialog: Locator): Promise<string[]> =>
 
 /** The expected labels of a registration dialog in its default state: no quantity, no meter, no Site. */
 export const DEFAULT_LABELS = [
-  f.internalCodeLabel, f.supplierLabel, f.assetTypeLabel, f.brandLabel, f.modelLabel, f.yearLabel, f.serialNumberLabel,
-  f.batteryKindLabel, copy.dialogs.imageField.label, n.operationLabel, n.dayLabel, f.observationsLabel,
+  f.internalCodeLabel, f.assetTypeLabel, f.brandLabel, f.modelLabel, f.serialNumberLabel, f.yearLabel,
+  f.batteryKindLabel, f.supplierLabel, n.operationLabel, n.dayLabel, copy.dialogs.imageField.label, f.observationsLabel,
 ] as const;
 
 /** The labels with every conditional field shown: lead acid, a type with a meter and Muleto. */
 export const FULL_LABELS = [
-  f.internalCodeLabel, f.supplierLabel, f.assetTypeLabel, f.brandLabel, f.modelLabel, f.yearLabel, f.serialNumberLabel,
-  f.batteryKindLabel, f.batteryQuantityLabel, n.readingLabel.hours, copy.dialogs.imageField.label, n.operationLabel, p.siteLabel,
-  n.dayLabel, f.observationsLabel,
+  f.internalCodeLabel, f.assetTypeLabel, f.brandLabel, f.modelLabel, f.serialNumberLabel, f.yearLabel, n.readingLabel.hours,
+  f.batteryKindLabel, f.batteryQuantityLabel, f.supplierLabel, n.operationLabel, p.siteLabel,
+  n.dayLabel, copy.dialogs.imageField.label, f.observationsLabel,
 ] as const;
 
 /** Chooses the conditional fields that make the dialog its tallest: lead acid, a meter, Muleto. */

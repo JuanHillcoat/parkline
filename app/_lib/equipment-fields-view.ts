@@ -31,3 +31,11 @@ export const operationOfChoice = (choice: string): string => (isMuleto(choice) ?
 
 /** Whether the select offers Muleto: only when there is a site to hold the spare. */
 export const offersMuleto = (sites: readonly Option[]): boolean => sites.length > 0;
+
+export type ImageChoice = "keep" | "replace" | "remove";
+
+/**
+ * The choices the edit dialog offers over the image: none when the equipment has no image (there is nothing to
+ * keep or remove; choosing a file adds one), keep, replace and remove when it has one.
+ */
+export const imageChoicesOf = (hasImage: boolean): readonly ImageChoice[] => (hasImage ? ["keep", "replace", "remove"] : []);

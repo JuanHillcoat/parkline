@@ -33,7 +33,7 @@ function useChosenKind(selectId: string, meters: Props["meters"]): Kind {
 
 /**
  * The first reading of a new equipment (issue 52, D11), "Horómetro" or "Kilometraje" by the meter of the type.
- * Nothing is sent unless a value is typed; its day is the "Desde el día" of the registration. It is not rendered
+ * Nothing is sent unless a value is typed; its day is the "Fecha de ingreso" of the registration. It is not rendered
  * for a type without a meter, so its input is not submitted either; the server refuses a reading for such a type anyway.
  */
 export function InitialReadingFields({ selectId, meters }: Props) {

@@ -1,6 +1,6 @@
 /**
  * Steps for registering an equipment that is assigned in the same step (issues 50 and 54): the "Operación"
- * (or Muleto and its Site), "Desde el día" and "Observaciones" fields of the Nuevo equipo dialog, plus readers
+ * (or Muleto and its Site), "Fecha de ingreso" and "Observaciones" fields of the Nuevo equipo dialog, plus readers
  * of what was stored.
  */
 import { expect, type Locator, type Page } from "@playwright/test";
