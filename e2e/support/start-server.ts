@@ -23,6 +23,9 @@ function startNext(appUrl: string): ChildProcess {
     DATABASE_POOLER: "",
     MIGRATE_DATABASE_URL: "",
     NODE_ENV: "production",
+    // The development sign-in must stay inert in a production build even when its variables are set.
+    DEV_AUTO_LOGIN_EMAIL: "dev-shortcut@parkline.test",
+    DEV_AUTO_LOGIN_PASSWORD: "not-a-real-password",
   };
   return spawn(process.execPath, [NEXT_BIN, "start", "-p", String(E2E_PORT)], { cwd: ROOT, env, stdio: "inherit" });
 }
