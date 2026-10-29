@@ -13,12 +13,19 @@ export type FleetSection = "equipment" | "suppliers" | "asset-types";
 /** The only open modal dialog (closed dialogs are hidden, so they never match). */
 export const openDialogOf = (page: Page): Locator => page.getByRole("dialog");
 
+/** The heading of each section: the same text as its sidebar entry. */
+export const SECTION_TITLE: Readonly<Record<FleetSection, string>> = {
+  equipment: copy.fleet.title,
+  suppliers: copy.fleet.suppliersTitle,
+  "asset-types": copy.fleet.assetTypesTitle,
+};
+
 /** Opens `/fleet` on a section; extra query parameters go after the tab. */
 export async function gotoFleet(page: Page, section: FleetSection = "equipment", extra = ""): Promise<void> {
   const tab = section === "equipment" ? "" : `tab=${section}`;
   const query = [tab, extra].filter((part) => part !== "").join("&");
   await page.goto(query === "" ? "/fleet" : `/fleet?${query}`);
-  await expect(page.getByRole("heading", { level: 1, name: copy.fleet.title })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: SECTION_TITLE[section] })).toBeVisible();
 }
 
 /** The table row that contains `text` (names are unique per test). */
@@ -149,12 +156,6 @@ export async function attemptArchiveChange(page: Page, text: string, verb: "arch
   await submitDialog(dialog, label.submit);
   return dialog;
 }
-
-/** The link of a section tab; its accessible name also carries the count pill. */
-export const tabLink = (page: Page, section: FleetSection): Locator => {
-  const label = { equipment: copy.fleet.tabs.equipment, suppliers: copy.fleet.tabs.suppliers, "asset-types": copy.fleet.tabs.assetTypes }[section];
-  return page.getByRole("navigation", { name: copy.fleet.tabsLabel }).getByRole("link", { name: new RegExp(`^${label}`, "u") });
-};
 
 export type BaseFleet = { supplierId: string; assetTypeId: string; supplier: string; assetType: string };
 

@@ -9,13 +9,15 @@ type Entry = { readonly label: string; readonly route: Route };
 const FLEET: Entry = { label: copy.nav.fleet, route: "/fleet" };
 const ORGANIZATION: Entry = { label: copy.nav.organization, route: "/organization" };
 const USERS: Entry = { label: copy.nav.users, route: "/users" };
+const SUPPLIERS: Entry = { label: copy.nav.suppliers, route: "/fleet" };
+const ASSET_TYPES: Entry = { label: copy.nav.assetTypes, route: "/fleet" };
 const ALL: readonly Entry[] = [FLEET, USERS, ORGANIZATION];
 
 /** Sidebar entries per role (app/_lib/navigation.ts, catalog-access.ts, permission.ts). */
 const VISIBLE: Readonly<Record<RoleKey, readonly Entry[]>> = {
-  admin: [FLEET, USERS, ORGANIZATION],
-  fleet_analyst: [FLEET, ORGANIZATION],
-  viewer: [FLEET, ORGANIZATION],
+  admin: [FLEET, SUPPLIERS, ASSET_TYPES, USERS, ORGANIZATION],
+  fleet_analyst: [FLEET, SUPPLIERS, ASSET_TYPES, ORGANIZATION],
+  viewer: [FLEET, SUPPLIERS, ASSET_TYPES, ORGANIZATION],
   // Scoped readers have Flota since P0-08 T4: equipment is visible by its assignment (D6); no user admin.
   manager: [FLEET, ORGANIZATION], // scoped to a division
   supervisor: [FLEET, ORGANIZATION], // scoped to an operation
@@ -51,10 +53,10 @@ for (const role of ROLE_KEYS) {
     }
 
     for (const entry of visible) {
-      test(`opens ${entry.route} from the sidebar`, async ({ page }) => {
+      test(`opens ${entry.label} from the sidebar`, async ({ page }) => {
         await page.goto("/");
         await sidebar(page).getByRole("link", { name: entry.label }).click();
-        await expect(page).toHaveURL(new RegExp(`${entry.route}$`));
+        await expect(page).toHaveURL(new RegExp(`${entry.route}(\\?tab=.+)?$`));
         await expect(page.getByRole("heading", { level: 1, name: RESTRICTED_TITLE[entry.route] })).toHaveCount(0);
       });
     }
@@ -68,6 +70,8 @@ test.describe("shell", () => {
     const titles: readonly (readonly [string, string])[] = [
       ["/", copy.nav.home],
       ["/fleet", copy.nav.fleet],
+      ["/fleet?tab=suppliers", copy.nav.suppliers],
+      ["/fleet?tab=asset-types", copy.nav.assetTypes],
       ["/users", copy.nav.users],
       ["/organization", copy.nav.organization],
     ];
@@ -90,9 +94,10 @@ test.describe("shell", () => {
     await expect(sidebar(page).getByRole("link", { name: copy.nav.home })).not.toHaveAttribute("aria-current", "page");
   });
 
-  test("keeps the current link when the section has a query string", async ({ page }) => {
+  test("marks the entry of the tab being shown, not Flota, when the query selects a tab", async ({ page }) => {
     await page.goto("/fleet?tab=suppliers");
-    await expect(sidebar(page).getByRole("link", { name: copy.nav.fleet })).toHaveAttribute("aria-current", "page");
+    await expect(sidebar(page).getByRole("link", { name: copy.nav.suppliers })).toHaveAttribute("aria-current", "page");
+    await expect(sidebar(page).locator("[aria-current]")).toHaveCount(1);
   });
 
   test("the skip link is the first tab stop and moves focus to the content", async ({ page }) => {

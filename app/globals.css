@@ -756,6 +756,11 @@ dialog.dialog::backdrop {
   max-width: 480px;
 }
 
+/* The card toggle only exists in the phone layout. */
+.card-toggle {
+  display: none;
+}
+
 @media (max-width: 900px) {
   .shell {
     grid-template-columns: minmax(0, 1fr);
@@ -1163,6 +1168,56 @@ dialog.dialog::backdrop {
     white-space: normal;
   }
 
+  /* Fleet lists: a card shows its header and actions; the labeled fields open when the header is tapped. */
+  .table-cards tbody th {
+    position: relative;
+    padding-right: 48px;
+  }
+
+  .table-cards tbody th a {
+    position: relative;
+    z-index: 1;
+  }
+
+  .table-cards .card-toggle {
+    display: block;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    border: 0;
+    border-radius: var(--radius-card);
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .table-cards .card-toggle-icon {
+    position: absolute;
+    top: 50%;
+    right: 18px;
+    width: 8px;
+    height: 8px;
+    margin-top: -6px;
+    border-right: 2px solid var(--muted-strong);
+    border-bottom: 2px solid var(--muted-strong);
+    transform: rotate(45deg);
+    transition: transform 0.15s ease;
+  }
+
+  .table-cards .card-toggle[aria-expanded="true"] .card-toggle-icon {
+    margin-top: -2px;
+    transform: rotate(-135deg);
+  }
+
+  .table-cards tbody tr:not([data-expanded="true"]) td[data-label] {
+    display: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .table-cards .card-toggle-icon {
+      transition: none;
+    }
+  }
+
   .table td {
     position: relative;
     min-height: 40px;
@@ -1470,4 +1525,42 @@ dialog.dialog-wide {
   .form-grid > .choice-group {
     grid-column: auto;
   }
+}
+
+/* Guidance shown in place of the missing "Nuevo equipo" button */
+.guidance {
+  margin-top: 24px;
+}
+
+.guidance p {
+  color: var(--muted-strong);
+}
+
+.checklist {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.checklist-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.checklist-mark {
+  width: 20px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.checklist-item[data-done="true"] .checklist-mark {
+  color: var(--ok);
+}
+
+.checklist-label {
+  flex: 1 1 200px;
 }

@@ -10,7 +10,6 @@ import {
   openDialog,
   rowOf,
   seedBase,
-  tabLink,
 } from "../support/fleet-flows";
 import { storageStatePath } from "../support/world";
 
@@ -94,10 +93,11 @@ test.describe("archiving as a fleet analyst", () => {
     await expect(rowOf(page, "U-1")).toHaveCount(0);
   });
 
-  test("the archived toggle is kept when moving between tabs", async ({ page }) => {
-    await gotoFleet(page, "equipment", "archived=1");
-    await tabLink(page, "suppliers").click();
+  test("the archived toggle of a catalog section keeps that section", async ({ page }) => {
+    await gotoFleet(page, "suppliers");
+    await page.getByRole("link", { name: copy.fleet.showArchived }).click();
     await expect(page).toHaveURL(/tab=suppliers&archived=1|archived=1&tab=suppliers/);
+    await expect(page.getByRole("heading", { level: 1, name: copy.fleet.suppliersTitle })).toBeVisible();
     await expect(page.getByRole("link", { name: copy.fleet.hideArchived })).toBeVisible();
   });
 
@@ -180,7 +180,7 @@ test.describe("archiving as a fleet analyst", () => {
     await changeArchiveState(page, "ACME RENTAL", "archive", REASON);
     await gotoFleet(page);
     await expect(page.getByRole("button", { name: d.newEquipment.trigger })).toHaveCount(0);
-    await expect(page.getByText(copy.fleet.createFirst)).toBeVisible();
+    await expect(page.getByText(copy.fleet.guidance.text)).toBeVisible();
   });
 
   test("the edit dialog of a unit offers no archived supplier", async ({ page }) => {
@@ -298,7 +298,7 @@ for (const role of ["manager", "supervisor"] as const) {
       await expect(page.getByText("P-1")).toHaveCount(0);
       await expect(page.getByText(copy.fleet.emptyScoped)).toBeVisible();
       await expect(page.getByRole("table")).toHaveCount(0);
-      await expect(page.getByRole("navigation", { name: copy.fleet.tabsLabel })).toHaveCount(0);
+      await expect(page.locator("nav.tabs")).toHaveCount(0);
       await expect(page.getByRole("button", { name: d.newEquipment.trigger })).toHaveCount(0);
       await expect(page.getByRole("button", { name: d.newSupplier.trigger })).toHaveCount(0);
     });

@@ -200,6 +200,18 @@ export const assetTypeOptions = (types: readonly AssetType[]): AssetTypeOption[]
 export const canCreateEquipment = (suppliers: readonly Option[], types: readonly Option[]): boolean =>
   suppliers.length > 0 && types.length > 0;
 
+export type Prerequisite = { readonly kind: "supplier" | "assetType"; readonly done: boolean; readonly tab: FleetTab };
+
+/** The two things a new equipment needs, in the order a person creates them, each with the section (`tab` query value) that creates it. */
+export const equipmentPrerequisites = (suppliers: readonly Option[], types: readonly Option[]): readonly Prerequisite[] => [
+  { kind: "supplier", done: suppliers.length > 0, tab: "suppliers" },
+  { kind: "assetType", done: types.length > 0, tab: "asset-types" },
+];
+
+/** What is still missing before an equipment can be registered (empty when it can). */
+export const missingPrerequisites = (suppliers: readonly Option[], types: readonly Option[]): readonly Prerequisite[] =>
+  equipmentPrerequisites(suppliers, types).filter((item) => !item.done);
+
 /** The link of the toggle: it leads to the other view. */
 export const fleetToggleHref = (showingArchived: boolean): string => (showingArchived ? "/fleet" : "/fleet?archived=1");
 
@@ -209,8 +221,16 @@ const TABS: readonly FleetTab[] = ["equipment", "suppliers", "asset-types"];
 
 type Raw = string | readonly string[] | undefined;
 
-/** An unknown or repeated tab value falls back to the equipment tab. */
+/** An unknown or repeated `tab` value falls back to the equipment section. */
 export const parseFleetTab = (raw: Raw): FleetTab => TABS.find((tab) => tab === raw) ?? "equipment";
+
+/** The heading names the section shown, like its sidebar entry; a scoped reader only sees equipment. */
+export const fleetHeading = (tab: FleetTab, wide: boolean): { readonly title: string; readonly subtitle: string } => {
+  if (!wide) return { title: t.title, subtitle: t.subtitleScoped };
+  if (tab === "suppliers") return { title: t.suppliersTitle, subtitle: t.subtitleSuppliers };
+  if (tab === "asset-types") return { title: t.assetTypesTitle, subtitle: t.subtitleAssetTypes };
+  return { title: t.title, subtitle: t.subtitleEquipment };
+};
 
 export type EquipmentFilters = {
   readonly q: string;

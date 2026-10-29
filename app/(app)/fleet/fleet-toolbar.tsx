@@ -1,35 +1,14 @@
 import type { ReactNode } from "react";
 import { copy } from "../../_lib/copy";
-import { fleetHref, pageWindow, type EquipmentFilters, type FleetQuery, type FleetTab, type Option, type Page } from "../../_lib/fleet-view";
+import { fleetHref, pageWindow, type EquipmentFilters, type FleetQuery, type Option, type Page } from "../../_lib/fleet-view";
 
 const t = copy.fleet;
-
-type TabsProps = { readonly active: FleetTab; readonly archived: boolean; readonly counts: Readonly<Record<FleetTab, number>> };
 
 const STATE_OPTIONS: readonly Option[] = [
   { id: "active", name: t.state.active },
   { id: "spare", name: t.state.spare },
   { id: "unassigned", name: t.state.unassigned },
 ];
-
-const TAB_LABELS: readonly (readonly [FleetTab, string])[] = [
-  ["equipment", t.tabs.equipment],
-  ["suppliers", t.tabs.suppliers],
-  ["asset-types", t.tabs.assetTypes],
-];
-
-/** Tabs are plain links: the server renders the active one from the query string. */
-export function FleetTabs({ active, archived, counts }: TabsProps) {
-  return (
-    <nav className="tabs" aria-label={t.tabsLabel}>
-      {TAB_LABELS.map(([tab, label]) => (
-        <a key={tab} className="tab" href={fleetHref({ tab, archived })} aria-current={tab === active ? "page" : undefined}>
-          {label} <span className="count-pill">{counts[tab]}</span>
-        </a>
-      ))}
-    </nav>
-  );
-}
 
 type SelectProps = { id: string; name: string; label: string; all: string; options: readonly Option[]; value: string | null };
 
