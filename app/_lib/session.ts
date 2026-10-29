@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import type { ActorContext } from "../../src/identity/application/actor-context";
 import { getContainer } from "../../src/shared/infrastructure/container";
 import { clientAddress } from "./client-address";
+import { devAutoLoginCredentials } from "./dev-auto-login";
 import { isSameOrigin, requestHost } from "./origin";
 import { SESSION_COOKIE } from "./session-cookie";
 
@@ -19,10 +20,10 @@ export const currentActor = cache(async (): Promise<ActorContext | null> => {
   return result.ok ? result.value : null;
 });
 
-/** The authenticated actor, or a redirect to the login page. */
+/** The authenticated actor, or a redirect to the login page (to the development sign-in under `next dev` with credentials). */
 export const requireActor = async (): Promise<ActorContext> => {
   const actor = await currentActor();
-  if (actor === null) redirect("/login");
+  if (actor === null) redirect(devAutoLoginCredentials(process.env) === null ? "/login" : "/dev-login");
   return actor;
 };
 
