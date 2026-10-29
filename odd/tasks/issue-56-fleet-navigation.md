@@ -4,7 +4,7 @@
 - Issue: #56
 - Source of truth: issue #56, `app/_lib/navigation.ts`, `app/(app)/fleet/page.tsx`
 - Delivery strategy: ask-on-risk; test runner: `pnpm test`, `pnpm test:e2e`
-- Status: T1 to T5 done (two `feat(issue-56)` commits); Gentle AI review of the branch and pull request pending (PR #55 is merged, so the base is `main`)
+- Status: T1 to T5 done (two `feat(issue-56)` commits); Gentle AI review of the branch approved; pull request pending (PR #55 is merged, so the base is `main`)
 
 ## Specs
 
@@ -49,3 +49,11 @@ Out: the tablero columns, the detail redesign, colors, Operaciones and Negocios 
 - L2 2026-10-29 Maintainer visual review on localhost: "La vista mobile esta bien, yo solo haria que si esta en mobile por ejemplo en tipo de equipos no aparezca todo la info, si no que lsite equipos, o sea hoy en vista mobile aparece APILADORA debajo medidor debajo equipos activos intervalo debajo editar, o sea que aparezca tipo de equipo y boton de editar nada mas, si el usuario quiere detalle de todo lo otro, que clickee en la card y ahi tendra el detalle de todo, si no queda mucho scroll en pantalla, otra observacion en mobile es que el selector de pestaña de Equipos | Proveedores | Tipos de equipos hay que hacer scrol horizontal para poder visualizar el nombre completo. El resto yo creo que esta ok al menos de momento lo que es alta de proveedor, tipo de equipo y equipo. En /fleet existe el selector de pestañas, yo lo quitaria y que se acceda unicamente por sidebar". Decisions by the assistant: the compact card applies to the three fleet lists (one pattern), the detail expands in place (no new route), the equipment code keeps linking to its detail page; the tab counts go away with the tabs.
 - 2026-10-29 T3 and T4 done by one delegated writer: `fleetHeading(tab, wide)` in `app/_lib/fleet-view.ts` (RED: 3 failed, 43 passed because it did not exist; GREEN: 46/46), the tab selector and its counts removed, `card-toggle.tsx` (a button with `aria-expanded` that sets `data-expanded` on its row; CSS scoped to `.table-cards`, so organization and users cards keep their layout). A first full end-to-end run had 14 failures (the toggle's hidden text leaked into the row header name); fixed with an `aria-label`. Parent verification after the fix: `pnpm lint` and `pnpm typecheck` clean, `pnpm test` 1371+10 = 1381 passed (118 files), `pnpm test:e2e` 682 passed, 0 failed (the run includes the uncommitted development sign-in spec, which is not part of this feature). README and CHANGELOG updated. Maintainer visual review of T3 and T4 pending.
 - L3 2026-10-29 Maintainer, after the visual review of T3 and T4 on localhost: "ok" (approved, and the go-ahead to commit).
+- 2026-10-29 Gentle AI review of the whole branch before push (lineage `review-6fdad05971bc6781`, committed range from `7810213`, medium, lenses readability and reliability): approved and acknowledged, 8 non-blocking findings. Fixed now (cheap): the comments of `app/_lib/navigation.ts` and `app/_lib/fleet-view.ts` that still spoke of tabs (R2-003, R2-004). Left for a future issue (see Follow-ups).
+
+## Follow-ups
+
+- F1 (R3-card-toggle-nojs) Without JavaScript a collapsed phone card cannot be expanded, so its detail lines stay hidden; hide them only once the toggle is hydrated, or fall back to `<details>`.
+- F2 (R2-001, R2-002) `CardToggle` writes `data-expanded` on its row through the DOM (outside React state of the row); consider a client row component, or document why the server-rendered row is marked this way.
+- F3 (R3-scoped-tab-marker) A scoped reader who opens `/fleet?tab=suppliers` by hand sees the equipment section but no current sidebar entry: `isActive` reads the raw `tab` while the page forces equipment for them.
+- F4 (R2-005, R3-duplicate-create-button) The header actions of `/fleet` decide the creation button by `data.suppliers.length` / `data.assetTypes.length` (archived rows included in the archived view) while the empty state decides by the rows; align both on one predicate and rename the `tab` props to `section`.

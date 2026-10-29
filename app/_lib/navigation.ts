@@ -2,20 +2,20 @@ import { copy } from "./copy";
 
 export type IconName = "home" | "fleet" | "supplier" | "asset-type" | "users" | "organization";
 
-/** The tabs of `/fleet` that have their own entry. The equipment tab is the default one. */
+/** The sections of `/fleet` (picked by its `tab` query value), each with its own entry. Equipment is the default one. */
 export type FleetNavTab = "equipment" | "suppliers" | "asset-types";
 
 export type NavItem = {
   readonly href: string;
   readonly label: string;
   readonly icon: IconName;
-  /** Set for the entries that are tabs of one page: the pathname alone cannot tell them apart. */
+  /** Set for the entries that are sections of one page: the pathname alone cannot tell them apart. */
   readonly tab?: FleetNavTab;
 };
 export type NavSection = { readonly label: string; readonly items: readonly NavItem[] };
 export type NavAccess = {
   readonly fleet: boolean;
-  /** Suppliers and asset types are tenant-wide: only company-wide readers have their tabs. */
+  /** Suppliers and asset types are tenant-wide: only company-wide readers have their sections. */
   readonly fleetCatalogs: boolean;
   readonly users: boolean;
   readonly organization: boolean;
@@ -49,14 +49,14 @@ export function isCurrent(href: string, pathname: string): boolean {
 
 const FLEET_TABS: readonly FleetNavTab[] = ["equipment", "suppliers", "asset-types"];
 
-/** The fleet tab a `tab` query value selects; anything unknown is the equipment tab, like the page. */
+/** The fleet section a `tab` query value selects; anything unknown is the equipment section, like the page. */
 export function fleetTabOf(raw: string | null): FleetNavTab {
   return FLEET_TABS.find((tab) => tab === raw) ?? "equipment";
 }
 
 /**
- * Whether the entry is the one being shown. Entries that are tabs of `/fleet` also read the `tab` query value;
- * only the list page has tabs, so every other page under `/fleet` (an equipment detail) belongs to "Flota".
+ * Whether the entry is the one being shown. Entries that are sections of `/fleet` also read the `tab` query value;
+ * only the list page has sections, so every other page under `/fleet` (an equipment detail) belongs to "Flota".
  */
 export function isActive(item: NavItem, pathname: string, tab: string | null): boolean {
   if (!isCurrent(item.href, pathname)) return false;
@@ -65,7 +65,7 @@ export function isActive(item: NavItem, pathname: string, tab: string | null): b
   return item.tab === shown;
 }
 
-/** Title of the section being shown, derived from the pathname and the fleet tab. */
+/** Title of the section being shown, derived from the pathname and the fleet section. */
 export function sectionTitle(pathname: string, tab: string | null = null): string {
   const item = ALL_ITEMS.find((candidate) => isActive(candidate, pathname, tab));
   return item?.label ?? copy.common.productName;
