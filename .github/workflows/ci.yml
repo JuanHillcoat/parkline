@@ -23,17 +23,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
       # Matches the local pnpm version. package.json has no packageManager field,
-      # and pnpm/action-setup v4 needs an explicit version when it is absent.
-      - uses: pnpm/action-setup@v4
+      # and pnpm/action-setup v6 needs an explicit version when it is absent.
+      - uses: pnpm/action-setup@v6
         with:
           version: 11.23.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -84,15 +84,15 @@ jobs:
       APP_DB_PASSWORD: ci-only-app-login-password
       DATABASE_URL: postgres://parkline_login:ci-only-app-login-password@localhost:5432/parkline
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 11.23.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -138,15 +138,15 @@ jobs:
       # compiled app. See e2e/README.md and ADR-0009.
       E2E_ADMIN_DATABASE_URL: postgres://parkline:parkline_dev@localhost:5432/postgres
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 11.23.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -162,7 +162,7 @@ jobs:
       # Only on failure, kept a week: artifact storage is limited on the free plan.
       - name: Upload the report
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report
           path: |

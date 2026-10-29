@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+### Changed
+
+- CI: the GitHub Actions move to their Node 24 releases (`actions/checkout@v7`, `actions/setup-node@v7`, `pnpm/action-setup@v6`, `actions/upload-artifact@v7`) because GitHub deprecated the Node 20 runtime of the `@v4` ones; the inputs in use are unchanged and the jobs keep `ubuntu-latest`, which follows GitHub's own image updates.
+
 ### Added
 
 - Fleet navigation (issue 56): the sidebar has "Proveedores" and "Tipos de equipo" entries next to "Flota" (for the company-wide catalog readers; each is marked current only on its own tab), and the equipment tab shows a guidance block with a checklist and a button per missing step when there is no active supplier or no active equipment type, instead of a "Nuevo equipo" button that vanished; the empty suppliers and equipment types sections host their creation button. After the maintainer's visual review the tab selector of `/fleet` (and its counts) is gone: the sidebar is the only way between the three sections and the heading names the one shown; on a phone the fleet cards are compact (name and actions) and expand on tap.
