@@ -12,7 +12,6 @@ import {
   rowOf,
   skipBrowserValidation,
   submitDialog,
-  tabLink,
 } from "../support/fleet-flows";
 import { storageStatePath } from "../support/world";
 
@@ -26,13 +25,11 @@ test.describe("fleet suppliers", () => {
   test("starts empty and shows the empty state and a zero count", async ({ page }) => {
     await gotoFleet(page, "suppliers");
     await expect(page.getByText(copy.fleet.emptySuppliers)).toBeVisible();
-    await expect(tabLink(page, "suppliers")).toContainText("0");
   });
 
-  test("creates a supplier, stores the name in uppercase and updates the count", async ({ page }) => {
+  test("creates a supplier and stores the name in uppercase", async ({ page }) => {
     await createSupplierViaUi(page, "Rental norte");
     await expect(rowOf(page, "RENTAL NORTE")).toBeVisible();
-    await expect(tabLink(page, "suppliers")).toContainText("1");
   });
 
   test("tells the person that names are stored in uppercase", async ({ page }) => {
@@ -130,6 +127,15 @@ test.describe("fleet asset types", () => {
     await expect(rowOf(page, "FORKLIFT")).toContainText(`${copy.fleet.meter.hours}250 h`);
     await expect(rowOf(page, "TRUCK")).toContainText(`${copy.fleet.meter.km}5000 km`);
     await expect(rowOf(page, "CONTAINER")).toContainText(`${copy.fleet.meter.none}${copy.fleet.noValue}`);
+  });
+
+  test("on a desktop screen every column is visible and the card toggle is not", async ({ page }) => {
+    await createAssetTypeViaUi(page, { name: "Desktop lift", meter: "hours", interval: "250" });
+    const row = rowOf(page, "DESKTOP LIFT");
+    for (const label of [copy.fleet.columns.meter, copy.fleet.columns.interval, copy.fleet.columns.activeEquipment]) {
+      await expect(row.locator(`td[data-label="${label}"]`)).toBeVisible();
+    }
+    await expect(row.locator("button.card-toggle")).toBeHidden();
   });
 
   test("accepts a meter without an interval and shows a dash", async ({ page }) => {

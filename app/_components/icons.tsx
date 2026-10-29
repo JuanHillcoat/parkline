@@ -60,19 +60,6 @@ const OrganizationIcon = () => (
   </Svg>
 );
 
-const ICONS: Readonly<Record<IconName, ComponentType>> = {
-  home: HomeIcon,
-  fleet: FleetIcon,
-  users: UsersIcon,
-  organization: OrganizationIcon,
-};
-
-/** The icon registered for a navigation entry. */
-export function NavIcon({ name }: { readonly name: IconName }) {
-  const Component = ICONS[name];
-  return <Component />;
-}
-
 const SupplierIcon = () => (
   <Svg>
     <path d="M4 10 5.5 4h13L20 10" />
@@ -87,6 +74,21 @@ const AssetTypeIcon = () => (
     <circle cx="8" cy="9" r="1.2" />
   </Svg>
 );
+
+const ICONS: Readonly<Record<IconName, ComponentType>> = {
+  home: HomeIcon,
+  fleet: FleetIcon,
+  supplier: SupplierIcon,
+  "asset-type": AssetTypeIcon,
+  users: UsersIcon,
+  organization: OrganizationIcon,
+};
+
+/** The icon registered for a navigation entry. */
+export function NavIcon({ name }: { readonly name: IconName }) {
+  const Component = ICONS[name];
+  return <Component />;
+}
 
 const OperationIcon = () => (
   <Svg>

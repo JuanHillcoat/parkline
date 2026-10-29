@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AssignmentSummary, EquipmentListItem } from "../../../src/fleet/application/equipment-visibility";
 import type { AssetType, Equipment, Supplier } from "../../../src/fleet/domain/entities";
+import { copy } from "../copy";
 import {
   assetTypeOptions,
   buildAssetTypeRows,
@@ -8,10 +9,13 @@ import {
   buildSupplierRows,
   equipmentImageUrl,
   canCreateEquipment,
+  equipmentPrerequisites,
+  missingPrerequisites,
   countActiveEquipment,
   equipmentFormValues,
   filterEquipment,
   listOrEmpty,
+  fleetHeading,
   fleetHref,
   fleetToggleHref,
   assetTypeNamesOf,
@@ -250,6 +254,32 @@ describe("select options", () => {
   });
 });
 
+describe("equipment prerequisites", () => {
+  const supplier = supplierOptions(suppliers);
+  const type = assetTypeOptions(types);
+  const kinds = (items: readonly { kind: string }[]) => items.map((item) => item.kind);
+
+  it("lists both prerequisites, supplier first, each with the tab that creates it", () => {
+    expect(equipmentPrerequisites([], [])).toEqual([
+      { kind: "supplier", done: false, tab: "suppliers" },
+      { kind: "assetType", done: false, tab: "asset-types" },
+    ]);
+  });
+
+  it("misses both with neither, one with only the other, and none with both", () => {
+    expect(kinds(missingPrerequisites([], []))).toEqual(["supplier", "assetType"]);
+    expect(kinds(missingPrerequisites(supplier, []))).toEqual(["assetType"]);
+    expect(kinds(missingPrerequisites([], type))).toEqual(["supplier"]);
+    expect(missingPrerequisites(supplier, type)).toEqual([]);
+  });
+
+  it("agrees with canCreateEquipment", () => {
+    for (const [s, t] of [[[], []], [supplier, []], [[], type], [supplier, type]] as const) {
+      expect(missingPrerequisites(s, t).length === 0).toBe(canCreateEquipment(s, t));
+    }
+  });
+});
+
 describe("fleetToggleHref", () => {
   it("leads to the other view", () => {
     expect(fleetToggleHref(false)).toBe("/fleet?archived=1");
@@ -391,5 +421,20 @@ describe("listOrEmpty", () => {
 
   it("gives an empty list for a failed one, so the board shows blank names instead of failing", () => {
     expect(listOrEmpty({ ok: false, error: new Error("organization unavailable") })).toEqual([]);
+  });
+});
+
+describe("fleetHeading", () => {
+  it("names the equipment section like the sidebar entry", () => {
+    expect(fleetHeading("equipment", true)).toEqual({ title: copy.fleet.title, subtitle: copy.fleet.subtitleEquipment });
+  });
+
+  it("names the suppliers and asset types sections like their sidebar entries", () => {
+    expect(fleetHeading("suppliers", true)).toEqual({ title: "Proveedores", subtitle: copy.fleet.subtitleSuppliers });
+    expect(fleetHeading("asset-types", true)).toEqual({ title: "Tipos de equipo", subtitle: copy.fleet.subtitleAssetTypes });
+  });
+
+  it("keeps the scoped subtitle for a reader limited to their scope", () => {
+    expect(fleetHeading("equipment", false)).toEqual({ title: copy.fleet.title, subtitle: copy.fleet.subtitleScoped });
   });
 });
