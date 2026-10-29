@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AssignmentSummary, EquipmentListItem } from "../../../src/fleet/application/equipment-visibility";
 import type { AssetType, Equipment, Supplier } from "../../../src/fleet/domain/entities";
+import { copy } from "../copy";
 import {
   assetTypeOptions,
   buildAssetTypeRows,
@@ -14,6 +15,7 @@ import {
   equipmentFormValues,
   filterEquipment,
   listOrEmpty,
+  fleetHeading,
   fleetHref,
   fleetToggleHref,
   assetTypeNamesOf,
@@ -419,5 +421,20 @@ describe("listOrEmpty", () => {
 
   it("gives an empty list for a failed one, so the board shows blank names instead of failing", () => {
     expect(listOrEmpty({ ok: false, error: new Error("organization unavailable") })).toEqual([]);
+  });
+});
+
+describe("fleetHeading", () => {
+  it("names the equipment section like the sidebar entry", () => {
+    expect(fleetHeading("equipment", true)).toEqual({ title: copy.fleet.title, subtitle: copy.fleet.subtitleEquipment });
+  });
+
+  it("names the suppliers and asset types sections like their sidebar entries", () => {
+    expect(fleetHeading("suppliers", true)).toEqual({ title: "Proveedores", subtitle: copy.fleet.subtitleSuppliers });
+    expect(fleetHeading("asset-types", true)).toEqual({ title: "Tipos de equipo", subtitle: copy.fleet.subtitleAssetTypes });
+  });
+
+  it("keeps the scoped subtitle for a reader limited to their scope", () => {
+    expect(fleetHeading("equipment", false)).toEqual({ title: copy.fleet.title, subtitle: copy.fleet.subtitleScoped });
   });
 });

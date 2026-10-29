@@ -13,7 +13,6 @@ import {
   seedBase,
   skipBrowserValidation,
   submitDialog,
-  tabLink,
   type EquipmentValues,
 } from "../support/fleet-flows";
 import { storageStatePath } from "../support/world";
@@ -66,7 +65,6 @@ test.describe("creating equipment", () => {
     await expect(row).toContainText(copy.fleet.state.unassigned);
     await expect(row.getByRole("cell", { name: copy.fleet.noValue })).toHaveCount(3);
     await expect(row).toContainText("MARCA MODELO");
-    await expect(tabLink(page, "equipment")).toContainText("1");
   });
 
   test("registers a unit with every field and shows brand, model, year, serial and observations", async ({ page }) => {
@@ -288,36 +286,41 @@ async function seedListFleet(): Promise<void> {
 
 const codesIn = (page: Page): Locator => page.getByRole("rowheader");
 
-test.describe("fleet tabs and counts", () => {
+test.describe("fleet sections", () => {
   test.use({ storageState: storageStatePath("viewer") });
   test.beforeAll(async () => {
     await resetCatalogs();
     await seedListFleet();
   });
 
-  test("shows the equipment tab by default with the count of every section", async ({ page }) => {
+  test("shows the equipment section by default, headed like its sidebar entry, with no tab strip", async ({ page }) => {
     await gotoFleet(page);
-    await expect(tabLink(page, "equipment")).toHaveAttribute("aria-current", "page");
-    await expect(tabLink(page, "equipment")).toContainText("4");
-    await expect(tabLink(page, "suppliers")).toContainText("2");
-    await expect(tabLink(page, "asset-types")).toContainText("2");
+    await expect(page.getByRole("heading", { level: 1, name: copy.fleet.title })).toBeVisible();
+    await expect(page.getByText(copy.fleet.subtitleEquipment)).toBeVisible();
+    await expect(page.getByRole("table", { name: copy.fleet.equipmentCaption })).toBeVisible();
+    await expect(page.locator("nav.tabs")).toHaveCount(0);
   });
 
-  test("switches sections with the tab links", async ({ page }) => {
+  test("each section is reached from the sidebar and its heading matches the entry", async ({ page }) => {
     await gotoFleet(page);
-    await tabLink(page, "suppliers").click();
+    const entry = (label: string): Locator => page.getByRole("complementary").getByRole("link", { name: label, exact: true });
+    await entry(copy.nav.suppliers).click();
     await expect(page).toHaveURL(/\/fleet\?tab=suppliers$/);
-    await expect(tabLink(page, "suppliers")).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("heading", { level: 1, name: copy.nav.suppliers })).toBeVisible();
+    await expect(page.getByText(copy.fleet.subtitleSuppliers)).toBeVisible();
     await expect(page.getByRole("table", { name: copy.fleet.suppliersCaption })).toBeVisible();
-    await tabLink(page, "asset-types").click();
+    await entry(copy.nav.assetTypes).click();
+    await expect(page.getByRole("heading", { level: 1, name: copy.nav.assetTypes })).toBeVisible();
+    await expect(page.getByText(copy.fleet.subtitleAssetTypes)).toBeVisible();
     await expect(page.getByRole("table", { name: copy.fleet.assetTypesCaption })).toBeVisible();
-    await tabLink(page, "equipment").click();
+    await entry(copy.nav.fleet).click();
+    await expect(page.getByRole("heading", { level: 1, name: copy.nav.fleet })).toBeVisible();
     await expect(page.getByRole("table", { name: copy.fleet.equipmentCaption })).toBeVisible();
   });
 
-  test("falls back to the equipment tab for an unknown tab", async ({ page }) => {
+  test("falls back to the equipment section for an unknown tab", async ({ page }) => {
     await page.goto("/fleet?tab=bogus");
-    await expect(tabLink(page, "equipment")).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("heading", { level: 1, name: copy.fleet.title })).toBeVisible();
     await expect(page.getByRole("table", { name: copy.fleet.equipmentCaption })).toBeVisible();
   });
 

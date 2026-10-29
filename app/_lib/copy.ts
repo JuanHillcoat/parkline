@@ -144,7 +144,9 @@ const es = {
   fleet: {
     pageTitle: "Flota - Parkline",
     title: "Flota",
-    subtitle: "Proveedores, tipos de equipo y equipos de la flota.",
+    subtitleEquipment: "Equipos de la flota con su proveedor, su tipo de equipo y dónde están asignados.",
+    subtitleSuppliers: "Empresas que proveen los equipos de la flota.",
+    subtitleAssetTypes: "Clases de equipo con su medidor y su intervalo de preventivo.",
     subtitleScoped: "Equipos asignados dentro de tu alcance.",
     restrictedTitle: "No tienes permiso para ver la flota",
     restrictedText: "Pide acceso a un administrador de sistemas si lo necesitas.",
@@ -176,8 +178,10 @@ const es = {
     hideArchived: "Ocultar dadas de baja",
     noValue: "—",
     unknownParent: "No disponible",
-    tabsLabel: "Secciones de la flota",
-    tabs: { equipment: "Equipos", suppliers: "Proveedores", assetTypes: "Tipos de equipo" },
+    card: {
+      show: (name: string): string => `Ver detalle de ${name}`,
+      hide: (name: string): string => `Ocultar detalle de ${name}`,
+    },
     searchLabel: "Buscar",
     searchPlaceholder: "Interno, marca, modelo, serie, proveedor o tipo",
     allSuppliers: "Todos los proveedores",

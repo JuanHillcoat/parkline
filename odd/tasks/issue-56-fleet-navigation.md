@@ -4,7 +4,7 @@
 - Issue: #56
 - Source of truth: issue #56, `app/_lib/navigation.ts`, `app/(app)/fleet/page.tsx`
 - Delivery strategy: ask-on-risk; test runner: `pnpm test`, `pnpm test:e2e`
-- Status: T1 and T2 done in the `feat(issue-56)` commit; pull request pending (PR #55 is merged, so the base is `main`)
+- Status: T1 to T5 done (two `feat(issue-56)` commits); Gentle AI review of the branch and pull request pending (PR #55 is merged, so the base is `main`)
 
 ## Specs
 
@@ -12,6 +12,9 @@
 - S2 "Encontrar el boton para dar de alta al proveedor fue dificil de encontrar. hasta que note que en /fleet hay unas pestañas para seleccionar. Luego quise volver a dar de alta un equipo pero no encontraba el boton hasta que me di cuenta que tenia que agregar tipo de equipos, por lo que me costo encontrar eso boton."
 - S3 "cada issue, cada implementacion, cada feature nueva debe contar con todos los test, e2e, db": unit and end-to-end tests ship with the change (no database test applies: no migration, no SQL).
 - S4 Real cost of $0; synthetic test data only.
+- S5 (visual review, 2026-10-29) "si esta en mobile por ejemplo en tipo de equipos no aparezca todo la info, si no que lsite equipos, o sea hoy en vista mobile aparece APILADORA debajo medidor debajo equipos activos intervalo debajo editar, o sea que aparezca tipo de equipo y boton de editar nada mas, si el usuario quiere detalle de todo lo otro, que clickee en la card y ahi tendra el detalle de todo, si no queda mucho scroll en pantalla"
+- S6 (visual review, 2026-10-29) "en mobile es que el selector de pestaña de Equipos | Proveedores | Tipos de equipos hay que hacer scrol horizontal para poder visualizar el nombre completo."
+- S7 (visual review, 2026-10-29) "En /fleet existe el selector de pestañas, yo lo quitaria y que se acceda unicamente por sidebar"
 
 ## Objective
 
@@ -33,6 +36,9 @@ Out: the tablero columns, the detail redesign, colors, Operaciones and Negocios 
 
 - [x] T1 (S1, S2, S3) Sidebar entries, active state, guidance and empty states, tests. Route: delegated writer. Commit: `feat(issue-56)` (single commit)
 - [x] T2 (S3) README, CHANGELOG. Route: inline. Commit: `feat(issue-56)` (single commit)
+- [x] T3 (S6, S7, S3) Remove the tab selector of `/fleet` (the sidebar is the only way between equipment, suppliers and asset types; the heading names the section shown), update the end-to-end flows and specs that used the tabs. S6 is resolved by S7 (no tab strip left). Route: delegated writer (context backstop). Commit: second `feat(issue-56)` commit
+- [x] T4 (S5, S3) Compact mobile cards in the three fleet lists: on a narrow screen a card shows only its name (or internal code) and its actions; tapping the card header expands the other fields in place, again to collapse. Desktop tables unchanged. Unit and end-to-end tests. Route: delegated writer, with T3. Commit: second `feat(issue-56)` commit
+- [x] T5 (S3) README, CHANGELOG, re-run the checks and the visual review. Route: inline. Commit: with T3 and T4 (second `feat(issue-56)` commit)
 
 ## Log
 
@@ -40,3 +46,6 @@ Out: the tablero columns, the detail redesign, colors, Operaciones and Negocios 
 - 2026-10-27 Issue #56 created; branch stacked on the PR #55 branch. Engram is unavailable. The uncommitted development sign-in shortcut files are NOT part of this feature.
 - 2026-10-27 T1 done by a delegated writer (it stalled once, was resumed, and finished). One deviation from D1, accepted: the new sidebar entries are shown only to company-wide catalog readers (`NavAccess.fleetCatalogs`), because the fleet page forces the equipment tab for scoped readers (manager, supervisor), so for them "Proveedores" and "Tipos de equipo" would be dead links to the equipment tab; they still see "Flota". The guidance links go to the tab where the creation button is (not into the creation dialog). Parent verification: lint and typecheck clean, `pnpm test` 1378 passed, build clean, the new and the navigation specs 77 passed on a fresh state folder; the writer reports the full end-to-end suite 673 passed, 0 failed, and the new spec three times in a row. Screenshots checked by the parent (sidebar and the guidance of an empty application).
 - 2026-10-29 Re-verified after PR #55 was merged: `pnpm lint` clean, `pnpm test` 1371 passed (117 files; the removed development sign-in shortcut took its own tests with it), `pnpm build` clean, `pnpm typecheck` clean (a first run failed only on stale `.next` types of the removed `app/dev-login` route; the build regenerated them). End-to-end suite not re-run (no change since the 2026-10-27 run). Gentle AI review (lineage `review-35c455711275205d`, medium, lenses readability and reliability) approved and acknowledged, with six non-blocking advisory findings left as follow-ups; among them, a scoped reader who opens `/fleet?tab=suppliers` by hand sees no active sidebar entry, because the page forces the equipment tab while `isActive` reads the raw `tab` (`app/_lib/navigation.ts:63-65`).
+- L2 2026-10-29 Maintainer visual review on localhost: "La vista mobile esta bien, yo solo haria que si esta en mobile por ejemplo en tipo de equipos no aparezca todo la info, si no que lsite equipos, o sea hoy en vista mobile aparece APILADORA debajo medidor debajo equipos activos intervalo debajo editar, o sea que aparezca tipo de equipo y boton de editar nada mas, si el usuario quiere detalle de todo lo otro, que clickee en la card y ahi tendra el detalle de todo, si no queda mucho scroll en pantalla, otra observacion en mobile es que el selector de pestaña de Equipos | Proveedores | Tipos de equipos hay que hacer scrol horizontal para poder visualizar el nombre completo. El resto yo creo que esta ok al menos de momento lo que es alta de proveedor, tipo de equipo y equipo. En /fleet existe el selector de pestañas, yo lo quitaria y que se acceda unicamente por sidebar". Decisions by the assistant: the compact card applies to the three fleet lists (one pattern), the detail expands in place (no new route), the equipment code keeps linking to its detail page; the tab counts go away with the tabs.
+- 2026-10-29 T3 and T4 done by one delegated writer: `fleetHeading(tab, wide)` in `app/_lib/fleet-view.ts` (RED: 3 failed, 43 passed because it did not exist; GREEN: 46/46), the tab selector and its counts removed, `card-toggle.tsx` (a button with `aria-expanded` that sets `data-expanded` on its row; CSS scoped to `.table-cards`, so organization and users cards keep their layout). A first full end-to-end run had 14 failures (the toggle's hidden text leaked into the row header name); fixed with an `aria-label`. Parent verification after the fix: `pnpm lint` and `pnpm typecheck` clean, `pnpm test` 1371+10 = 1381 passed (118 files), `pnpm test:e2e` 682 passed, 0 failed (the run includes the uncommitted development sign-in spec, which is not part of this feature). README and CHANGELOG updated. Maintainer visual review of T3 and T4 pending.
+- L3 2026-10-29 Maintainer, after the visual review of T3 and T4 on localhost: "ok" (approved, and the go-ahead to commit).

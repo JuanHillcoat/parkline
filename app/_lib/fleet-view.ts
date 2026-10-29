@@ -224,6 +224,14 @@ type Raw = string | readonly string[] | undefined;
 /** An unknown or repeated tab value falls back to the equipment tab. */
 export const parseFleetTab = (raw: Raw): FleetTab => TABS.find((tab) => tab === raw) ?? "equipment";
 
+/** The heading names the section shown, like its sidebar entry; a scoped reader only sees equipment. */
+export const fleetHeading = (tab: FleetTab, wide: boolean): { readonly title: string; readonly subtitle: string } => {
+  if (!wide) return { title: t.title, subtitle: t.subtitleScoped };
+  if (tab === "suppliers") return { title: t.suppliersTitle, subtitle: t.subtitleSuppliers };
+  if (tab === "asset-types") return { title: t.assetTypesTitle, subtitle: t.subtitleAssetTypes };
+  return { title: t.title, subtitle: t.subtitleEquipment };
+};
+
 export type EquipmentFilters = {
   readonly q: string;
   readonly supplierId: string | null;

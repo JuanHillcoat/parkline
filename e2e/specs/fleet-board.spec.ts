@@ -1,8 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 import { copy } from "../../app/_lib/copy";
 import { openSeeder, resetCatalogs, type Seeder } from "../support/data";
-import { changeArchiveState, gotoFleet, rowOf, tabLink } from "../support/fleet-flows";
-import { EDGE_GAP_TOLERANCE, boxOf, cardCells, edgeGaps, expectNoHorizontalScroll, MIN_TEXT_SIZE } from "../support/mobile-flows";
+import { changeArchiveState, gotoFleet, rowOf } from "../support/fleet-flows";
+import { EDGE_GAP_TOLERANCE, boxOf, cardCells, edgeGaps, expandCard, expectNoHorizontalScroll, MIN_TEXT_SIZE } from "../support/mobile-flows";
 import { readWorld, storageStatePath } from "../support/world";
 
 const t = copy.fleet;
@@ -165,11 +165,13 @@ test.describe("fleet board as a fleet analyst", () => {
     await expect(page.getByText(t.showing(21, 21, 21))).toBeVisible();
   });
 
-  test("keeps every tab for a company-wide reader", async ({ page }) => {
+  test("lists every fleet section in the sidebar for a company-wide reader, with no tab strip", async ({ page }) => {
     await seedBoard();
     await gotoFleet(page);
-    await expect(tabLink(page, "suppliers")).toBeVisible();
-    await expect(tabLink(page, "asset-types")).toBeVisible();
+    const sidebar = page.getByRole("complementary");
+    await expect(sidebar.getByRole("link", { name: copy.nav.suppliers, exact: true })).toBeVisible();
+    await expect(sidebar.getByRole("link", { name: copy.nav.assetTypes, exact: true })).toBeVisible();
+    await expect(page.locator("nav.tabs")).toHaveCount(0);
   });
 });
 
@@ -217,7 +219,7 @@ test.describe("fleet board as a manager scoped to a division", () => {
   test("sees no Proveedores or Tipos de equipo tabs, and the tab parameter falls back to equipment", async ({ page }) => {
     await seedBoard();
     await gotoFleet(page);
-    await expect(page.getByRole("navigation", { name: t.tabsLabel })).toHaveCount(0);
+    await expect(page.locator("nav.tabs")).toHaveCount(0);
     for (const tab of ["suppliers", "asset-types"] as const) {
       await page.goto(`/fleet?tab=${tab}`);
       await expect(page.getByRole("heading", { level: 1, name: t.title })).toBeVisible();
@@ -262,7 +264,7 @@ test.describe("fleet board as a supervisor scoped to an operation", () => {
   test("sees no catalog tabs and a filter built from what it sees", async ({ page }) => {
     await seedBoard();
     await gotoFleet(page);
-    await expect(page.getByRole("navigation", { name: t.tabsLabel })).toHaveCount(0);
+    await expect(page.locator("nav.tabs")).toHaveCount(0);
     await expect(optionTexts(page, t.supplierFilter)).toHaveText([t.allSuppliers, "NORTE RENTAL"]);
     await expect(optionTexts(page, t.operationFilter)).toHaveText([t.allOperations, WORLD_OPERATION]);
   });
@@ -327,8 +329,9 @@ test.describe("fleet board on a phone", () => {
       await seedBoard();
       await gotoFleet(page);
       await expectNoHorizontalScroll(page);
-      await expect(page.getByRole("navigation", { name: t.tabsLabel })).toHaveCount(0);
+      await expect(page.locator("nav.tabs")).toHaveCount(0);
       const row = rowOf(page, "A-ACTIVE");
+      await expandCard(row);
       await expect(row.locator(`td[data-label="${t.columns.supplier}"]`)).toHaveText("NORTE RENTAL");
       await expect(row.locator(`td[data-label="${t.columns.assetType}"]`)).toHaveText("FORKLIFT");
       await expect(rowOf(page, "B-SPARE")).toHaveCount(0);

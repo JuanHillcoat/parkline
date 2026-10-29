@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { copy } from "../../_lib/copy";
 import type { AssetTypeRow, EquipmentRow, EquipmentState, SupplierRow } from "../../_lib/fleet-view";
+import { CardToggle } from "./card-toggle";
 import { EditEquipmentDialog, type EquipmentOptions } from "./equipment-dialogs";
 import { ArchiveDialog, EditAssetTypeDialog, RenameSupplierDialog, type FleetKind } from "./fleet-dialogs";
 
@@ -38,7 +39,7 @@ type ShellProps = { caption: string; head: readonly string[]; numeric?: readonly
 function TableShell({ caption, head, numeric = [], children }: ShellProps) {
   return (
     <div className="table-wrap">
-      <table className="table">
+      <table className="table table-cards">
         <caption className="visually-hidden">{caption}</caption>
         <thead>
           <tr>
@@ -55,7 +56,7 @@ function TableShell({ caption, head, numeric = [], children }: ShellProps) {
 function SupplierLine({ row, ...access }: Access & { row: SupplierRow }) {
   return (
     <tr data-archived={row.archived}>
-      <th scope="row">{row.name} {row.archived && <ArchivedTag />}</th>
+      <th scope="row">{row.name} {row.archived && <ArchivedTag />}<CardToggle name={row.name} /></th>
       <td className="cell-num" data-label={c.activeEquipment}>{row.activeEquipment}</td>
       <td className="cell-actions">
         <div className="row-actions">
@@ -78,7 +79,7 @@ export function SuppliersTable({ rows, ...access }: Access & { rows: readonly Su
 function AssetTypeLine({ row, ...access }: Access & { row: AssetTypeRow }) {
   return (
     <tr data-archived={row.archived}>
-      <th scope="row">{row.name} {row.archived && <ArchivedTag />}</th>
+      <th scope="row">{row.name} {row.archived && <ArchivedTag />}<CardToggle name={row.name} /></th>
       <td data-label={c.meter}>{row.meterLabel}</td>
       <td data-label={c.interval}>{row.intervalText}</td>
       <td className="cell-num" data-label={c.activeEquipment}>{row.activeEquipment}</td>
@@ -127,7 +128,7 @@ function EquipmentId({ row }: { row: EquipmentRow }) {
 function EquipmentLine({ row, options, ...access }: EquipmentLineProps) {
   return (
     <tr data-archived={row.archived}>
-      <th scope="row" className="cell-code cell-id"><EquipmentId row={row} /></th>
+      <th scope="row" className="cell-code cell-id"><EquipmentId row={row} /><CardToggle name={row.internalCode} /></th>
       <td data-label={c.assetType}>{row.assetTypeName}</td>
       <td data-label={c.supplier}>{row.supplierName}</td>
       <td data-label={c.operation}>{orDash(row.operationName)}</td>

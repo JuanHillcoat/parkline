@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { copy } from "../../app/_lib/copy";
 import { openSeeder, resetCatalogs } from "../support/data";
+import { rowOf } from "../support/fleet-flows";
 import {
   MIN_TAP_TARGET,
   MIN_TEXT_SIZE,
@@ -10,10 +11,12 @@ import {
   boxOf,
   canTakeFocus,
   cardCells,
+  cardToggle,
   cardLayout,
   drawerLinks,
   drawerOf,
   edgeGaps,
+  expandCard,
   expectNoHorizontalScroll,
   menuButton,
   openDrawer,
@@ -68,7 +71,10 @@ async function expectStackedCards(page: Page, caption: string): Promise<void> {
   expect(head.width, "the column header is hidden visually").toBeLessThanOrEqual(1);
   const rows = await table.locator("tbody tr").all();
   expect(rows.length).toBeGreaterThan(0);
-  for (const row of rows) await expectCardRules(row);
+  for (const row of rows) {
+    await expandCard(row);
+    await expectCardRules(row);
+  }
   const [first, second] = rows;
   if (first !== undefined && second !== undefined) {
     expect((await boxOf(second)).y, "cards are stacked, one per row").toBeGreaterThan((await boxOf(first)).y);
@@ -152,14 +158,10 @@ test.describe("fleet analyst on a phone", () => {
   });
 
   test.describe("fleet", () => {
-    test("@mobile tabs stay on one line inside a horizontally scrollable strip", async ({ page }) => {
+    test("@mobile has no tab strip and does not scroll sideways", async ({ page }) => {
       await page.goto("/fleet");
-      const tabs = page.getByRole("navigation", { name: copy.fleet.tabsLabel });
-      const links = await tabs.getByRole("link").all();
-      expect(links).toHaveLength(3);
-      const tops = await Promise.all(links.map(async (link) => Math.round((await boxOf(link)).y)));
-      expect(new Set(tops).size).toBe(1);
-      expect(await tabs.evaluate((nav) => getComputedStyle(nav).overflowX)).toBe("auto");
+      await expect(page.locator("nav.tabs")).toHaveCount(0);
+      await expectNoHorizontalScroll(page);
     });
 
     test("@mobile equipment rows are stacked cards", async ({ page }) => {
@@ -175,6 +177,49 @@ test.describe("fleet analyst on a phone", () => {
     test("@mobile asset type rows are stacked cards", async ({ page }) => {
       await page.goto("/fleet?tab=asset-types");
       await expectStackedCards(page, copy.fleet.assetTypesCaption);
+    });
+
+    const COMPACT = [
+      { path: "/fleet?tab=suppliers", row: "MOBILE ALPHA", hidden: [copy.fleet.columns.activeEquipment], edit: copy.dialogs.rename.trigger },
+      { path: "/fleet?tab=asset-types", row: "MOBILE CRANE", hidden: [copy.fleet.columns.meter, copy.fleet.columns.interval, copy.fleet.columns.activeEquipment], edit: copy.dialogs.editAssetType.trigger },
+      { path: "/fleet", row: "M-001", hidden: [copy.fleet.columns.assetType, copy.fleet.columns.supplier, copy.fleet.columns.status], edit: copy.dialogs.editEquipment.trigger },
+    ] as const;
+
+    for (const { path, row: code, hidden, edit } of COMPACT) {
+      test(`@mobile ${path} cards show the name and Editar, and open their detail when the header is tapped`, async ({ page }) => {
+        await page.goto(path);
+        const row = rowOf(page, code);
+        const toggle = cardToggle(row);
+        await expect(row.getByRole("rowheader")).toContainText(code);
+        await expect(row.getByRole("button", { name: edit, exact: true })).toBeVisible();
+        await expect(toggle).toHaveAttribute("aria-expanded", "false");
+        for (const label of hidden) await expect(row.locator(`td[data-label="${label}"]`)).toBeHidden();
+        await toggle.tap();
+        await expect(toggle).toHaveAttribute("aria-expanded", "true");
+        for (const label of hidden) await expect(row.locator(`td[data-label="${label}"]`)).toBeVisible();
+        await expect(row.getByRole("button", { name: edit, exact: true })).toBeVisible();
+        await toggle.tap();
+        await expect(toggle).toHaveAttribute("aria-expanded", "false");
+        for (const label of hidden) await expect(row.locator(`td[data-label="${label}"]`)).toBeHidden();
+      });
+    }
+
+    test("@mobile the toggle covers the card header and gives the row a name for assistive tech", async ({ page }) => {
+      await page.goto("/fleet?tab=asset-types");
+      const row = rowOf(page, "MOBILE CRANE");
+      const toggle = row.getByRole("button", { name: copy.fleet.card.show("MOBILE CRANE") });
+      const [header, button] = [await boxOf(row.getByRole("rowheader")), await boxOf(toggle)];
+      expect(button.width).toBeGreaterThanOrEqual(header.width - 1);
+      expect(button.height).toBeGreaterThanOrEqual(MIN_TAP_TARGET);
+      await toggle.tap();
+      await expect(row.getByRole("button", { name: copy.fleet.card.hide("MOBILE CRANE") })).toBeVisible();
+    });
+
+    test("@mobile the equipment code still opens its detail page", async ({ page }) => {
+      await page.goto("/fleet");
+      const row = rowOf(page, "M-001");
+      await row.getByRole("link", { name: "M-001" }).tap();
+      await expect(page).toHaveURL(/\/fleet\/equipment\//);
     });
 
     test("@mobile filters stack to full width and the actions fill the row", async ({ page }) => {
@@ -289,7 +334,7 @@ test.describe("scoped roles on a phone", () => {
       await page.goto("/fleet?tab=suppliers");
       const row = page.locator("tbody tr").first();
       await expect(row).toBeVisible();
-      await expect(row.getByRole("button")).toHaveCount(0);
+      await expect(row.locator("td.cell-actions").getByRole("button")).toHaveCount(0);
     });
 
     test("@mobile dashboard cards reflow to one column and stay readable", async ({ page }) => {

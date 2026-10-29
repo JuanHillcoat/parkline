@@ -13,6 +13,7 @@ import {
   buildSupplierRows,
   canCreateEquipment,
   filterEquipment,
+  fleetHeading,
   fleetHref,
   knownId,
   operationOptions,
@@ -33,7 +34,7 @@ import { requireActor } from "../../_lib/session";
 import { EquipmentGuidance } from "./equipment-guidance";
 import { NewEquipmentDialog } from "./equipment-dialogs";
 import { NewAssetTypeDialog, NewSupplierDialog } from "./fleet-dialogs";
-import { EquipmentToolbar, FleetTabs, Pagination } from "./fleet-toolbar";
+import { EquipmentToolbar, Pagination } from "./fleet-toolbar";
 import { AssetTypesTable, EquipmentTable, SuppliersTable, type Access } from "./fleet-tables";
 
 export const metadata = { title: copy.fleet.pageTitle };
@@ -117,12 +118,13 @@ function ArchivedToggle({ query, showing }: { query: FleetQuery; showing: boolea
 type HeaderProps = Access & { data: Data; tab: FleetTab };
 
 function Header({ data, canWrite, tab }: HeaderProps) {
+  const heading = fleetHeading(tab, data.wide);
   return (
     <>
       <header className="page-head">
         <div>
-          <h1>{t.title}</h1>
-          <p className="page-sub">{data.wide ? t.subtitle : t.subtitleScoped}</p>
+          <h1>{heading.title}</h1>
+          <p className="page-sub">{heading.subtitle}</p>
         </div>
         {canWrite && <Actions data={data} tab={tab} />}
       </header>
@@ -209,15 +211,10 @@ function queryOf(data: Data, params: Params, tab: FleetTab, archived: boolean): 
   return tab === "equipment" ? { tab, archived, ...filtersOf(data, params) } : { tab, archived };
 }
 
-function countsOf(data: Data): Record<FleetTab, number> {
-  return { equipment: data.equipment.length, suppliers: data.suppliers.length, "asset-types": data.assetTypes.length };
-}
-
 function Body({ data, params, tab, archived, ...access }: Access & { data: Data; params: Params; tab: FleetTab; archived: boolean }) {
   const query = queryOf(data, params, tab, archived);
   return (
     <>
-      {data.wide && <FleetTabs active={tab} archived={archived} counts={countsOf(data)} />}
       {tab === "suppliers" && <SuppliersPanel data={data} query={query} {...access} />}
       {tab === "asset-types" && <AssetTypesPanel data={data} query={query} {...access} />}
       {tab === "equipment" && <EquipmentPanel data={data} query={query} params={params} {...access} />}

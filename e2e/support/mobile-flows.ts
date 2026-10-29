@@ -84,3 +84,14 @@ export async function edgeGaps(inner: Locator, outer: Locator): Promise<{ left: 
   const [a, b] = [await boxOf(inner), await boxOf(outer)];
   return { left: a.x - b.x, right: b.x + b.width - (a.x + a.width) };
 }
+
+/** The button that shows or hides the detail of a fleet card (its name starts with "Ver" or "Ocultar"). */
+export const cardToggle = (row: Locator): Locator => row.locator("button.card-toggle");
+
+/** Opens the detail of a fleet card by tapping its header, unless it is already open. Rows without a toggle are always open. */
+export async function expandCard(row: Locator): Promise<void> {
+  const toggle = cardToggle(row);
+  if ((await toggle.count()) === 0) return;
+  if ((await toggle.getAttribute("aria-expanded")) === "false") await toggle.tap();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+}

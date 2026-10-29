@@ -18,7 +18,11 @@ const entry = (page: Page, label: string): Locator => sidebar(page).getByRole("l
 const guidance = (page: Page): Locator => page.getByRole("region", { name: g.title });
 const checklist = (page: Page): Locator => guidance(page).getByRole("list", { name: g.listLabel });
 const newEquipmentButton = (page: Page): Locator => page.getByRole("button", { name: d.newEquipment.trigger, exact: true });
-const tabsNav = (page: Page): Locator => page.getByRole("navigation", { name: copy.fleet.tabsLabel });
+const SECTIONS = [
+  { path: "/fleet", label: copy.nav.fleet },
+  { path: "/fleet?tab=suppliers", label: copy.nav.suppliers },
+  { path: "/fleet?tab=asset-types", label: copy.nav.assetTypes },
+] as const;
 
 async function expectOnlyCurrent(page: Page, label: string): Promise<void> {
   await expect(entry(page, label)).toHaveAttribute("aria-current", "page");
@@ -76,14 +80,23 @@ test.describe("fleet entries: navigation and current marker", () => {
     await expect(page.locator(".topbar-title")).toHaveText(copy.nav.fleet);
   });
 
-  test("the current entry follows the tabs of the page", async ({ page }) => {
+  test("the current entry follows the sidebar", async ({ page }) => {
     await gotoFleet(page, "equipment");
     await expectOnlyCurrent(page, copy.nav.fleet);
-    await tabsNav(page).getByRole("link", { name: /^Proveedores/u }).click();
+    await entry(page, copy.nav.suppliers).click();
     await expectOnlyCurrent(page, copy.nav.suppliers);
-    await tabsNav(page).getByRole("link", { name: /^Tipos de equipo/u }).click();
+    await entry(page, copy.nav.assetTypes).click();
     await expectOnlyCurrent(page, copy.nav.assetTypes);
   });
+
+  for (const { path, label } of SECTIONS) {
+    test(`${path} has no tab selector and its heading matches the sidebar entry`, async ({ page }) => {
+      await page.goto(path);
+      await expect(page.getByRole("heading", { level: 1, name: label, exact: true })).toBeVisible();
+      await expect(page.locator("nav.tabs")).toHaveCount(0);
+      await expectOnlyCurrent(page, label);
+    });
+  }
 
   test("an unknown tab value shows the equipment tab and marks Flota", async ({ page }) => {
     await page.goto("/fleet?tab=nonsense");
