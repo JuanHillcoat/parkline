@@ -16,6 +16,8 @@ Status: early development. The skeleton (`p0-01`), identity (`p0-02`: sign-in, s
 
 **Meters and readings (tab Lecturas).** An equipment whose asset type measures in hours or kilometers has a meter with immutable readings: a reading cannot go below the previous one (a lower value is a meter replacement, with a reason), a mistake is fixed with a correction that keeps the original, and the hours of the last 30 days are shown. The first reading can be loaded when registering the equipment. Only the administrator and the fleet analyst write; the rest read. See [ADR-0012](docs/adr/0012-meters-and-readings.md).
 
+**Getting started and navigation.** The sidebar lists Flota, Proveedores and Tipos de equipo (the last two for users who see the whole company's catalogs). Registering an equipment needs an active supplier and an active equipment type; while one is missing the equipment tab says so, with a checklist and a button for each missing step.
+
 **Spares belong to a site.** A muleto is not part of an operation: it is parked at a site and can cover any equipment of that site. When registering, assigning or moving you choose an operation or "Muleto" (and its site); a replacement can leave the outgoing equipment as a muleto at the site. Registering asks for the battery type (and the quantity only for lead acid) and the meter reading, in one compact screen. See [ADR-0013](docs/adr/0013-spares-belong-to-a-site.md).
 
 **Register and assign in one step.** The Nuevo equipo dialog can also assign the equipment to an operation (as active or as a spare, from today or from a past day with a reason); both happen in one transaction, so a refused assignment creates nothing.

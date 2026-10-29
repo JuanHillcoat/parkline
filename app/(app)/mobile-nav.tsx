@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { CloseIcon } from "../_components/icons";
 import { copy } from "../_lib/copy";
@@ -62,12 +62,13 @@ function Drawer({ close, children }: { readonly close: () => void; readonly chil
 /** Page frame: sidebar (off-canvas drawer on narrow widths), top bar and content. */
 export function ShellFrame({ sidebar, account, children }: ShellFrameProps) {
   const pathname = usePathname();
+  const tab = useSearchParams().get("tab");
   const drawer = useDrawer(pathname);
   return (
     <div className="shell" data-nav-open={drawer.open}>
       <Drawer close={drawer.close}>{sidebar}</Drawer>
       <div className="main">
-        <Topbar title={sectionTitle(pathname)} drawerOpen={drawer.open} onMenu={drawer.toggle} menuRef={drawer.menuRef}>
+        <Topbar title={sectionTitle(pathname, tab)} drawerOpen={drawer.open} onMenu={drawer.toggle} menuRef={drawer.menuRef}>
           {account}
         </Topbar>
         <main id="content" className="content">{children}</main>

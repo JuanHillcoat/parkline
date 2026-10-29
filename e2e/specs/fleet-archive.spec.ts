@@ -180,7 +180,7 @@ test.describe("archiving as a fleet analyst", () => {
     await changeArchiveState(page, "ACME RENTAL", "archive", REASON);
     await gotoFleet(page);
     await expect(page.getByRole("button", { name: d.newEquipment.trigger })).toHaveCount(0);
-    await expect(page.getByText(copy.fleet.createFirst)).toBeVisible();
+    await expect(page.getByText(copy.fleet.guidance.text)).toBeVisible();
   });
 
   test("the edit dialog of a unit offers no archived supplier", async ({ page }) => {

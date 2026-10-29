@@ -1,6 +1,6 @@
 import { requirePermission, type ActorContext } from "../../src/identity/application/actor-context";
 import { BrandMark } from "../_components/icons";
-import { canReadCatalog, canViewFleet } from "../_lib/catalog-access";
+import { canReadCatalog, canViewFleet, canViewFleetCatalogs } from "../_lib/catalog-access";
 import { copy } from "../_lib/copy";
 import { ROLE_LABELS } from "../_lib/messages";
 import { initialsOf, navigationFor, type NavSection } from "../_lib/navigation";
@@ -41,6 +41,7 @@ function Account({ actor }: { actor: ActorContext }) {
 export function SidebarContent({ actor }: { actor: ActorContext }) {
   const sections = navigationFor({
     fleet: canViewFleet(actor),
+    fleetCatalogs: canViewFleetCatalogs(actor),
     users: requirePermission(actor, "user.read").ok,
     organization: canReadCatalog(actor),
   });

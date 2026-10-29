@@ -104,7 +104,7 @@ test.describe("fleet analyst on a phone", () => {
     test("@mobile shows the entries the analyst may open", async ({ page }) => {
       await page.goto("/");
       await openDrawer(page);
-      await expect(drawerLinks(page)).toHaveText([copy.nav.home, copy.nav.fleet, copy.nav.organization]);
+      await expect(drawerLinks(page)).toHaveText([copy.nav.home, copy.nav.fleet, copy.nav.suppliers, copy.nav.assetTypes, copy.nav.organization]);
     });
 
     test("@mobile closes with the close button and returns focus to the menu button", async ({ page }) => {
@@ -263,7 +263,7 @@ test.describe("administrator on a phone", () => {
   test("@mobile the drawer lists every entry", async ({ page }) => {
     await page.goto("/");
     await openDrawer(page);
-    await expect(drawerLinks(page)).toHaveText([copy.nav.home, copy.nav.fleet, copy.nav.users, copy.nav.organization]);
+    await expect(drawerLinks(page)).toHaveText([copy.nav.home, copy.nav.fleet, copy.nav.suppliers, copy.nav.assetTypes, copy.nav.users, copy.nav.organization]);
   });
 });
 
@@ -285,7 +285,7 @@ test.describe("scoped roles on a phone", () => {
     test("@mobile the drawer has no users entry and cards have no action buttons", async ({ page }) => {
       await page.goto("/");
       await openDrawer(page);
-      await expect(drawerLinks(page)).toHaveText([copy.nav.home, copy.nav.fleet, copy.nav.organization]);
+      await expect(drawerLinks(page)).toHaveText([copy.nav.home, copy.nav.fleet, copy.nav.suppliers, copy.nav.assetTypes, copy.nav.organization]);
       await page.goto("/fleet?tab=suppliers");
       const row = page.locator("tbody tr").first();
       await expect(row).toBeVisible();

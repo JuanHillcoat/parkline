@@ -200,6 +200,18 @@ export const assetTypeOptions = (types: readonly AssetType[]): AssetTypeOption[]
 export const canCreateEquipment = (suppliers: readonly Option[], types: readonly Option[]): boolean =>
   suppliers.length > 0 && types.length > 0;
 
+export type Prerequisite = { readonly kind: "supplier" | "assetType"; readonly done: boolean; readonly tab: FleetTab };
+
+/** The two things a new equipment needs, in the order a person creates them, each with the tab that creates it. */
+export const equipmentPrerequisites = (suppliers: readonly Option[], types: readonly Option[]): readonly Prerequisite[] => [
+  { kind: "supplier", done: suppliers.length > 0, tab: "suppliers" },
+  { kind: "assetType", done: types.length > 0, tab: "asset-types" },
+];
+
+/** What is still missing before an equipment can be registered (empty when it can). */
+export const missingPrerequisites = (suppliers: readonly Option[], types: readonly Option[]): readonly Prerequisite[] =>
+  equipmentPrerequisites(suppliers, types).filter((item) => !item.done);
+
 /** The link of the toggle: it leads to the other view. */
 export const fleetToggleHref = (showingArchived: boolean): string => (showingArchived ? "/fleet" : "/fleet?archived=1");
 

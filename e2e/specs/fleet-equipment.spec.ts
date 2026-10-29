@@ -47,7 +47,7 @@ test.describe("creating equipment", () => {
   test("offers no new equipment button until a supplier and an asset type exist", async ({ page }) => {
     await gotoFleet(page, "equipment");
     await expect(page.getByText(copy.fleet.emptyEquipment)).toBeVisible();
-    await expect(page.getByText(copy.fleet.createFirst)).toBeVisible();
+    await expect(page.getByText(copy.fleet.guidance.text)).toBeVisible();
     await expect(page.getByRole("button", { name: d.newEquipment.trigger })).toHaveCount(0);
     const seeder = await openSeeder();
     await seeder.supplier("Only supplier");

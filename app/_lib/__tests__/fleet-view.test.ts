@@ -8,6 +8,8 @@ import {
   buildSupplierRows,
   equipmentImageUrl,
   canCreateEquipment,
+  equipmentPrerequisites,
+  missingPrerequisites,
   countActiveEquipment,
   equipmentFormValues,
   filterEquipment,
@@ -247,6 +249,32 @@ describe("select options", () => {
     expect(canCreateEquipment(supplierOptions(suppliers), assetTypeOptions(types))).toBe(true);
     expect(canCreateEquipment([], assetTypeOptions(types))).toBe(false);
     expect(canCreateEquipment(supplierOptions(suppliers), [])).toBe(false);
+  });
+});
+
+describe("equipment prerequisites", () => {
+  const supplier = supplierOptions(suppliers);
+  const type = assetTypeOptions(types);
+  const kinds = (items: readonly { kind: string }[]) => items.map((item) => item.kind);
+
+  it("lists both prerequisites, supplier first, each with the tab that creates it", () => {
+    expect(equipmentPrerequisites([], [])).toEqual([
+      { kind: "supplier", done: false, tab: "suppliers" },
+      { kind: "assetType", done: false, tab: "asset-types" },
+    ]);
+  });
+
+  it("misses both with neither, one with only the other, and none with both", () => {
+    expect(kinds(missingPrerequisites([], []))).toEqual(["supplier", "assetType"]);
+    expect(kinds(missingPrerequisites(supplier, []))).toEqual(["assetType"]);
+    expect(kinds(missingPrerequisites([], type))).toEqual(["supplier"]);
+    expect(missingPrerequisites(supplier, type)).toEqual([]);
+  });
+
+  it("agrees with canCreateEquipment", () => {
+    for (const [s, t] of [[[], []], [supplier, []], [[], type], [supplier, type]] as const) {
+      expect(missingPrerequisites(s, t).length === 0).toBe(canCreateEquipment(s, t));
+    }
   });
 });
 

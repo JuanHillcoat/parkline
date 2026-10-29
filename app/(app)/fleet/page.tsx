@@ -30,6 +30,7 @@ import {
 import { wantsArchived } from "../../_lib/organization-view";
 import { dayOf } from "../../../src/fleet/domain/day";
 import { requireActor } from "../../_lib/session";
+import { EquipmentGuidance } from "./equipment-guidance";
 import { NewEquipmentDialog } from "./equipment-dialogs";
 import { NewAssetTypeDialog, NewSupplierDialog } from "./fleet-dialogs";
 import { EquipmentToolbar, FleetTabs, Pagination } from "./fleet-toolbar";
@@ -50,8 +51,9 @@ function Restricted() {
   );
 }
 
-function Empty({ text }: { text: string }) {
-  return <div className="empty-state" role="status"><p>{text}</p></div>;
+/** `action` is the creation button for a writer: the empty list is where they look for it. */
+function Empty({ text, action }: { text: string; action?: ReactNode }) {
+  return <div className="empty-state" role="status"><p>{text}</p>{action}</div>;
 }
 
 type Listed<T> = Promise<Result<readonly T[], unknown>>;
@@ -97,8 +99,8 @@ function Actions({ data, tab }: { data: Data; tab: FleetTab }) {
   const options = { suppliers: supplierOptions(data.suppliers), assetTypes: assetTypeOptions(data.assetTypes) };
   return (
     <span className="head-actions">
-      {tab === "suppliers" && <NewSupplierDialog />}
-      {tab === "asset-types" && <NewAssetTypeDialog />}
+      {tab === "suppliers" && data.suppliers.length > 0 && <NewSupplierDialog />}
+      {tab === "asset-types" && data.assetTypes.length > 0 && <NewAssetTypeDialog />}
       {tab === "equipment" && canCreateEquipment(options.suppliers, options.assetTypes) && <NewEquipmentDialog options={options} operations={operationOptions(data.operations)} sites={siteOptions(data.sites)} today={dayOf(new Date())} />}
     </span>
   );
@@ -115,7 +117,6 @@ function ArchivedToggle({ query, showing }: { query: FleetQuery; showing: boolea
 type HeaderProps = Access & { data: Data; tab: FleetTab };
 
 function Header({ data, canWrite, tab }: HeaderProps) {
-  const needsFirstSteps = canWrite && !canCreateEquipment(supplierOptions(data.suppliers), assetTypeOptions(data.assetTypes));
   return (
     <>
       <header className="page-head">
@@ -125,7 +126,6 @@ function Header({ data, canWrite, tab }: HeaderProps) {
         </div>
         {canWrite && <Actions data={data} tab={tab} />}
       </header>
-      {needsFirstSteps && <p className="hint">{t.createFirst}</p>}
     </>
   );
 }
@@ -141,7 +141,7 @@ function SuppliersPanel({ data, query, ...access }: PanelProps) {
   return (
     <Panel>
       {access.canArchive && <ArchivedToggle query={query} showing={query.archived === true} />}
-      {rows.length === 0 ? <Empty text={t.emptySuppliers} /> : <SuppliersTable rows={rows} {...access} />}
+      {rows.length === 0 ? <Empty text={t.emptySuppliers} action={access.canWrite ? <NewSupplierDialog /> : undefined} /> : <SuppliersTable rows={rows} {...access} />}
     </Panel>
   );
 }
@@ -151,7 +151,7 @@ function AssetTypesPanel({ data, query, ...access }: PanelProps) {
   return (
     <Panel>
       {access.canArchive && <ArchivedToggle query={query} showing={query.archived === true} />}
-      {rows.length === 0 ? <Empty text={t.emptyAssetTypes} /> : <AssetTypesTable rows={rows} {...access} />}
+      {rows.length === 0 ? <Empty text={t.emptyAssetTypes} action={access.canWrite ? <NewAssetTypeDialog /> : undefined} /> : <AssetTypesTable rows={rows} {...access} />}
     </Panel>
   );
 }
@@ -165,20 +165,30 @@ function filterOptions(data: Data) {
   };
 }
 
+function EquipmentGuide({ data, canWrite }: { data: Data; canWrite: boolean }) {
+  const suppliers = supplierOptions(data.suppliers);
+  const assetTypes = assetTypeOptions(data.assetTypes);
+  if (!canWrite || canCreateEquipment(suppliers, assetTypes)) return null;
+  return <EquipmentGuidance suppliers={suppliers} assetTypes={assetTypes} />;
+}
+
 function EquipmentPanel({ data, query, params, ...access }: PanelProps & { params: Params }) {
   const options = { suppliers: supplierOptions(data.suppliers), assetTypes: assetTypeOptions(data.assetTypes) };
   const all = buildEquipmentRows(data.equipment, data);
   const filters = filtersOf(data, params);
   const page = paginate(filterEquipment(all, filters), parsePage(params.page));
   return (
-    <Panel>
-      <EquipmentToolbar filters={filters} archived={query.archived === true} {...filterOptions(data)} />
-      {access.canArchive && <ArchivedToggle query={query} showing={query.archived === true} />}
-      {all.length === 0 && <Empty text={data.wide ? t.emptyEquipment : t.emptyScoped} />}
-      {all.length > 0 && page.total === 0 && <Empty text={t.noResults} />}
-      {page.total > 0 && <EquipmentTable rows={page.items} options={options} {...access} />}
-      {page.total > 0 && <Pagination page={page} query={{ ...query, page: page.page }} />}
-    </Panel>
+    <>
+      <EquipmentGuide data={data} canWrite={access.canWrite} />
+      <Panel>
+        <EquipmentToolbar filters={filters} archived={query.archived === true} {...filterOptions(data)} />
+        {access.canArchive && <ArchivedToggle query={query} showing={query.archived === true} />}
+        {all.length === 0 && <Empty text={data.wide ? t.emptyEquipment : t.emptyScoped} />}
+        {all.length > 0 && page.total === 0 && <Empty text={t.noResults} />}
+        {page.total > 0 && <EquipmentTable rows={page.items} options={options} {...access} />}
+        {page.total > 0 && <Pagination page={page} query={{ ...query, page: page.page }} />}
+      </Panel>
+    </>
   );
 }
 
