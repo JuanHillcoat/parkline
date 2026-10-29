@@ -62,7 +62,7 @@ pnpm install:admin                    # prompts for tenant name, email, display 
 pnpm dev                              # http://localhost:3000, sign in at /login
 ```
 
-To skip the sign-in while developing, put the email and password of a local user in the git-ignored `.env.local` as `DEV_AUTO_LOGIN_EMAIL` and `DEV_AUTO_LOGIN_PASSWORD`: under `pnpm dev` a visit without a session goes to `/dev-login`, which signs in with them through the real sign-in (same throttling and audit) and opens the home page. Anywhere that is not `next dev` the variables are ignored and `/dev-login` answers an empty 404.
+To skip the sign-in while developing, put the email and password of a local user in the git-ignored `.env.local` as `DEV_AUTO_LOGIN_EMAIL` and `DEV_AUTO_LOGIN_PASSWORD`: under `pnpm dev` a visit without a session goes to `/dev-login`, which signs in with them through the real sign-in (same throttling and audit) and opens the home page. Anywhere that is not `next dev` the variables are ignored and `/dev-login` answers an empty 404. The shortcut answers only requests addressed to `localhost`, `127.0.0.1` or `[::1]`: `next dev` listens on every interface, so from another machine (`http://<your-ip>:3000`) it answers an empty 404 and anonymous visits go to `/login`.
 
 `install:admin` also accepts `--tenant-name`, `--email` and `--display-name`; the password comes from the hidden prompt or from the `INSTALL_ADMIN_PASSWORD` environment variable, never from a flag. It is rejected when a tenant already exists. On a terminal it shows what it will create and asks you to type `yes`; `--yes` skips that step. Further users are created from the Users page (`/users`) by an administrator, with a role and a scope (the whole company, one division or one operation; `admin` is always company-wide); role changes and deactivation require a reason.
 
@@ -78,7 +78,7 @@ Sign-in uses a session cookie (`HttpOnly`, `SameSite=Lax`, `Secure` in productio
 | `APP_DB_USER`           | Optional, default `parkline_login`. Login role created by `db:create-app-login`              |
 | `APP_DB_PASSWORD`       | Required by `db:create-app-login` only (at least 12 characters). Environment only, never a flag |
 | `INSTALL_ADMIN_PASSWORD`| Optional. Password for `install:admin` when there is no terminal. Never a command-line flag  |
-| `DEV_AUTO_LOGIN_EMAIL`, `DEV_AUTO_LOGIN_PASSWORD` | Optional, local development only. Credentials of a local user that `pnpm dev` signs in with by itself; ignored unless `NODE_ENV` is `development`. Keep them in `.env.local` |
+| `DEV_AUTO_LOGIN_EMAIL`, `DEV_AUTO_LOGIN_PASSWORD` | Optional, local development only. Credentials of a local user that `pnpm dev` signs in with by itself; ignored unless `NODE_ENV` is `development`, and answered only on `localhost`, `127.0.0.1` or `[::1]`. Keep them in `.env.local` |
 | `TRUST_FORWARDED_HOST`  | Optional, default `false`. Set to `true` only behind a proxy that overwrites `X-Forwarded-Host`; it affects the CSRF origin check and also enables the per-address sign-in limit, which reads the first `X-Forwarded-For` value (the proxy must overwrite both headers) |
 
 See `.env.example`. Never commit a real `.env`.

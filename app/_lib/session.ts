@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import type { ActorContext } from "../../src/identity/application/actor-context";
 import { getContainer } from "../../src/shared/infrastructure/container";
 import { clientAddress } from "./client-address";
-import { devAutoLoginCredentials } from "./dev-auto-login";
+import { signInPath } from "./dev-auto-login";
 import { isSameOrigin, requestHost } from "./origin";
 import { SESSION_COOKIE } from "./session-cookie";
 
@@ -20,22 +20,29 @@ export const currentActor = cache(async (): Promise<ActorContext | null> => {
   return result.ok ? result.value : null;
 });
 
-/** The authenticated actor, or a redirect to the login page (to the development sign-in under `next dev` with credentials). */
-export const requireActor = async (): Promise<ActorContext> => {
-  const actor = await currentActor();
-  if (actor === null) redirect(devAutoLoginCredentials(process.env) === null ? "/login" : "/dev-login");
-  return actor;
-};
-
 /** The same proxy declaration drives the Origin check and the per-address sign-in limit. */
 const proxyTrusted = (): boolean => process.env.TRUST_FORWARDED_HOST === "true";
 
+/** The host the current request was addressed to, honoring the proxy declaration. */
+export const currentRequestHost = async (): Promise<string | null> => {
+  const incoming = await headers();
+  return requestHost(incoming.get("x-forwarded-host"), incoming.get("host"), proxyTrusted());
+};
+
+/**
+ * The authenticated actor, or a redirect to the login page (to the development sign-in under `next dev` with
+ * credentials, only for a request addressed to a loopback host).
+ */
+export const requireActor = async (): Promise<ActorContext> => {
+  const actor = await currentActor();
+  if (actor === null) redirect(signInPath(process.env, await currentRequestHost()));
+  return actor;
+};
+
 /** CSRF check (decision D7) for server actions: the Origin header must match the Host. */
 export const originAllowed = async (): Promise<boolean> => {
-  const incoming = await headers();
-  const trustProxy = proxyTrusted();
-  const host = requestHost(incoming.get("x-forwarded-host"), incoming.get("host"), trustProxy);
-  return isSameOrigin(incoming.get("origin"), host);
+  const host = await currentRequestHost();
+  return isSameOrigin((await headers()).get("origin"), host);
 };
 
 /** The client address for sign-in throttling, or null when no trusted proxy vouches for it. */
