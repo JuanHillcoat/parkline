@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file. The format foll
 
 ## [Unreleased]
 
+### Changed
+
+- CI: the GitHub Actions move to their Node 24 releases (`actions/checkout@v7`, `actions/setup-node@v7`, `pnpm/action-setup@v6`, `actions/upload-artifact@v7`) because GitHub deprecated the Node 20 runtime of the `@v4` ones; the inputs in use are unchanged and the jobs keep `ubuntu-latest`, which follows GitHub's own image updates.
+
 ### Added
 
 - Compact equipment registration and spares that belong to a site (issue 54, ADR-0013): the Nuevo equipo dialog fits one screen with the fields in a new order, asks for the battery type (litio, plomo ácido or combustión; the quantity only for lead acid) and for the Horómetro or Kilometraje, offers every operation plus Muleto (which asks for the Site) with "Fecha de ingreso" shared by the assignment and the reading, and the image as the last field, and uses Observaciones as the reason; "Tipo de activo" is now "Tipo de equipo". A muleto is assigned to a site, not to an operation; a site with open muletos cannot be archived; the replacement that leaves a muleto puts it at the site. Migration `0013`.
