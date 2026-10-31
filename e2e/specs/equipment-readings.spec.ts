@@ -1,16 +1,16 @@
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, test, type Locator } from "@playwright/test";
 import { copy } from "../../app/_lib/copy";
 import { resetCatalogs } from "../support/data";
+import { maintenanceCard, recordButton, rowValueOf } from "../support/detail-page";
 import { openDialogOf } from "../support/fleet-flows";
 import { boxOf, expectNoHorizontalScroll, VIEWPORT_HEIGHT, VIEWPORT_WIDTH } from "../support/mobile-flows";
 import {
   actionButtons, alertOf, correctReading, ddmmyyyy, dayOffset, expectLoaded, gotoReadings, historyRows, hoursOf, loadReading, messages,
-  meteringAudit, openCorrect, openRecord, panelOf, r, rd, replaceMeter, rowWithBadge, rowWithValue, seedReading, seedReadingsBase, seedUnit,
+  meteringAudit, openCorrect, openRecord, panelOf, r, rd, replaceMeter, ringValue, rowWithBadge, rowWithValue, seedReading, seedReadingsBase, seedUnit,
   storedMeters, storedReadings, toolbar, today, type Base,
 } from "../support/readings-flows";
 import { storageStatePath } from "../support/world";
 
-const info = copy.fleet.detail.info;
 const NAME = "Admin E2E";
 const ANALYST_NAME = "Analyst E2E";
 
@@ -21,10 +21,6 @@ const fresh = async (): Promise<void> => {
   base = await seedReadingsBase();
 };
 
-/** The value shown beside a label of the information card. */
-const infoValue = (page: Page, label: string): Locator =>
-  page.getByRole("region", { name: info.title }).locator("div.detail-row").filter({ has: page.getByText(label, { exact: true }) }).locator("dd");
-
 const expectNothingNew = async (id: string, count: number): Promise<void> => {
   expect(await storedReadings(id)).toHaveLength(count);
 };
@@ -34,7 +30,7 @@ for (const role of ["admin", "fleet_analyst"] as const) {
     test.use({ storageState: storageStatePath(role) });
     test.beforeEach(fresh);
 
-    test("the first reading opens the meter and shows in the history and in the information card", async ({ page }) => {
+    test("the first reading opens the meter and shows in the history and in the maintenance card", async ({ page }) => {
       const id = await seedUnit(base, { code: "RDG-FIRST" });
       await gotoReadings(page, id, "RDG-FIRST");
       await expect(panelOf(page).getByText(r.empty)).toBeVisible();
@@ -55,7 +51,8 @@ for (const role of ["admin", "fleet_analyst"] as const) {
       expect((await storedReadings(id)).map((x) => [x.kind, x.value_tenths])).toEqual([["reading", 1000]]);
       expect((await meteringAudit(id)).map((x) => x.action)).toEqual(["metering.reading.create"]);
       await page.goto(`/fleet/equipment/${id}`);
-      await expect(infoValue(page, info.lastReading)).toHaveText(`100,0 h (${ddmmyyyy(today())})`);
+      await expect(ringValue(page)).toHaveText("0 hs");
+      await expect(rowValueOf(maintenanceCard(page), copy.fleet.detail.maintenance.next)).toHaveText("350 hs");
     });
 
     test("several readings accumulate, newest first, and a comma is accepted as the decimal mark", async ({ page }) => {
@@ -177,7 +174,8 @@ for (const role of ["admin", "fleet_analyst"] as const) {
       const audit = await meteringAudit(id);
       expect(audit.at(-1)).toMatchObject({ action: "metering.reading.correct", reason: "Error de tipeo" });
       await page.goto(`/fleet/equipment/${id}`);
-      await expect(infoValue(page, info.lastReading)).toHaveText(`190,5 h (${ddmmyyyy(dayOffset(-1))})`);
+      await expect(ringValue(page)).toHaveText("90,5 hs");
+      await expect(rowValueOf(maintenanceCard(page), copy.fleet.detail.maintenance.remaining.hours)).toHaveText("159,5 hs");
     });
 
     test("a value that does not fit between the neighbors is refused and stores nothing", async ({ page }) => {
@@ -241,7 +239,8 @@ test.describe("what the tab shows for each kind of equipment", () => {
     await expect(page.getByRole("table", { name: r.caption })).toHaveCount(0);
     await expect(hoursOf(page)).toHaveCount(0);
     await page.goto(`/fleet/equipment/${id}`);
-    await expect(page.getByText(info.lastReading, { exact: true })).toHaveCount(0);
+    await expect(maintenanceCard(page).getByText(copy.fleet.detail.maintenance.noMeter)).toBeVisible();
+    await expect(maintenanceCard(page).locator(".ring")).toHaveCount(0);
   });
 
   test("an archived equipment keeps its history and offers no action", async ({ page }) => {
@@ -344,10 +343,10 @@ for (const role of ["supervisor", "manager", "viewer"] as const) {
       await expect(historyRows(page).first()).not.toContainText(NAME);
     });
 
-    test("sees the last reading in the information card", async ({ page }) => {
-      const id = await seedUnit(base, { code: "RDG-RO-INFO", readings: [[-1, 160]] });
+    test("sees the accumulated hours in the maintenance card", async ({ page }) => {
+      const id = await seedUnit(base, { code: "RDG-RO-INFO", readings: [[-3, 100], [-1, 160]] });
       await page.goto(`/fleet/equipment/${id}`);
-      await expect(infoValue(page, info.lastReading)).toHaveText(`160,0 h (${ddmmyyyy(dayOffset(-1))})`);
+      await expect(ringValue(page)).toHaveText("60 hs");
     });
   });
 }
@@ -393,7 +392,7 @@ test.describe("readings on a phone", () => {
     await expect(historyRows(page)).toHaveCount(2);
     await expect(historyRows(page).first().locator("td[data-label]").first()).toBeVisible();
     await expectNoHorizontalScroll(page);
-    await expect(toolbar(page).getByRole("button", { name: rd.recordReading.trigger })).toBeVisible();
+    await expect(recordButton(page)).toBeVisible();
   });
 
   test("@mobile the dialogs fit the viewport and reach their submit button", async ({ page }) => {

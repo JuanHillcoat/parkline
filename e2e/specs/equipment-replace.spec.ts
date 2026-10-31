@@ -59,7 +59,6 @@ test.describe("replacing an equipment as a fleet analyst", () => {
 
     // The page of the outgoing equipment refreshed: Muleto from the replacement day.
     await expect(pillOf(page)).toHaveText(copy.fleet.state.spare);
-    await expect(valueOf(locationCard(page), t.location.kind)).toHaveText(t.kinds.spare);
     await expect(valueOf(locationCard(page), t.location.site)).toHaveText(WORLD_ORG.site);
     await expect(locationCard(page).getByText(t.location.operation, { exact: true })).toHaveCount(0);
     await expect(valueOf(locationCard(page), t.location.since)).toHaveText(SHOWN.replace);

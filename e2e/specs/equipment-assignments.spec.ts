@@ -73,7 +73,6 @@ test.describe("assign an equipment from the detail page", () => {
     await expect(pillOf(page)).toHaveText(copy.fleet.state.active);
     await expect(valueOf(locationCard(page), t.location.operation)).toHaveText(OP_A);
     await expect(valueOf(locationCard(page), t.location.site)).toHaveText(WORLD_ORG.site);
-    await expect(valueOf(locationCard(page), t.location.kind)).toHaveText(t.kinds.active);
     await expect(valueOf(locationCard(page), t.location.since)).toHaveText(ddmmyyyy(today()));
     await expect(buttonNamed(page, d.assignEquipment.trigger)).toHaveCount(0);
     for (const name of [d.moveEquipment.trigger, d.replaceEquipment.trigger, d.endAssignment.trigger]) {
@@ -111,7 +110,6 @@ test.describe("assign an equipment from the detail page", () => {
     await submitAssign(page, { site: WORLD_ORG.site });
     await expectDialogClosed(page);
     await expect(pillOf(page)).toHaveText(copy.fleet.state.spare);
-    await expect(valueOf(locationCard(page), t.location.kind)).toHaveText(t.kinds.spare);
     await expect(valueOf(locationCard(page), t.location.site)).toHaveText(WORLD_ORG.site);
     await expect(locationCard(page).getByText(t.location.operation, { exact: true })).toHaveCount(0);
     expect((await storedAssignments(id)).map((row) => [row.kind, row.operation_id, row.site_id])).toEqual([["spare", null, siteId()]]);

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { EquipmentReadings, ReadingRow } from "../../../src/metering/application/use-cases/list-equipment-readings";
-import { buildInfoRows, parseDetailTab } from "../equipment-detail-view";
-import { buildReadingsView, editableValue, formatReading, lastReadingRow, readingActions, whoLabel, type WhoNames } from "../readings-view";
+import { parseDetailTab } from "../equipment-detail-view";
+import { buildReadingsView, editableValue, formatReading, readingActions, whoLabel, type WhoNames } from "../readings-view";
 
 const who: WhoNames = { selfId: "u1", selfName: "Ana", names: new Map([["u2", "Luis"]]) };
 
@@ -97,27 +97,9 @@ describe("buildReadingsView", () => {
   });
 });
 
-describe("lastReadingRow", () => {
-  it("shows the last effective reading with its day", () => {
-    const last = { id: "r", meterId: "m", readOn: "2026-03-02", value: 88 };
-    expect(lastReadingRow(readings({ lastReading: last }))).toEqual({ label: "Última lectura", value: "88,0 h (02/03/2026)" });
-  });
-
-  it("shows a dash without readings and nothing without a meter or without data", () => {
-    expect(lastReadingRow(readings())?.value).toBe("—");
-    expect(lastReadingRow(readings({ meterKind: "none" }))).toBeNull();
-    expect(lastReadingRow(null)).toBeNull();
-  });
-});
-
-describe("the detail page's tab and information rows", () => {
-  it("accepts the readings tab", () => {
+describe("the detail page's tab", () => {
+  it("accepts the readings tab and falls back to the history", () => {
     expect(parseDetailTab("readings")).toBe("readings");
-    expect(parseDetailTab("other")).toBe("info");
-  });
-
-  it("appends the extra rows last", () => {
-    const rows = buildInfoRows({ internalCode: "A", assetType: { name: "T" }, supplier: { name: "S" } } as never, [{ label: "X", value: "1" }]);
-    expect(rows.at(-1)).toEqual({ label: "X", value: "1" });
+    expect(parseDetailTab("other")).toBe("history");
   });
 });

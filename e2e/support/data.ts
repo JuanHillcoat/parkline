@@ -68,6 +68,7 @@ export type EquipmentSeed = {
   readonly brand?: string;
   readonly model?: string;
   readonly year?: number;
+  readonly observations?: string;
 };
 
 /**
@@ -169,7 +170,7 @@ function fleetSeeds(c: Container, actor: Actor) {
           serialNumber: null,
           batteryKind: "combustion",
           batteryQuantity: null,
-          observations: null,
+          observations: input.observations ?? null,
         }),
       ).id,
     equipmentImage: async (equipmentId: string, bytes: Uint8Array) => {

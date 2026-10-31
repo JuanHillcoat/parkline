@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { copy } from "../../app/_lib/copy";
 import { openSeeder, resetCatalogs } from "../support/data";
+import { buttonsOf, buttonNamed, infoCard, locationCard, maintenanceCard, menuOf, moreToggle, recordButton, titleOf } from "../support/detail-page";
 import { gotoFleet, openDialog, openDialogOf, rowOf } from "../support/fleet-flows";
 import { boxOf, expectNoHorizontalScroll, MIN_TAP_TARGET } from "../support/mobile-flows";
 import { readWorld, storageStatePath, WORLD_ORG } from "../support/world";
@@ -57,11 +58,9 @@ const detailPath = (id: string, tab = ""): string => `/fleet/equipment/${id}${ta
 
 async function gotoDetail(page: Page, id: string, code: string, tab = ""): Promise<void> {
   await page.goto(detailPath(id, tab));
-  await expect(page.getByRole("heading", { level: 1, name: t.title(code) })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: titleOf(code) })).toBeVisible();
 }
 
-const buttonsOf = (page: Page): Locator => page.getByRole("group", { name: t.actionsLabel });
-const buttonNamed = (page: Page, name: string): Locator => buttonsOf(page).getByRole("button", { name, exact: true });
 const pillOf = (page: Page): Locator => page.locator(".title-row .badge");
 const historyTable = (page: Page): Locator => page.getByRole("table", { name: t.history.caption });
 const historyRows = (page: Page): Locator => historyTable(page).locator("tbody tr");
@@ -69,9 +68,6 @@ const historyRows = (page: Page): Locator => historyTable(page).locator("tbody t
 /** The value shown beside a label of a card (definition list). */
 const valueOf = (card: Locator, label: string): Locator =>
   card.locator("div.detail-row").filter({ has: card.page().getByText(label, { exact: true }) }).locator("dd");
-
-const infoCard = (page: Page): Locator => page.getByRole("region", { name: t.info.title });
-const locationCard = (page: Page): Locator => page.getByRole("region", { name: t.location.title });
 
 const BUTTONS = {
   assign: d.assignEquipment.trigger,
@@ -101,10 +97,9 @@ test.describe("equipment detail as a fleet analyst", () => {
     await gotoFleet(page);
     await rowOf(page, "DET-ACTIVE").getByRole("link", { name: "DET-ACTIVE", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`${detailPath(ids.active)}$`, "u"));
-    await expect(page.getByRole("heading", { level: 1, name: t.title("DET-ACTIVE") })).toBeVisible();
-    await expect(page.locator(".page-sub")).toHaveText("FORKLIFT");
+    await expect(page.getByRole("heading", { level: 1, name: t.title("DET-ACTIVE", "FORKLIFT"), exact: true })).toBeVisible();
     await expect(pillOf(page)).toHaveText(copy.fleet.state.active);
-    await expect(page.locator(".topbar-title")).toHaveText(copy.nav.fleet);
+    await expect(page.locator(".topbar").getByRole("link", { name: t.back })).toBeVisible();
   });
 
   test("goes back to the board with Volver al listado", async ({ page }) => {
@@ -115,38 +110,37 @@ test.describe("equipment detail as a fleet analyst", () => {
     await expect(page.getByRole("heading", { level: 1, name: copy.fleet.title })).toBeVisible();
   });
 
-  test("the general information card shows every field, with dashes for the blanks and a photo placeholder", async ({ page }) => {
+  test("the general information card shows every field with the supplier, no serial number and a photo placeholder", async ({ page }) => {
     const ids = await seedDetail();
     await gotoDetail(page, ids.active, "DET-ACTIVE");
     const card = infoCard(page);
     const expected: readonly (readonly [string, string])[] = [
       [t.info.internalCode, "DET-ACTIVE"],
       [t.info.assetType, "FORKLIFT"],
-      [t.info.supplier, "NORTE RENTAL"],
-      [t.info.brand, "BRAND X"],
-      [t.info.model, "M-1"],
+      [t.info.brandModel, "BRAND X M-1"],
       [t.info.year, "2020"],
-      [t.info.serialNumber, NO_VALUE],
+      [t.info.supplier, "NORTE RENTAL"],
       [t.info.batteryKind, copy.fleet.batteryKind.combustion],
-      [t.info.observations, NO_VALUE],
     ];
     for (const [label, value] of expected) await expect(valueOf(card, label), label).toHaveText(value);
     await expect(card.getByText(t.info.batteries, { exact: true }), "no quantity for a combustion equipment").toHaveCount(0);
     await expect(card.getByRole("img", { name: t.info.photoLabel })).toBeVisible();
-    await expect(page.getByRole("region", { name: t.moreTitle })).toBeVisible();
+    await expect(maintenanceCard(page)).toBeVisible();
+    await expect(page.getByRole("region", { name: t.usage.title })).toBeVisible();
+    await expect(page.getByRole("region", { name: t.observations.title })).toBeVisible();
   });
 
-  test("the current location card names the operation, site, division, kind and the start day", async ({ page }) => {
+  test("the current location card names the operation, site, division and the start day, and no supplier or kind", async ({ page }) => {
     const ids = await seedDetail();
     await gotoDetail(page, ids.active, "DET-ACTIVE");
     const card = locationCard(page);
     await expect(valueOf(card, t.location.operation)).toHaveText(WORLD_ORG.operation);
     await expect(valueOf(card, t.location.site)).toHaveText(WORLD_ORG.site);
     await expect(valueOf(card, t.location.division)).toHaveText(WORLD_ORG.division);
-    await expect(valueOf(card, t.location.kind)).toHaveText(t.kinds.active);
     await expect(valueOf(card, t.location.since)).toHaveText("05/01/2026");
+    await expect(card.locator("dt")).toHaveText([t.location.operation, t.location.site, t.location.division, t.location.since]);
+    await expect(pillOf(page)).toHaveText(copy.fleet.state.active);
     await gotoDetail(page, ids.hist, "DET-HIST");
-    await expect(valueOf(locationCard(page), t.location.kind)).toHaveText(t.kinds.spare);
     await expect(pillOf(page)).toHaveText(copy.fleet.state.spare);
   });
 
@@ -167,9 +161,13 @@ test.describe("equipment detail as a fleet analyst", () => {
     await expect(locationCard(page).getByText(t.location.noneHintArchived)).toBeVisible();
   });
 
-  test("the Historial tab lists every assignment newest first, with Vigente for the open one", async ({ page }) => {
+  test("the Historial tab is the default and lists every assignment newest first, with Vigente for the open one", async ({ page }) => {
     const ids = await seedDetail();
     await gotoDetail(page, ids.hist, "DET-HIST");
+    await expect(page.getByRole("link", { name: t.tabs.history })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("navigation", { name: t.tabsLabel }).getByRole("link")).toHaveText([t.tabs.history, t.tabs.readings]);
+    await page.getByRole("link", { name: t.tabs.readings }).click();
+    await expect(page).toHaveURL(/tab=readings/u);
     await page.getByRole("link", { name: t.tabs.history }).click();
     await expect(page).toHaveURL(/tab=history/u);
     await expect(historyRows(page)).toHaveCount(3);
@@ -200,11 +198,14 @@ test.describe("equipment detail as a fleet analyst", () => {
     await expect(historyTable(page)).toHaveCount(0);
   });
 
-  test("an unknown tab falls back to the information tab", async ({ page }) => {
+  test("an unknown tab and the retired info tab fall back to the Historial tab", async ({ page }) => {
     const ids = await seedDetail();
-    await gotoDetail(page, ids.active, "DET-ACTIVE", "bogus");
-    await expect(infoCard(page)).toBeVisible();
-    await expect(page.getByRole("link", { name: t.tabs.info })).toHaveAttribute("aria-current", "page");
+    for (const tab of ["bogus", "info"]) {
+      await gotoDetail(page, ids.active, "DET-ACTIVE", tab);
+      await expect(infoCard(page)).toBeVisible();
+      await expect(page.getByRole("link", { name: t.tabs.history })).toHaveAttribute("aria-current", "page");
+      await expect(historyTable(page)).toBeVisible();
+    }
   });
 
   test("an unassigned equipment offers Asignar, Editar and Dar de baja", async ({ page }) => {
@@ -342,7 +343,8 @@ test.describe("equipment detail as an administrator", () => {
     const ids = await seedDetail();
     await gotoDetail(page, ids.gone, "DET-GONE");
     await expectButtons(page, []);
-    await expect(buttonsOf(page)).toHaveCount(0);
+    await expect(menuOf(page)).toHaveCount(0);
+    await expect(moreToggle(page)).toHaveCount(0);
   });
 });
 
@@ -354,7 +356,9 @@ for (const role of ["viewer", "manager", "supervisor"] as const) {
     test("reads the equipment of its scope without any action button or Corregir", async ({ page }) => {
       const ids = await seedDetail();
       await gotoDetail(page, ids.active, "DET-ACTIVE");
-      await expect(buttonsOf(page)).toHaveCount(0);
+      await expect(menuOf(page)).toHaveCount(0);
+      await expect(moreToggle(page)).toHaveCount(0);
+      await expect(recordButton(page)).toHaveCount(0);
       await expect(page.locator("#content").getByRole("button")).toHaveCount(0);
       await expect(valueOf(locationCard(page), t.location.operation)).toHaveText(WORLD_ORG.operation);
       await gotoDetail(page, ids.active, "DET-ACTIVE", "history");
@@ -407,11 +411,11 @@ test.describe("equipment detail on a phone", () => {
     const location = await boxOf(locationCard(page));
     expect(location.y, "the location card sits below the information card").toBeGreaterThan(info.y + info.height - 1);
     expect(Math.abs(location.x - info.x), "cards share the same left edge").toBeLessThanOrEqual(1);
-    for (const button of await buttonsOf(page).getByRole("button").all()) {
+    for (const button of [moreToggle(page), recordButton(page), locationCard(page).getByRole("button")]) {
       expect((await boxOf(button)).height).toBeGreaterThanOrEqual(MIN_TAP_TARGET);
     }
     expect((await boxOf(page.getByRole("link", { name: t.back }))).height).toBeGreaterThanOrEqual(MIN_TAP_TARGET);
-    for (const tab of [t.tabs.info, t.tabs.history]) {
+    for (const tab of [t.tabs.history, t.tabs.readings]) {
       expect((await boxOf(page.getByRole("link", { name: tab }))).height).toBeGreaterThanOrEqual(MIN_TAP_TARGET);
     }
   });

@@ -3,6 +3,7 @@
  * submit the dialogs of the Lecturas tab the way a person does, and read back what was stored. Readers connect
  * as the owner of the ephemeral database, like the seeders do.
  */
+import { titleOf } from "./detail-page";
 import { expect, type Locator, type Page } from "@playwright/test";
 import postgres from "postgres";
 import { copy } from "../../app/_lib/copy";
@@ -31,8 +32,8 @@ export async function seedReadingsBase(): Promise<Base> {
     const world = readWorld().ids;
     const supplierId = await seeder.supplier("Rdg supplier");
     const types = {
-      hours: await seeder.assetType(TYPES.hours, "hours"),
-      km: await seeder.assetType(TYPES.km, "km"),
+      hours: await seeder.assetType(TYPES.hours, "hours", 250),
+      km: await seeder.assetType(TYPES.km, "km", 1000),
       none: await seeder.assetType(TYPES.none, "none"),
     };
     const otherOperation = await seeder.operation({ division: world.division, site: world.site, name: OTHER_OPERATION, costCenter: "7501" });
@@ -80,26 +81,27 @@ export async function seedReading(equipmentId: string, offset: number, value: nu
 
 export async function gotoReadings(page: Page, id: string, code: string): Promise<void> {
   await page.goto(`/fleet/equipment/${id}?tab=readings`);
-  await expect(page.getByRole("heading", { level: 1, name: copy.fleet.detail.title(code) })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: titleOf(code) })).toBeVisible();
   await expect(page.getByRole("link", { name: copy.fleet.detail.tabs.readings })).toHaveAttribute("aria-current", "page");
 }
 
 export const panelOf = (page: Page): Locator => page.getByRole("region", { name: r.title });
 export const historyRows = (page: Page): Locator => page.getByRole("table", { name: r.caption }).locator("tbody tr");
 export const toolbar = (page: Page): Locator => page.getByRole("group", { name: r.toolbar });
+export { ringValue } from "./detail-page";
 export const hoursOf = (page: Page): Locator => page.getByTestId("hours-last-30");
 export const alertOf = (dialog: Locator): Locator => dialog.getByRole("alert");
 /** The buttons any reading action could show on the tab: none of them for a reader. */
 export const actionButtons = (page: Page): Locator =>
-  page.getByRole("button", { name: new RegExp(`^(${rd.recordReading.trigger}|${rd.correctReading.trigger}|${rd.replaceMeter.trigger})$`, "u") });
+  page.getByRole("button", { name: new RegExp(`^(${rd.recordReading.trigger}|${rd.recordReading.triggerKm}|${rd.correctReading.trigger}|${rd.replaceMeter.trigger})$`, "u") });
 
 const fieldOf = (dialog: Locator, label: string): Locator => dialog.getByLabel(label, { exact: true });
 
 export type ReadingInput = { day?: string; value?: string; reason?: string };
 
-/** Opens Cargar lectura with the browser's own checks off and fills what is given. */
+/** Opens Registrar horas (a header button) with the browser's own checks off and fills what is given. */
 export async function openRecord(page: Page, input: ReadingInput = {}): Promise<Locator> {
-  const dialog = await openDialog(page, rd.recordReading.trigger, toolbar(page));
+  const dialog = await openDialog(page, rd.recordReading.trigger, page.locator(".page-head"));
   await skipBrowserValidation(dialog);
   const t = rd.recordReading;
   if (input.day !== undefined) await fieldOf(dialog, t.dayLabel).fill(input.day);

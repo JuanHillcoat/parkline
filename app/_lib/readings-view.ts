@@ -103,11 +103,3 @@ export const buildReadingsView = (readings: EquipmentReadings, who: WhoNames): R
     rows: readings.history.map((row) => readingRow(row, unit, who)),
   };
 };
-
-/** The row of the information card: the last effective reading with its day, or a dash. Nothing without a meter. */
-export const lastReadingRow = (readings: EquipmentReadings | null): { label: string; value: string } | null => {
-  if (readings === null || readings.meterKind === "none") return null;
-  const last = readings.lastReading;
-  const value = last === null ? NONE : `${formatReading(last.value, readings.meterKind)} (${formatDay(last.readOn)})`;
-  return { label: copy.fleet.detail.info.lastReading, value };
-};

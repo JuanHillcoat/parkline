@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { copy } from "../copy";
-import { fleetTabOf, initialsOf, isActive, isCurrent, navigationFor, sectionTitle, type NavItem } from "../navigation";
+import { backLinkFor, fleetTabOf, initialsOf, isActive, isCurrent, navigationFor, sectionTitle, type NavItem } from "../navigation";
 
 const NONE = { fleet: false, fleetCatalogs: false, users: false, organization: false };
 const ALL = { fleet: true, fleetCatalogs: true, users: true, organization: true };
@@ -134,5 +134,18 @@ describe("initialsOf", () => {
     expect(initialsOf("juan carlos pérez")).toBe("JP");
     expect(initialsOf("Ana")).toBe("A");
     expect(initialsOf("  ")).toBe("?");
+  });
+});
+
+describe("backLinkFor", () => {
+  it("offers the way back to the list on an equipment detail page", () => {
+    expect(backLinkFor("/fleet/equipment/abc")).toEqual({ href: "/fleet", label: copy.fleet.detail.back });
+    expect(backLinkFor("/fleet/equipment/00000000-0000-4000-8000-000000000000")).toEqual({ href: "/fleet", label: copy.fleet.detail.back });
+  });
+
+  it("offers nothing on any other page, the list included", () => {
+    for (const pathname of ["/", "/fleet", "/fleet/equipment", "/fleet/equipment/", "/fleet/other/abc", "/users", "/organization"]) {
+      expect(backLinkFor(pathname), pathname).toBeNull();
+    }
   });
 });
