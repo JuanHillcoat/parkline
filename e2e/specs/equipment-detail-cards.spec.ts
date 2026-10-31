@@ -389,6 +389,18 @@ test.describe("equipment detail layout on a desktop", () => {
     expect(parseFloat(await radius(stateOf(page).locator(".badge")))).toBeGreaterThan(10);
   });
 
+  test("the first row of cards sits 20px from the sidebar and 20px from the right edge of the page", async ({ page }) => {
+    await page.setViewportSize({ width: WIDE, height: 900 });
+    const ids = await seedCycle();
+    await gotoDetail(page, ids.ok, "CYC-OK");
+    const sidebar = await boxOf(page.locator("#app-sidebar"));
+    const first = await boxOf(infoCard(page));
+    const third = await boxOf(maintenanceCard(page));
+    const pageRight = await page.evaluate(() => document.documentElement.clientWidth);
+    expect(Math.abs(first.x - (sidebar.x + sidebar.width) - 20), "the space between the sidebar and the first card").toBeLessThanOrEqual(1);
+    expect(Math.abs(pageRight - (third.x + third.width) - 20), "the space between the third card and the page edge").toBeLessThanOrEqual(1);
+  });
+
   test("the top bar carries the way back at the left and the account menu at the right", async ({ page }) => {
     const ids = await seedCycle();
     await gotoDetail(page, ids.ok, "CYC-OK");

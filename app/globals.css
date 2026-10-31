@@ -343,7 +343,7 @@ a.nav-item:hover {
   align-items: center;
   gap: 12px;
   min-height: 64px;
-  padding: 0 27px;
+  padding: 0 20px;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
 }
@@ -413,7 +413,7 @@ a.nav-item:hover {
 
 .content {
   min-width: 0;
-  padding: 28px 27px 48px;
+  padding: 28px 20px 48px;
 }
 
 /* Shared page building blocks */
