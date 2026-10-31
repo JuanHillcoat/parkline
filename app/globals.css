@@ -1335,6 +1335,26 @@ dialog.dialog::backdrop {
     grid-template-columns: max-content minmax(0, 0.95fr) minmax(0, 1.05fr);
     grid-template-rows: 292px;
   }
+
+  /*
+   * General information fills that fixed height like Ubicación actual: the rows spread over it, the first at the top
+   * and the last 12px above the bottom edge of the card (it reaches 9px into the 20px padding and 1px border,
+   * as the 7-row card always did), so 6 rows or 7, one line or two, the card ends in the same place.
+   */
+  .detail-grid > .detail-card:has(> .info-body) {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .info-body {
+    flex: 1;
+    margin-bottom: -9px;
+  }
+
+  .detail-list.info-list {
+    align-self: stretch;
+    align-content: space-between;
+  }
 }
 
 .detail-grid > .usage-card {

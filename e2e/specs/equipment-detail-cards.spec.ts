@@ -310,6 +310,57 @@ test.describe("equipment detail layout on a desktop", () => {
     }
   });
 
+  test("general information spreads its rows over the fixed card height whatever the number of rows or lines", async ({ page }) => {
+    const seeder = await openSeeder();
+    const units = {
+      "FIX-SHORT": { brand: "TOYOTA", model: "BT", batteryKind: "combustion" as const },
+      "FIX-LONG": { brand: "TOYOTA BT REACH", model: "SIMPLE RRE250", batteryKind: "lead_acid" as const, batteryQuantity: 2 },
+      "FIX-LEAD": { brand: "TOYOTA", model: "BT", batteryKind: "lead_acid" as const, batteryQuantity: 2 },
+    };
+    const ids: Record<string, string> = {};
+    try {
+      const supplier = await seeder.supplier("Fixed supplier");
+      const type = await seeder.assetType("Fixed type", "none");
+      for (const [code, unit] of Object.entries(units)) {
+        ids[code] = await seeder.equipment({ supplierId: supplier, assetTypeId: type, internalCode: code, ...unit });
+        await seeder.assign({ equipmentId: ids[code], operationId: readWorld().ids.operation, day: "2026-01-05", reason: "Loaded late" });
+        await seeder.equipmentImage(ids[code], flatPng(640, 480));
+      }
+    } finally {
+      await seeder.close();
+    }
+    await page.setViewportSize({ width: WIDE, height: 900 });
+    const measured: Record<string, { rows: number; gap: number; height: number; footOff: number; steps: number[] }> = {};
+    for (const [code, id] of Object.entries(ids)) {
+      await gotoDetail(page, id, code);
+      const card = infoCard(page);
+      await expectImageLoaded(card.getByRole("img", { name: t.info.photoLabel }));
+      measured[code] = await card.evaluate((element) => {
+        const box = element.getBoundingClientRect();
+        const values = [...element.querySelectorAll(".info-list dd")];
+        const last = (values[values.length - 1] as HTMLElement).getBoundingClientRect();
+        const photo = (element.querySelector(".photo-image") as HTMLElement).getBoundingClientRect();
+        const rects = values.map((value) => value.getBoundingClientRect());
+        const steps = rects.slice(1).map((rect, index) => rect.top - (rects[index]?.bottom ?? 0));
+        return { rows: values.length, gap: box.bottom - last.bottom, height: box.height, footOff: Math.abs(photo.bottom - last.bottom), steps };
+      });
+    }
+    const short = measured["FIX-SHORT"];
+    const long = measured["FIX-LONG"];
+    const lead = measured["FIX-LEAD"];
+    if (short === undefined || long === undefined || lead === undefined) throw new Error("All the cards must be measured");
+    expect([short.rows, long.rows, lead.rows], "6 rows without the battery count, 7 with it").toEqual([6, 7, 7]);
+    for (const card of [short, long, lead]) {
+      expect(Math.abs(card.height - long.height), "the cards have the same height").toBeLessThanOrEqual(2);
+      expect(Math.abs(card.gap - long.gap), "the last row ends at the same place in every card").toBeLessThanOrEqual(2);
+      expect(card.gap, "little space is left between the last row and the bottom of the card").toBeLessThanOrEqual(16);
+      expect(card.footOff, "the foot of the photo is on the last row").toBeLessThanOrEqual(2);
+    }
+    // A full card (two-line brand and model) keeps the 10px between its rows; the others spread theirs.
+    for (const step of long.steps) expect(Math.abs(step - 10), "the rows of a full card stay 10px apart").toBeLessThanOrEqual(2);
+    for (const card of [short, lead]) for (const step of card.steps) expect(step, "the rows of a card with spare room spread").toBeGreaterThan(12);
+  });
+
   test("the information card has labels, values and the photo in three columns, the photo whole and beside the rows", async ({ page }) => {
     const ids = await seedCycle();
     await page.setViewportSize({ width: WIDE, height: 900 });

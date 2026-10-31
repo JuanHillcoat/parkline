@@ -68,6 +68,8 @@ export type EquipmentSeed = {
   readonly brand?: string;
   readonly model?: string;
   readonly year?: number;
+  readonly batteryKind?: "lithium" | "lead_acid" | "combustion";
+  readonly batteryQuantity?: number;
   readonly observations?: string;
 };
 
@@ -168,8 +170,8 @@ function fleetSeeds(c: Container, actor: Actor) {
           model: input.model ?? "MODELO",
           year: input.year ?? null,
           serialNumber: null,
-          batteryKind: "combustion",
-          batteryQuantity: null,
+          batteryKind: input.batteryKind ?? "combustion",
+          batteryQuantity: input.batteryQuantity ?? null,
           observations: input.observations ?? null,
         }),
       ).id,
