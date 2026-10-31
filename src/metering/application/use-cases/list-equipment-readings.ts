@@ -3,6 +3,7 @@ import type { Actor } from "../../../shared/domain/ports/access-policy";
 import { ok, type Result } from "../../../shared/domain/result";
 import { dayOf, shiftDay, type Day } from "../../domain/day";
 import type { Meter, MeterReading } from "../../domain/entities";
+import { monthTotal, monthlyTotals } from "../../domain/monthly";
 import { hoursBetween, rootOf, type HoursResult } from "../../domain/readings";
 import { fromTenths } from "../../domain/values";
 import type { MeteringDeps } from "../deps";
@@ -31,40 +32,61 @@ export type EquipmentReadings = {
   /** The last effective reading of the open meter. */
   readonly lastReading: LastReading | null;
   readonly hoursLast30Days: HoursResult;
+  /** The first effective reading of the open meter (issue 60 D3), or null without readings. */
+  readonly baseReading: number | null;
+  /** Hours (or km) of the current calendar month, in UTC days. */
+  readonly hoursThisMonth: number;
+  /** Hours (or km) of each month of the current year, January to December. */
+  readonly monthlyTotals: readonly number[];
 };
+
+/** `year` picks the year of `monthlyTotals` (issue 60 D4); without it the current year. */
+type ListInput = { readonly actor: Actor; readonly equipmentId: string; readonly year?: number };
 
 /**
  * The readings of one equipment for its detail page: the history newest first with the kind and the
  * `superseded` marker of each row, the open meter, its last effective reading and the hours (or km) of the
- * last 30 days. Needs `catalog.read` at the position of the open assignment: a missing equipment and one the
+ * last 30 days, the base reading of the open meter and the total of the current month and of each month of
+ * the chosen year (the current one by default). Needs `catalog.read` at the position of the open assignment: a missing equipment and one the
  * actor cannot see answer the same `not_found`. Read-only, no lock, no audit entry.
  */
 export class ListEquipmentReadings {
   constructor(private readonly deps: MeteringDeps) {}
 
-  execute(input: { readonly actor: Actor; readonly equipmentId: string }): Promise<Result<EquipmentReadings, DomainError>> {
+  execute(input: ListInput): Promise<Result<EquipmentReadings, DomainError>> {
     return whenActive(input.actor, () => this.deps.unitOfWork.run((tx) => this.list(tx, input)));
   }
 
-  private async list(
-    tx: MeteringTx,
-    { actor, equipmentId }: { readonly actor: Actor; readonly equipmentId: string },
-  ): Promise<Result<EquipmentReadings, DomainError>> {
+  private async list(tx: MeteringTx, { actor, equipmentId, year }: ListInput): Promise<Result<EquipmentReadings, DomainError>> {
     const access = await authorizeRead(tx, this.deps, actor, equipmentId);
     if (!access.ok) return access;
     const segments = await loadSegments(tx, actor.tenantId, equipmentId);
     const open = segments.find((segment) => segment.meter.closedOn === null) ?? null;
-    const today = dayOf(this.deps.clock.now());
     return ok({
       meterKind: access.value.info.meterKind,
       archived: access.value.info.archived,
       meter: open?.meter ?? null,
       history: historyOf(segments),
       lastReading: lastOf(open),
-      hoursLast30Days: hoursBetween(segments.map((s) => s.timeline), shiftDay(today, -RECENT_DAYS), today),
+      ...totalsOf(segments, dayOf(this.deps.clock.now()), year),
+      baseReading: baseOf(open),
     });
   }
 }
+
+const totalsOf = (segments: readonly Segment[], today: Day, year: number | undefined) => {
+  const timelines = segments.map((s) => s.timeline);
+  return {
+    hoursLast30Days: hoursBetween(timelines, shiftDay(today, -RECENT_DAYS), today),
+    hoursThisMonth: monthTotal(timelines, today),
+    monthlyTotals: monthlyTotals(timelines, year ?? Number(today.slice(0, 4))),
+  };
+};
+
+const baseOf = (open: Segment | null): number | null => {
+  const first = open?.timeline[0];
+  return first === undefined ? null : fromTenths(first.valueTenths);
+};
 
 const lastOf = (open: Segment | null): LastReading | null => {
   const last = open?.timeline.at(-1);

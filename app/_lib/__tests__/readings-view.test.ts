@@ -11,7 +11,8 @@ const row = (overrides: Partial<ReadingRow>): ReadingRow => ({
 });
 
 const readings = (overrides: Partial<EquipmentReadings> = {}): EquipmentReadings => ({
-  meterKind: "hours", archived: false, meter: null, history: [], lastReading: null, hoursLast30Days: { hours: 0, incomplete: true }, ...overrides,
+  meterKind: "hours", archived: false, meter: null, history: [], lastReading: null, hoursLast30Days: { hours: 0, incomplete: true },
+  baseReading: null, hoursThisMonth: 0, monthlyTotals: Array<number>(12).fill(0), ...overrides,
 });
 
 const meter = { id: "m1", tenantId: "t", equipmentId: "e", kind: "hours", openedOn: "2026-01-05", closedOn: null, initialValueTenths: 0 } as const;

@@ -26,7 +26,7 @@ describe("GetEquipment", () => {
       id: s.eq1.id,
       internalCode: "EQ-0001",
       supplier: { id: s.supplierA.id, name: "SUPPLIER A" },
-      assetType: { id: s.forklift.id, name: "FORKLIFT", meterKind: "hours" },
+      assetType: { id: s.forklift.id, name: "FORKLIFT", meterKind: "hours", preventiveIntervalHours: 250 },
       assignment: { operationId: "op1", siteId: "s1", businessUnitId: "bu1", kind: "active", validFrom: "2026-01-10" },
     });
   });

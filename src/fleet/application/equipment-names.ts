@@ -14,7 +14,7 @@ export async function withNames(tx: FleetTx, tenantId: string, rows: readonly Vi
     tx.images.findHashes(tenantId, rows.map((row) => row.id)),
   ]);
   const supplierOf = new Map(suppliers.map((supplier) => [supplier.id, { id: supplier.id, name: supplier.name }]));
-  const typeOf = new Map(types.map((t) => [t.id, { id: t.id, name: t.name, meterKind: t.meterKind }]));
+  const typeOf = new Map(types.map((t) => [t.id, { id: t.id, name: t.name, meterKind: t.meterKind, preventiveIntervalHours: t.preventiveIntervalHours }]));
   return rows.map((row) => {
     const supplier = supplierOf.get(row.supplierId);
     const assetType = typeOf.get(row.assetTypeId);

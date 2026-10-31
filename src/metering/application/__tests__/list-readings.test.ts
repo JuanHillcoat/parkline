@@ -8,6 +8,7 @@ describe("ListEquipmentReadings", () => {
     expect(result.ok && result.value).toEqual({
       meterKind: "hours", archived: false, meter: null, history: [], lastReading: null,
       hoursLast30Days: { hours: 0, incomplete: true },
+      baseReading: null, hoursThisMonth: 0, monthlyTotals: new Array<number>(12).fill(0),
     });
   });
 
@@ -56,5 +57,41 @@ describe("ListEquipmentReadings", () => {
     expect(result).toMatchObject({ meterKind: "none", history: [], meter: null });
     expect(h.audit.entries).toHaveLength(0);
     expect(h.equipment.calls).toEqual(["find none"]);
+  });
+
+  it("returns the base reading, the month total and the twelve monthly totals of the current year", async () => {
+    const h = createHarness();
+    await h.record("2025-12-20", 900);
+    await h.record("2026-01-10", 1000);
+    const wrong = await h.record("2026-02-10", 1100);
+    await h.record("2026-03-01", 1130);
+    h.orThrow(await h.correctReading.execute({ actor: h.admin, equipmentId: "hours", readingId: wrong.id, value: 1120, reason: "Typo" }));
+    const result = h.orThrow(await h.listReadings.execute({ actor: h.admin, equipmentId: "hours" }));
+    expect(result.baseReading).toBe(900);
+    expect(result.hoursThisMonth).toBe(10);
+    expect(result.monthlyTotals).toEqual([100, 120, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+  });
+
+  it("returns the monthly totals of the year asked for, and of the current year without one", async () => {
+    const h = createHarness();
+    await h.record("2025-11-10", 800);
+    await h.record("2025-12-20", 900);
+    await h.record("2026-01-10", 1000);
+    const lastYear = h.orThrow(await h.listReadings.execute({ actor: h.admin, equipmentId: "hours", year: 2025 }));
+    expect(lastYear.monthlyTotals).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 100]);
+    const thisYear = h.orThrow(await h.listReadings.execute({ actor: h.admin, equipmentId: "hours" }));
+    expect(thisYear.monthlyTotals[0]).toBe(100);
+    expect(lastYear.baseReading).toBe(800);
+    expect(lastYear.hoursThisMonth).toBe(thisYear.hoursThisMonth);
+  });
+
+  it("uses the first reading of the open meter as the base after a replacement", async () => {
+    const h = createHarness();
+    await h.record("2026-01-10", 1000);
+    h.orThrow(await h.replaceMeter.execute({ actor: h.admin, equipmentId: "hours", day: "2026-02-15", finalValue: 1150, initialValue: 5, reason: "Falla" }));
+    await h.record("2026-02-20", 20);
+    const result = h.orThrow(await h.listReadings.execute({ actor: h.admin, equipmentId: "hours" }));
+    expect(result.baseReading).toBe(5);
+    expect(result.monthlyTotals.slice(0, 3)).toEqual([0, 165, 0]);
   });
 });

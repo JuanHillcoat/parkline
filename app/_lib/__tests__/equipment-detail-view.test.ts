@@ -41,7 +41,7 @@ const item = (extra: Partial<EquipmentListItem> = {}): EquipmentListItem => ({
   observations: null,
   archivedAt: null,
   supplier: { id: "s1", name: "SUPPLIER A" },
-  assetType: { id: "a1", name: "FORKLIFT", meterKind: "hours" },
+  assetType: { id: "a1", name: "FORKLIFT", meterKind: "hours", preventiveIntervalHours: 250 },
   assignment: null,
   imageHash: null,
   ...extra,
@@ -254,7 +254,7 @@ describe("incomingCandidates", () => {
       [
         item({ id: "e1", internalCode: "OUT" }),
         item({ id: "e2", internalCode: "B-2" }),
-        item({ id: "e3", internalCode: "A-1", assetType: { id: "a2", name: "PALLET JACK", meterKind: "none" } }),
+        item({ id: "e3", internalCode: "A-1", assetType: { id: "a2", name: "PALLET JACK", meterKind: "none", preventiveIntervalHours: null } }),
         item({ id: "e4", internalCode: "BUSY", assignment: placed }),
         item({ id: "e5", internalCode: "OLD", archivedAt: new Date() }),
       ],
