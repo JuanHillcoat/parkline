@@ -1493,6 +1493,7 @@ dialog.dialog::backdrop {
 /*
  * The photo is a little larger than its column and slides under the end of the text, which stays in front.
  * `multiply` turns a white photo background into the white of the card, so the overlap does not show a box.
+ * The picture is never cropped or pushed past its box (an `<img>` clips to it): `contain` shows it whole for any aspect ratio.
  */
 .info-list {
   position: relative;
@@ -1507,7 +1508,7 @@ dialog.dialog::backdrop {
   margin-right: -20px;
   margin-left: -88px;
   object-fit: contain;
-  object-position: calc(100% + 16px) bottom;
+  object-position: right bottom;
   background: transparent;
   mix-blend-mode: multiply;
 }

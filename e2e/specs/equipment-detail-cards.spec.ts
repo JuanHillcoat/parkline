@@ -17,6 +17,7 @@ import {
 } from "../support/detail-page";
 import { openDialog, openDialogOf } from "../support/fleet-flows";
 import { boxOf, expectNoHorizontalScroll, MIN_TAP_TARGET, VIEWPORT_WIDTH } from "../support/mobile-flows";
+import { expectLoaded as expectImageLoaded, flatPng } from "../support/image-flows";
 import { dayOffset, expectLoaded, loadReading } from "../support/readings-flows";
 import { readWorld, storageStatePath } from "../support/world";
 
@@ -262,6 +263,51 @@ test.describe("equipment detail layout on a desktop", () => {
     expect(usage.y).toBeGreaterThan(info.y + info.height - 1);
     expect(Math.abs(usage.x - info.x)).toBeLessThanOrEqual(1);
     expect(Math.abs(usage.x + usage.width - (maintenance.x + maintenance.width))).toBeLessThanOrEqual(1);
+  });
+
+  test("the photo is drawn whole inside its box and the card whatever its aspect ratio", async ({ page }) => {
+    const seeder = await openSeeder();
+    const photos = { "PHO-WIDE": flatPng(640, 480), "PHO-SQUARE": flatPng(500, 500), "PHO-TALL": flatPng(300, 500) };
+    const ids: Record<string, string> = {};
+    try {
+      const supplier = await seeder.supplier("Photo supplier");
+      const type = await seeder.assetType("Photo type", "none");
+      for (const [code, bytes] of Object.entries(photos)) {
+        ids[code] = await seeder.equipment({ supplierId: supplier, assetTypeId: type, internalCode: code });
+        await seeder.assign({ equipmentId: ids[code], operationId: readWorld().ids.operation, day: "2026-01-05", reason: "Loaded late" });
+        await seeder.equipmentImage(ids[code], bytes);
+      }
+    } finally {
+      await seeder.close();
+    }
+    await page.setViewportSize({ width: WIDE, height: 900 });
+    for (const [code, id] of Object.entries(ids)) {
+      await gotoDetail(page, id, code);
+      const photo = infoCard(page).getByRole("img", { name: t.info.photoLabel });
+      await expectImageLoaded(photo);
+      const drawn = await photo.evaluate((img: HTMLImageElement) => {
+        const box = img.getBoundingClientRect();
+        const [x = "", y = ""] = getComputedStyle(img).objectPosition.match(/calc\([^)]*\)|\S+/gu) ?? [];
+        // Resolves `P%`, `Npx` and `calc(P% + Npx)` against the free space around the drawn picture.
+        const offset = (token: string, free: number): number => {
+          const calc = /^calc\(\s*(-?[\d.]+)%\s*([+-])\s*([\d.]+)px\s*\)$/u.exec(token);
+          if (calc !== null) return (free * parseFloat(calc[1] ?? "0")) / 100 + (calc[2] === "-" ? -1 : 1) * parseFloat(calc[3] ?? "0");
+          return token.endsWith("%") ? (free * parseFloat(token)) / 100 : parseFloat(token);
+        };
+        const scale = Math.min(box.width / img.naturalWidth, box.height / img.naturalHeight);
+        const width = img.naturalWidth * scale;
+        const height = img.naturalHeight * scale;
+        return { box: { left: box.left, top: box.top, right: box.right, bottom: box.bottom }, width, height, dx: offset(x, box.width - width), dy: offset(y, box.height - height) };
+      });
+      const card = await boxOf(infoCard(page));
+      const left = drawn.box.left + drawn.dx;
+      const top = drawn.box.top + drawn.dy;
+      expect(left, `${code}: the left of the picture is inside its box`).toBeGreaterThanOrEqual(drawn.box.left - 0.5);
+      expect(left + drawn.width, `${code}: the right of the picture is inside its box`).toBeLessThanOrEqual(drawn.box.right + 0.5);
+      expect(top, `${code}: the top of the picture is inside its box`).toBeGreaterThanOrEqual(drawn.box.top - 0.5);
+      expect(top + drawn.height, `${code}: the foot of the picture is inside its box`).toBeLessThanOrEqual(drawn.box.bottom + 0.5);
+      expect(drawn.box.right, `${code}: the box is inside the card`).toBeLessThanOrEqual(card.x + card.width + 0.5);
+    }
   });
 
   test("the information card has labels, values and the photo in three columns, the photo whole and beside the rows", async ({ page }) => {
