@@ -8,10 +8,10 @@ const NONE = copy.fleet.noValue;
 
 type Raw = string | readonly string[] | undefined;
 
-export type DetailTab = "info" | "history" | "readings";
+export type DetailTab = "history" | "readings";
 
-/** An unknown or repeated tab value falls back to the information tab. */
-export const parseDetailTab = (raw: Raw): DetailTab => (raw === "history" || raw === "readings" ? raw : "info");
+/** An unknown or repeated tab value (the retired `info` included) falls back to the history. */
+export const parseDetailTab = (raw: Raw): DetailTab => (raw === "readings" ? raw : "history");
 
 /** `YYYY-MM-DD` as `DD/MM/YYYY`, by splitting the text: a day never goes through Date (no timezone). */
 export const formatDay = (day: string): string => {
@@ -31,18 +31,17 @@ const batteryRows = (item: EquipmentListItem): InfoRow[] => [
   ...(item.batteryKind === "lead_acid" ? [{ label: t.info.batteries, value: orDash(item.batteryQuantity) }] : []),
 ];
 
-/** The general information card: every field of the equipment, with a dash where it is blank. `extra` rows (the last reading) go last. */
-export const buildInfoRows = (item: EquipmentListItem, extra: readonly InfoRow[] = []): InfoRow[] => [
+/** Brand and model as one value: both joined, the one that exists, or a dash. */
+const brandModel = (item: EquipmentListItem): string => [item.brand, item.model].filter((part) => part !== null).join(" ") || NONE;
+
+/** The general information card: the identity of the equipment and its supplier, with a dash where a field is blank. */
+export const buildInfoRows = (item: EquipmentListItem): InfoRow[] => [
   { label: t.info.internalCode, value: item.internalCode },
   { label: t.info.assetType, value: item.assetType.name },
-  { label: t.info.supplier, value: item.supplier.name },
-  { label: t.info.brand, value: orDash(item.brand) },
-  { label: t.info.model, value: orDash(item.model) },
+  { label: t.info.brandModel, value: brandModel(item) },
   { label: t.info.year, value: orDash(item.year) },
-  { label: t.info.serialNumber, value: orDash(item.serialNumber) },
+  { label: t.info.supplier, value: item.supplier.name },
   ...batteryRows(item),
-  { label: t.info.observations, value: orDash(item.observations) },
-  ...extra,
 ];
 
 export type LocationView = { readonly assigned: boolean; readonly rows: InfoRow[]; readonly hint: string | null };
@@ -54,7 +53,6 @@ const locationRows = (open: OpenAssignment, places: DetailPlaces): InfoRow[] => 
   ...(open.operationId === null ? [] : [{ label: t.location.operation, value: nameOf(places.operations, open.operationId) }]),
   { label: t.location.site, value: nameOf(places.sites, open.siteId) },
   ...(open.businessUnitId === null ? [] : [{ label: t.location.division, value: nameOf(places.divisions, open.businessUnitId) }]),
-  { label: t.location.kind, value: t.kinds[open.kind] },
   { label: t.location.since, value: formatDay(open.validFrom) },
 ];
 
@@ -155,9 +153,12 @@ export const detailActions = ({ canWrite, canArchive, archived, assigned }: Acti
   };
 };
 
-/** Whether the header has any button to show (corrections live in the history, not in the header). */
-export const hasHeaderButtons = (actions: DetailActions): boolean =>
-  actions.assign || actions.move || actions.replace || actions.end || actions.edit || actions.archive || actions.restore;
+/**
+ * Whether the "Más acciones" menu has any item. Assign and move live in the location card and corrections in the
+ * history, so they do not count here.
+ */
+export const hasMenuActions = (actions: DetailActions): boolean =>
+  actions.replace || actions.end || actions.edit || actions.archive || actions.restore;
 
 export type OutgoingChoice = "spare" | "retire";
 

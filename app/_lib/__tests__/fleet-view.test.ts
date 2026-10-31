@@ -73,6 +73,7 @@ const asItem = (e: Equipment, assignment: AssignmentSummary | null = null): Equi
     id: e.assetTypeId,
     name: types.find((t) => t.id === e.assetTypeId)?.name ?? "?",
     meterKind: types.find((t) => t.id === e.assetTypeId)?.meterKind ?? "none",
+    preventiveIntervalHours: types.find((t) => t.id === e.assetTypeId)?.preventiveIntervalHours ?? null,
   },
   assignment,
   imageHash: null,
@@ -302,7 +303,7 @@ describe("filterEquipment", () => {
   const named = (item: EquipmentListItem): EquipmentListItem => ({
     ...item,
     supplier: { id: item.supplierId, name: item.supplierId === "s1" ? "Proveedor Uno" : "Proveedor Dos" },
-    assetType: { id: item.assetTypeId, name: item.assetTypeId === "a1" ? "Grúa" : "Camión", meterKind: "hours" },
+    assetType: { id: item.assetTypeId, name: item.assetTypeId === "a1" ? "Grúa" : "Camión", meterKind: "hours", preventiveIntervalHours: null },
   });
   const rows = buildEquipmentRows(
     [

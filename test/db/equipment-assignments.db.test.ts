@@ -440,13 +440,14 @@ describe("assignment flows through the container as parkline_app", () => {
     const manager = await scopedStaff(`manager.names${n}@example.test`, "manager", { type: "business_unit", id: mine.division.id });
 
     const supplierRows = await owner<{ name: string }[]>`select name from suppliers where id = ${here.supplierId}`;
-    const typeRows = await owner<{ name: string }[]>`select name from asset_types where id = ${here.assetTypeId}`;
+    const typeRows = await owner<{ name: string; preventive_interval_hours: number | null }[]>`select name, preventive_interval_hours from asset_types where id = ${here.assetTypeId}`;
     const [supplierName, typeName] = [supplierRows[0]?.name ?? "", typeRows[0]?.name ?? ""];
+    const interval = typeRows[0]?.preventive_interval_hours ?? null;
     for (const reader of [supervisor, manager]) {
       const rows = must(await c.fleet.listEquipment.execute({ actor: reader }));
       expect(rows.map((row) => row.id)).toEqual([here.id]);
       expect(rows[0]?.supplier).toEqual({ id: here.supplierId, name: supplierName });
-      expect(rows[0]?.assetType).toEqual({ id: here.assetTypeId, name: typeName, meterKind: "hours" });
+      expect(rows[0]?.assetType).toEqual({ id: here.assetTypeId, name: typeName, meterKind: "hours", preventiveIntervalHours: interval });
     }
   });
 

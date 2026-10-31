@@ -4,6 +4,7 @@
  */
 import { expect, type Locator, type Page } from "@playwright/test";
 import { copy } from "../../app/_lib/copy";
+import { revealMenuItem } from "./detail-page";
 import type { Seeder } from "./data";
 
 const t = copy.dialogs;
@@ -38,7 +39,11 @@ export const rowOf = (page: Page, text: string): Locator => page.getByRole("row"
 export async function openDialog(page: Page, trigger: string, scope: Page | Locator = page): Promise<Locator> {
   const dialog = openDialogOf(page);
   await expect(async () => {
-    if (!(await dialog.isVisible())) await scope.getByRole("button", { name: trigger, exact: true }).click();
+    if (!(await dialog.isVisible())) {
+      const button = scope.getByRole("button", { name: trigger, exact: true });
+      await revealMenuItem(page, button);
+      await button.click();
+    }
     await expect(dialog).toBeVisible({ timeout: 1_000 });
   }).toPass();
   return dialog;

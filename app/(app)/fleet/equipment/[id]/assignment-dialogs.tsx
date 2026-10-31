@@ -15,14 +15,14 @@ type Target = { readonly id: string; readonly code: string };
 type DayProps = { readonly target: Target; readonly today: string };
 /** The places an equipment can go: operations and, as a muleto, sites. */
 type PlaceChoices = { readonly operations: readonly Option[]; readonly sites: readonly Option[] };
-type OperationProps = DayProps & PlaceChoices;
+type OperationProps = DayProps & PlaceChoices & { readonly triggerClassName?: string };
 
 /** The first assignment: the reason is optional here, the server asks for it only when the day is in the past. */
-export function AssignDialog({ target, today, operations, sites }: OperationProps) {
+export function AssignDialog({ target, today, operations, sites, triggerClassName = "btn btn-primary" }: OperationProps) {
   const t = copy.dialogs.assignEquipment;
   const key = `assign-${target.id}`;
   return (
-    <ActionDialog triggerLabel={t.trigger} triggerClassName="btn btn-primary" title={t.title(target.code)}
+    <ActionDialog triggerLabel={t.trigger} triggerClassName={triggerClassName} title={t.title(target.code)}
       description={t.description} submitLabel={t.submit} action={assignEquipmentAction}>
       <input type="hidden" name="equipmentId" value={target.id} />
       <PlacementFields idPrefix={key} label={t.operationLabel} prompt={t.selectOperation} operations={operations} sites={sites} />
@@ -33,11 +33,11 @@ export function AssignDialog({ target, today, operations, sites }: OperationProp
 }
 
 /** Moves the equipment to another operation or, as a muleto, to a site; the places offered exclude the current one. */
-export function MoveDialog({ target, today, operations, sites }: OperationProps) {
+export function MoveDialog({ target, today, operations, sites, triggerClassName = "btn" }: OperationProps) {
   const t = copy.dialogs.moveEquipment;
   const key = `move-${target.id}`;
   return (
-    <ActionDialog triggerLabel={t.trigger} triggerClassName="btn" title={t.title(target.code)}
+    <ActionDialog triggerLabel={t.trigger} triggerClassName={triggerClassName} title={t.title(target.code)}
       description={t.description} submitLabel={t.submit} action={moveEquipmentAction}>
       <input type="hidden" name="equipmentId" value={target.id} />
       <PlacementFields idPrefix={key} label={t.operationLabel} prompt={t.selectOperation} operations={operations} sites={sites} />

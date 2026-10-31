@@ -10,7 +10,7 @@ import {
   detailActions,
   detailState,
   formatDay,
-  hasHeaderButtons,
+  hasMenuActions,
   incomingCandidates,
   OUTGOING_DEFAULT,
   outgoingChoices,
@@ -41,7 +41,7 @@ const item = (extra: Partial<EquipmentListItem> = {}): EquipmentListItem => ({
   observations: null,
   archivedAt: null,
   supplier: { id: "s1", name: "SUPPLIER A" },
-  assetType: { id: "a1", name: "FORKLIFT", meterKind: "hours" },
+  assetType: { id: "a1", name: "FORKLIFT", meterKind: "hours", preventiveIntervalHours: 250 },
   assignment: null,
   imageHash: null,
   ...extra,
@@ -71,12 +71,13 @@ const assignment = (id: string, extra: Partial<Assignment> = {}): Assignment => 
 });
 
 describe("parseDetailTab", () => {
-  it("accepts history and falls back to info for anything else", () => {
+  it("accepts history and readings and falls back to history for anything else, the old info tab included", () => {
     expect(parseDetailTab("history")).toBe("history");
-    expect(parseDetailTab("info")).toBe("info");
-    expect(parseDetailTab("nope")).toBe("info");
-    expect(parseDetailTab(undefined)).toBe("info");
-    expect(parseDetailTab(["history", "info"])).toBe("info");
+    expect(parseDetailTab("readings")).toBe("readings");
+    expect(parseDetailTab("info")).toBe("history");
+    expect(parseDetailTab("nope")).toBe("history");
+    expect(parseDetailTab(undefined)).toBe("history");
+    expect(parseDetailTab(["readings", "history"])).toBe("history");
   });
 });
 
@@ -97,21 +98,20 @@ describe("buildInfoRows", () => {
     expect(rows.map((row) => [row.label, row.value])).toEqual([
       [d.info.internalCode, "EQ-0001"],
       [d.info.assetType, "FORKLIFT"],
-      [d.info.supplier, "SUPPLIER A"],
-      [d.info.brand, NONE],
-      [d.info.model, NONE],
+      [d.info.brandModel, NONE],
       [d.info.year, NONE],
-      [d.info.serialNumber, NONE],
+      [d.info.supplier, "SUPPLIER A"],
       [d.info.batteryKind, NONE],
-      [d.info.observations, NONE],
     ]);
   });
 
-  it("shows the battery kind and, for lead acid only, the quantity (a zero included)", () => {
-    const leadAcid = { brand: "BRAND X", model: "M-1", year: 2020, serialNumber: "SN-1", batteryKind: "lead_acid", batteryQuantity: 0, observations: "Left mast" } as const;
+  it("joins brand and model, shows a lone one as is, and the quantity of a lead acid battery", () => {
+    const leadAcid = { brand: "BRAND X", model: "M-1", year: 2020, serialNumber: "SN-1", batteryKind: "lead_acid", batteryQuantity: 0 } as const;
     const rows = buildInfoRows(item(leadAcid));
-    expect(rows.map((row) => row.value)).toEqual(["EQ-0001", "FORKLIFT", "SUPPLIER A", "BRAND X", "M-1", "2020", "SN-1", "Plomo ácido", "0", "Left mast"]);
+    expect(rows.map((row) => row.value)).toEqual(["EQ-0001", "FORKLIFT", "BRAND X M-1", "2020", "SUPPLIER A", "Plomo ácido", "0"]);
     expect(rows.map((row) => row.label)).toContain(d.info.batteries);
+    expect(buildInfoRows(item({ brand: "BRAND X" }))[2]?.value).toBe("BRAND X");
+    expect(buildInfoRows(item({ model: "M-1" }))[2]?.value).toBe("M-1");
   });
 
   it("names lithium and combustion without a quantity row", () => {
@@ -124,14 +124,13 @@ describe("buildInfoRows", () => {
 });
 
 describe("buildLocation", () => {
-  it("names the operation, site, division, kind and the day it started", () => {
+  it("names the operation, site, division and the day it started", () => {
     const view = buildLocation(item({ assignment: placed }), places);
     expect(view.assigned).toBe(true);
     expect(view.rows.map((row) => [row.label, row.value])).toEqual([
       [d.location.operation, "OPERATION ONE"],
       [d.location.site, "SITE ONE"],
       [d.location.division, "DIVISION ONE"],
-      [d.location.kind, d.kinds.active],
       [d.location.since, "10/01/2026"],
     ]);
     expect(view.hint).toBeNull();
@@ -139,7 +138,7 @@ describe("buildLocation", () => {
 
   it("uses a dash for a name the organization lists do not carry", () => {
     const view = buildLocation(item({ assignment: { ...placed, kind: "spare" } }), { operations: [], sites: [], divisions: [] });
-    expect(view.rows.map((row) => row.value)).toEqual([NONE, NONE, NONE, d.kinds.spare, "10/01/2026"]);
+    expect(view.rows.map((row) => row.value)).toEqual([NONE, NONE, NONE, "10/01/2026"]);
   });
 
   it("shows a spare of a site without operation and division rows", () => {
@@ -147,7 +146,6 @@ describe("buildLocation", () => {
     const view = buildLocation(item({ assignment: spare }), places);
     expect(view.rows.map((row) => [row.label, row.value])).toEqual([
       [d.location.site, "SITE ONE"],
-      [d.location.kind, d.kinds.spare],
       [d.location.since, "10/01/2026"],
     ]);
   });
@@ -229,14 +227,20 @@ describe("detailActions", () => {
   });
 });
 
-describe("hasHeaderButtons", () => {
+describe("hasMenuActions", () => {
   const ctx = { canWrite: true, canArchive: false, archived: false, assigned: false };
 
-  it("is true when any header button shows and false when only corrections remain or nothing does", () => {
-    expect(hasHeaderButtons(detailActions(ctx))).toBe(true);
-    expect(hasHeaderButtons(detailActions({ ...ctx, archived: true }))).toBe(false);
-    expect(hasHeaderButtons(detailActions({ ...ctx, canArchive: true, archived: true }))).toBe(true);
-    expect(hasHeaderButtons(detailActions({ canWrite: false, canArchive: false, archived: false, assigned: true }))).toBe(false);
+  it("does not count assign and move, which live in the location card", () => {
+    const none = { assign: false, move: false, replace: false, end: false, edit: false, archive: false, restore: false, correct: true };
+    expect(hasMenuActions({ ...none, assign: true, move: true })).toBe(false);
+    expect(hasMenuActions({ ...none, end: true })).toBe(true);
+  });
+
+  it("is true when any menu item shows and false when only corrections remain or nothing does", () => {
+    expect(hasMenuActions(detailActions(ctx))).toBe(true);
+    expect(hasMenuActions(detailActions({ ...ctx, archived: true }))).toBe(false);
+    expect(hasMenuActions(detailActions({ ...ctx, canArchive: true, archived: true }))).toBe(true);
+    expect(hasMenuActions(detailActions({ canWrite: false, canArchive: false, archived: false, assigned: true }))).toBe(false);
   });
 });
 
@@ -254,7 +258,7 @@ describe("incomingCandidates", () => {
       [
         item({ id: "e1", internalCode: "OUT" }),
         item({ id: "e2", internalCode: "B-2" }),
-        item({ id: "e3", internalCode: "A-1", assetType: { id: "a2", name: "PALLET JACK", meterKind: "none" } }),
+        item({ id: "e3", internalCode: "A-1", assetType: { id: "a2", name: "PALLET JACK", meterKind: "none", preventiveIntervalHours: null } }),
         item({ id: "e4", internalCode: "BUSY", assignment: placed }),
         item({ id: "e5", internalCode: "OLD", archivedAt: new Date() }),
       ],

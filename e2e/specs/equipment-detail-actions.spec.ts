@@ -1,3 +1,4 @@
+import { titleOf } from "../support/detail-page";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { copy } from "../../app/_lib/copy";
 import { openSeeder, resetCatalogs } from "../support/data";
@@ -14,6 +15,7 @@ import {
   infoCard,
   isStoredArchived,
   locationCard,
+  menuOf,
   pageAs,
   pillOf,
   detailPath,
@@ -80,11 +82,10 @@ test.describe("editing from the detail page", () => {
   test("saves new values with a reason and the page shows them without a manual reload", async ({ page }) => {
     const ids = await seedActions();
     await gotoDetail(page, ids.idle, "ACT-IDLE");
-    await expect(valueOf(infoCard(page), t.info.brand)).toHaveText("OLD BRAND");
+    await expect(valueOf(infoCard(page), t.info.brandModel)).toHaveText("OLD BRAND MODELO");
     await submitEdit(page, { brand: "New Brand", model: "Z-9", reason: REASON });
     await expectDialogClosed(page);
-    await expect(valueOf(infoCard(page), t.info.brand)).toHaveText("New Brand");
-    await expect(valueOf(infoCard(page), t.info.model)).toHaveText("Z-9");
+    await expect(valueOf(infoCard(page), t.info.brandModel)).toHaveText("New Brand Z-9");
     const entries = await catalogEntries("fleet.equipment.update", ids.idle);
     expect(entries).toHaveLength(1);
     expect(entries[0]).toMatchObject({ reason: REASON, role: "fleet_analyst" });
@@ -95,7 +96,7 @@ test.describe("editing from the detail page", () => {
     await gotoDetail(page, ids.idle, "ACT-IDLE");
     await submitEdit(page, { code: "ACT-RENAMED", reason: REASON });
     await expectDialogClosed(page);
-    await expect(page.getByRole("heading", { level: 1, name: t.title("ACT-RENAMED") })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: titleOf("ACT-RENAMED") })).toBeVisible();
     await expect(valueOf(infoCard(page), t.info.internalCode)).toHaveText("ACT-RENAMED");
   });
 
@@ -115,7 +116,7 @@ test.describe("editing from the detail page", () => {
     await fill(dialog, copy.common.reason, "r".repeat(501));
     await submitDialog(dialog, d.editEquipment.submit);
     await expect(dialog.getByRole("alert")).toHaveText(byCode.reason_too_long);
-    await expect(valueOf(infoCard(page), t.info.brand)).toHaveText("OLD BRAND");
+    await expect(valueOf(infoCard(page), t.info.brandModel)).toHaveText("OLD BRAND MODELO");
     expect(await catalogEntries("fleet.equipment.update", ids.idle)).toHaveLength(0);
   });
 });
@@ -245,7 +246,7 @@ for (const role of ["manager", "supervisor"] as const) {
     test("reads the equipment of its scope on a page without any action, dialog or Corregir", async ({ page }) => {
       const ids = await seedActions();
       await gotoDetail(page, ids.assigned, "ACT-BUSY");
-      await expect(buttonsOf(page)).toHaveCount(0);
+      await expect(menuOf(page)).toHaveCount(0);
       await expect(page.locator("#content").getByRole("button")).toHaveCount(0);
       await expect(page.locator("dialog")).toHaveCount(0);
       await expect(valueOf(locationCard(page), t.location.operation)).toHaveText("OPERATION E2E");
@@ -263,7 +264,7 @@ test.describe("equipment visibility follows the assignment", () => {
     const response = await page.goto(detailPath(id));
     if (visible) {
       expect(response?.status(), `${code} opens`).toBe(200);
-      await expect(page.getByRole("heading", { level: 1, name: t.title(code) })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 1, name: titleOf(code) })).toBeVisible();
     } else {
       expect(response?.status(), `${code} is not found`).toBe(404);
       await expect(page.getByRole("heading", { level: 1, name: copy.errors.notFound.title })).toBeVisible();

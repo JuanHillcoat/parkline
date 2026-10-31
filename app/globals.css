@@ -3,7 +3,7 @@
   --sidebar-active: #1a2d52;
   --sidebar-text: #c7d2e8;
   --sidebar-muted: #7c8aa8;
-  --page: #f4f6fa;
+  --page: #ffffff;
   --surface: #ffffff;
   --border: #e3e8f0;
   --text: #0f172a;
@@ -20,7 +20,7 @@
   --neutral-bg: #edf0f5;
   --radius-control: 10px;
   --radius-card: 14px;
-  --font: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font: var(--font-inter), Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
 *,
@@ -343,7 +343,7 @@ a.nav-item:hover {
   align-items: center;
   gap: 12px;
   min-height: 64px;
-  padding: 0 40px;
+  padding: 0 20px;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
 }
@@ -413,7 +413,7 @@ a.nav-item:hover {
 
 .content {
   min-width: 0;
-  padding: 28px 40px 48px;
+  padding: 28px 20px 48px;
 }
 
 /* Shared page building blocks */
@@ -1293,7 +1293,7 @@ dialog.dialog::backdrop {
 }
 
 .back-link::before {
-  content: "\2190";
+  content: "\2190" / "";
   margin-right: 8px;
 }
 
@@ -1310,8 +1310,566 @@ dialog.dialog::backdrop {
 
 .detail-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+/*
+ * A first row of three cards, general information the widest so its labels and values stay on one line
+ * (maintainer's review, issue 60), and the usage chart below at full width. With the sidebar the content is
+ * 300px narrower than the screen, so three cards only read well from 1500px up; below that general information
+ * takes a whole row of its own.
+ */
+.detail-grid > .detail-card:has(> .info-body) {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 1500px) {
+  .detail-grid > .detail-card:has(> .info-body) {
+    grid-column: auto;
+  }
+
+  /*
+   * General information keeps one width (460px, its values are 14 characters wide) and one height whatever its texts;
+   * the photo takes the room its column gains. Ubicación actual is the narrowest card of the row.
+   */
+  .detail-grid {
+    grid-template-columns: minmax(max-content, 460px) minmax(0, 0.93fr) minmax(0, 1.07fr);
+    grid-template-rows: 292px;
+  }
+
+  .detail-grid .info-body {
+    grid-template-columns: max-content minmax(80px, 1fr);
+  }
+
+  /*
+   * General information fills that fixed height like Ubicación actual: the rows spread over it, the first at the top
+   * and the last 12px above the bottom edge of the card (it reaches 9px into the 20px padding and 1px border,
+   * as the 7-row card always did), so 6 rows or 7, one line or two, the card ends in the same place.
+   */
+  .detail-grid > .detail-card:has(> .info-body) {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .info-body {
+    flex: 1;
+    margin-bottom: -9px;
+  }
+
+  .detail-list.info-list {
+    align-self: stretch;
+    align-content: space-between;
+  }
+}
+
+.detail-grid > .usage-card {
+  grid-column: 1 / -1;
+}
+
+/* The page title and its actions, a step smaller than other pages: the row holds five buttons */
+.page-head .title-row h1 {
+  font-size: 22px;
+}
+
+@media (min-width: 641px) {
+  .page-head .btn-tone,
+  .page-head .more-menu > .btn {
+    min-height: 34px;
+    padding: 0 10px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 640px) {
+  .detail-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.detail-card {
+  min-width: 0;
+}
+
+.detail-card-action {
+  margin-top: 16px;
+}
+
+/* Ubicación actual spreads its rows evenly over the fixed height of the row, the button at the bottom */
+.detail-card:has(> .place-list) {
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-list.place-list {
+  flex: 1;
+  align-content: space-evenly;
+}
+
+.detail-card-action .btn {
+  margin-top: 0;
+}
+
+.observations-card {
+  margin-top: 24px;
+}
+
+.observations-card p {
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+/*
+ * General information, styled as the mockup: grey labels and regular-weight values at 14px with room between them,
+ * and the unframed photo right after the text, its foot on the line of the last row.
+ */
+.info-body {
+  display: grid;
+  grid-template-columns: max-content minmax(80px, 110px);
+  justify-content: start;
+  align-items: end;
+  gap: 12px 20px;
+}
+
+.detail-list.info-list {
+  grid-template-columns: max-content 14ch;
+  gap: 10px 28px;
+  font-size: 14px;
+}
+
+.info-list .detail-row {
+  display: contents;
+}
+
+.info-list .detail-row dt {
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+/* Ubicación actual uses the same text size and weight as Información general */
+.place-list .detail-row dt,
+.place-list .detail-row dd {
+  font-size: 14px;
+}
+
+.place-list .detail-row dd {
+  font-weight: 500;
+}
+
+/* A value longer than 14 characters takes a second line and stops there; the full text is its tooltip */
+.info-list .detail-row dd {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow-wrap: break-word;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.info-list .detail-row:first-child dd {
+  font-weight: 600;
+}
+
+.page-head .title-row h1 .title-type {
+  font-weight: 400;
+}
+
+/* On a phone the photo goes under the rows and the values wrap inside the card */
+@media (max-width: 640px) {
+  .info-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .detail-list.info-list {
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 10px 16px;
+  }
+
+  .info-list .detail-row dt {
+    white-space: normal;
+  }
+
+  .info-body .photo-image,
+  .info-body .photo-placeholder {
+    width: 150px;
+  }
+}
+
+.page-head .head-actions {
+  gap: 8px;
+}
+
+.info-body .photo-image,
+.info-body .photo-placeholder {
+  width: 100%;
+  max-width: none;
+  min-height: 0;
+  max-height: 170px;
+  height: auto;
+  aspect-ratio: auto;
+  border: 0;
+}
+
+.info-body .photo-placeholder {
+  aspect-ratio: 1;
+}
+
+/*
+ * The photo is a little larger than its column and slides under the end of the text, which stays in front.
+ * `multiply` turns a white photo background into the white of the card, so the overlap does not show a box.
+ * The picture is never cropped or pushed past its box (an `<img>` clips to it): `contain` shows it whole for any aspect ratio.
+ */
+.info-list {
+  position: relative;
+  z-index: 1;
+}
+
+.info-body .photo-image {
+  position: relative;
+  z-index: 0;
+  width: calc(100% + 108px);
+  max-height: 160px;
+  margin-right: -20px;
+  margin-left: -88px;
+  object-fit: contain;
+  object-position: right bottom;
+  background: transparent;
+  mix-blend-mode: multiply;
+}
+
+@media (max-width: 640px) {
+  .info-body .photo-image {
+    width: 100%;
+    margin-left: 0;
+    object-position: center bottom;
+  }
+}
+
+/* Hours and maintenance (issue 60): the arc is a conic gradient (blue = consumed share of the cycle), the hole a pseudo-element */
+.maintenance-body {
+  display: grid;
+  grid-template-columns: clamp(96px, 44%, 160px) max-content;
+  justify-content: space-evenly;
+  align-items: center;
+  gap: 12px 28px;
+}
+
+.maintenance-body .detail-list {
+  gap: 6px;
+}
+
+.maintenance-body .detail-row {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+
+.maintenance-body .detail-row dt {
+  font-size: 12px;
+}
+
+.ring {
+  position: relative;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: conic-gradient(var(--ring-color, var(--primary)) var(--ring-percent), var(--neutral-bg) 0);
+  text-align: center;
+}
+
+.ring::before {
+  content: "";
+  position: absolute;
+  inset: 7.5%;
+  border-radius: 50%;
+  background: var(--surface);
+}
+
+.ring-value,
+.ring-caption {
+  position: relative;
+  max-width: 70%;
+}
+
+.ring-value {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.ring-caption {
+  color: var(--muted-strong);
+  font-size: 11px;
+}
+
+.detail-row dd[data-tone="warn"] {
+  color: var(--warn);
+}
+
+.detail-row dd[data-tone="danger"] {
+  color: var(--danger);
+}
+
+/* Usage chart (issue 60 D4): inline SVG, no chart library */
+.card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin-bottom: 8px;
+}
+
+.detail-card .card-head h2 {
+  margin-bottom: 0;
+}
+
+.period-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted-strong);
+  font-size: 13px;
+}
+
+.period-form .input {
+  width: auto;
+  min-height: 36px;
+  padding: 0 8px;
+  font-size: 13px;
+}
+
+.chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 260px;
+}
+
+.chart-grid {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.chart-tick {
+  fill: var(--muted-strong);
+  font-size: 12px;
+}
+
+.chart-reference {
+  stroke: #94a3b8;
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+}
+
+.chart-area {
+  fill: var(--primary-soft);
+  opacity: 0.8;
+}
+
+.chart-line {
+  fill: none;
+  stroke: var(--primary);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.chart-point {
+  fill: var(--primary);
+  stroke: var(--surface);
+  stroke-width: 1.5;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0 0 4px;
+  padding: 0;
+  color: var(--muted-strong);
+  font-size: 13px;
+  list-style: none;
+}
+
+.chart-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chart-legend-square {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--primary);
+}
+
+.chart-legend-dash {
+  width: 16px;
+  border-top: 2px dashed #94a3b8;
+}
+
+/* Squarer state badge of the detail title (S5); other badges stay pills */
+.badge-square {
+  border-radius: 4px;
+}
+
+/* The ring takes the colour of the preventive state: blue while current, amber when due soon, red when overdue */
+.ring[data-tone="warn"] {
+  --ring-color: #f59e0b;
+}
+
+.ring[data-tone="danger"] {
+  --ring-color: var(--danger);
+}
+
+/* The state pills of the detail page on a softer background (maintainer's review, issue 60) */
+.page-head .badge-ok,
+.maintenance-body .badge-ok {
+  background: color-mix(in srgb, var(--ok-bg) 55%, #ffffff);
+}
+
+.page-head .badge-warn,
+.maintenance-body .badge-warn {
+  background: color-mix(in srgb, var(--warn-bg) 55%, #ffffff);
+}
+
+.page-head .badge-danger,
+.maintenance-body .badge-danger {
+  background: color-mix(in srgb, var(--danger-bg) 55%, #ffffff);
+}
+
+.page-head .badge-neutral {
+  background: color-mix(in srgb, var(--neutral-bg) 55%, #ffffff);
+}
+
+/* Outlined action buttons of the detail header and cards: coloured text and border on white */
+.btn-tone {
+  background: var(--surface);
+  font-size: 14px;
+}
+
+.btn-blue {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.btn-green {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+.btn-orange {
+  border-color: #c2410c;
+  color: #c2410c;
+}
+
+.btn-red {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.btn-tone:disabled {
+  background: var(--surface);
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-icon-plus::before {
+  content: "+" / "";
+  font-size: 18px;
+  line-height: 1;
+}
+
+.btn-icon-swap::before {
+  content: "\21C4" / "";
+}
+
+.btn-icon-clock::before,
+.btn-icon-wrench::before,
+.btn-icon-ban::before {
+  content: "";
+  width: 16px;
+  height: 16px;
+  background: currentColor;
+  mask: var(--icon) center / contain no-repeat;
+}
+
+.btn-icon-clock {
+  --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v5l3 2'/%3E%3C/svg%3E");
+}
+
+.btn-icon-wrench {
+  --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14.7 6.3a4 4 0 0 0 5 5L10 21a2.1 2.1 0 0 1-3-3l9.7-9.7z'/%3E%3C/svg%3E");
+}
+
+.btn-icon-ban {
+  --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M5.6 5.6l12.8 12.8'/%3E%3C/svg%3E");
+}
+
+.topbar-back {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+/* The "Más acciones" menu: items stay in the page, only hidden, so the dialogs they own keep living inside */
+.more-menu {
+  position: relative;
+}
+
+.more-menu-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  display: grid;
+  gap: 6px;
+  min-width: 240px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  visibility: hidden;
+}
+
+.more-menu-panel[data-open="true"] {
+  visibility: visible;
+}
+
+.more-menu-panel dialog {
+  visibility: visible;
+}
+
+.more-menu-panel > .btn {
+  justify-content: flex-start;
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .page-head .head-actions {
+    position: relative;
+  }
+
+  .more-menu {
+    position: static;
+    flex: 1 1 100%;
+  }
+
+  .more-menu > .btn {
+    width: 100%;
+  }
+
+  .more-menu-panel {
+    right: 0;
+    left: 0;
+    min-width: 0;
+  }
 }
 
 .detail-card h2 {

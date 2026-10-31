@@ -77,3 +77,13 @@ export function initialsOf(displayName: string): string {
   const letters = [words[0], words.length > 1 ? words[words.length - 1] : undefined];
   return letters.map((word) => word?.charAt(0) ?? "").join("").toUpperCase() || "?";
 }
+
+const DETAIL_PREFIX = "/fleet/equipment/";
+
+export type BackLink = { readonly href: string; readonly label: string };
+
+/** The top bar shows the way back to the equipment list on an equipment detail page and nowhere else. */
+export function backLinkFor(pathname: string): BackLink | null {
+  const onDetail = pathname.startsWith(DETAIL_PREFIX) && pathname.length > DETAIL_PREFIX.length;
+  return onDetail ? { href: "/fleet", label: copy.fleet.detail.back } : null;
+}

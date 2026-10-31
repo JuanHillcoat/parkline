@@ -16,7 +16,7 @@ describe("ListEquipment carries the supplier and asset type names", () => {
 
     expect(rows).toHaveLength(1);
     expect(rows[0]?.supplier).toEqual({ id: s.supplierA.id, name: "SUPPLIER A" });
-    expect(rows[0]?.assetType).toEqual({ id: s.forklift.id, name: "FORKLIFT", meterKind: "hours" });
+    expect(rows[0]?.assetType).toEqual({ id: s.forklift.id, name: "FORKLIFT", meterKind: "hours", preventiveIntervalHours: 250 });
   });
 
   it("gives tenant-wide readers the names of every equipment, assigned or not", async () => {
@@ -25,7 +25,7 @@ describe("ListEquipment carries the supplier and asset type names", () => {
     const rows = h.orThrow(await h.listEquipment.execute({ actor: h.admin }));
     const byCode = new Map(rows.map((row) => [row.internalCode, row]));
     expect(byCode.get("C-043")?.supplier.name).toBe("SUPPLIER B");
-    expect(byCode.get("C-043")?.assetType).toEqual({ id: s.container.id, name: "CONTAINER", meterKind: "none" });
+    expect(byCode.get("C-043")?.assetType).toEqual({ id: s.container.id, name: "CONTAINER", meterKind: "none", preventiveIntervalHours: null });
   });
 
   it("keeps the names of an archived supplier's archived equipment for the reader that sees it", async () => {

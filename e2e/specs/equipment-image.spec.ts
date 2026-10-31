@@ -1,6 +1,7 @@
+import { moreToggle } from "../support/detail-page";
 import { expect, test, type Locator, type APIRequest, type Page } from "@playwright/test";
 import { copy } from "../../app/_lib/copy";
-import { buttonNamed, buttonsOf, gotoDetail } from "../support/assignment-flows";
+import { buttonsOf, gotoDetail, menuOf } from "../support/assignment-flows";
 import { openSeeder, resetCatalogs } from "../support/data";
 import {
   expectDialogClosed,
@@ -544,7 +545,7 @@ test.describe("roles", () => {
       await expect(page.getByRole("button", { name: d.editEquipment.trigger })).toHaveCount(0);
       await gotoDetail(page, id, "IMG-VIEW");
       await expectLoaded(detailImage(page));
-      await expect(buttonsOf(page)).toHaveCount(0);
+      await expect(menuOf(page)).toHaveCount(0);
       await expect(page.locator('input[type="file"]')).toHaveCount(0);
     });
   });
@@ -556,7 +557,7 @@ test.describe("roles", () => {
       test("can change the image from the detail page", async ({ page }) => {
         const id = idOf(await seedUnits([{ code: "IMG-ROLE", image: png() }]), "IMG-ROLE");
         await gotoDetail(page, id, "IMG-ROLE");
-        await expect(buttonNamed(page, d.editEquipment.trigger)).toBeVisible();
+        await expect(moreToggle(page)).toBeVisible();
         const dialog = await openDialog(page, d.editEquipment.trigger, buttonsOf(page));
         await chooseImageAction(dialog, IMAGE_ACTIONS.remove);
         await fill(dialog, copy.common.reason, `Removed by ${role}`);

@@ -7,6 +7,7 @@ import { expect, type Browser, type Locator, type Page } from "@playwright/test"
 import postgres, { type Sql } from "postgres";
 import { copy } from "../../app/_lib/copy";
 import { openSeeder } from "./data";
+import { buttonNamed, buttonsOf, titleOf } from "./detail-page";
 import { fill, openDialog, skipBrowserValidation, submitDialog } from "./fleet-flows";
 import { BASE_URL, readWorld, storageStatePath, type RoleKey } from "./world";
 
@@ -22,16 +23,13 @@ export const detailPath = (id: string, tab = ""): string => `/fleet/equipment/${
 
 export async function gotoDetail(page: Page, id: string, code: string, tab = ""): Promise<void> {
   await page.goto(detailPath(id, tab));
-  await expect(page.getByRole("heading", { level: 1, name: t.title(code) })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: titleOf(code) })).toBeVisible();
 }
 
-export const buttonsOf = (page: Page): Locator => page.getByRole("group", { name: t.actionsLabel });
-export const buttonNamed = (page: Page, name: string): Locator => buttonsOf(page).getByRole("button", { name, exact: true });
+export { buttonNamed, buttonsOf, infoCard, locationCard, menuOf } from "./detail-page";
 export const pillOf = (page: Page): Locator => page.locator(".title-row .badge");
 export const historyTable = (page: Page): Locator => page.getByRole("table", { name: t.history.caption });
 export const historyRows = (page: Page): Locator => historyTable(page).locator("tbody tr");
-export const locationCard = (page: Page): Locator => page.getByRole("region", { name: t.location.title });
-export const infoCard = (page: Page): Locator => page.getByRole("region", { name: t.info.title });
 
 /** The value beside a label of a card (definition list). */
 export const valueOf = (card: Locator, label: string): Locator =>

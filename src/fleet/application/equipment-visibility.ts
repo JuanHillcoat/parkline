@@ -21,7 +21,13 @@ export type AssignmentSummary = {
 /** The supplier and asset type of an equipment by name: a scoped reader cannot read those lists. */
 export type EquipmentNames = {
   readonly supplier: { readonly id: string; readonly name: string };
-  readonly assetType: { readonly id: string; readonly name: string; readonly meterKind: MeterKind };
+  readonly assetType: {
+    readonly id: string;
+    readonly name: string;
+    readonly meterKind: MeterKind;
+    /** The preventive interval in the meter's unit, or null when the type has none. */
+    readonly preventiveIntervalHours: number | null;
+  };
 };
 
 /**

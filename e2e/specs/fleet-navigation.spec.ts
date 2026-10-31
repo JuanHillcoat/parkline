@@ -113,7 +113,8 @@ test.describe("fleet entries: navigation and current marker", () => {
     await rowOf(page, "NAV-1").getByRole("link", { name: "NAV-1" }).click();
     await expect(page).toHaveURL(/\/fleet\/equipment\//);
     await expectOnlyCurrent(page, copy.nav.fleet);
-    await expect(page.locator(".topbar-title")).toHaveText(copy.nav.fleet);
+    await expect(page.locator(".topbar").getByRole("link", { name: copy.fleet.detail.back })).toBeVisible();
+    await expect(page.locator(".topbar-title")).toHaveCount(0);
   });
 });
 

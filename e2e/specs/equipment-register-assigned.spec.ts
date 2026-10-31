@@ -70,7 +70,6 @@ test.describe("registering an assigned equipment", () => {
     await gotoDetail(page, id, "REG-SPARE");
     await expect(pillOf(page)).toHaveText(copy.fleet.state.spare);
     await expect(valueOf(locationCard(page), t.location.site)).toHaveText(WORLD_ORG.site);
-    await expect(valueOf(locationCard(page), t.location.kind)).toHaveText(t.kinds.spare);
     await expect(locationCard(page).getByText(t.location.operation, { exact: true })).toHaveCount(0);
     await expect(locationCard(page).getByText(t.location.division, { exact: true })).toHaveCount(0);
     expect((await storedAssignments(id))[0]).toMatchObject({ kind: "spare", operation_id: null, site_id: readWorld().ids.site });

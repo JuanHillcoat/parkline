@@ -28,12 +28,12 @@ function ValueField({ id, name, label, hint, initial }: ValueProps) {
 type Target = { readonly id: string; readonly code: string };
 type LoadProps = { readonly target: Target; readonly today: string };
 
-/** Loads a new reading: the day defaults to today, the reason is optional. */
-export function RecordReadingDialog({ target, today }: LoadProps) {
+/** Loads a new reading: the day defaults to today, the reason is optional. The trigger names the unit of the meter. */
+export function RecordReadingDialog({ target, today, unit }: LoadProps & { readonly unit: "hours" | "km" }) {
   const t = copy.dialogs.recordReading;
   const key = `reading-${target.id}`;
   return (
-    <ActionDialog triggerLabel={t.trigger} triggerClassName="btn btn-primary" title={t.title(target.code)}
+    <ActionDialog triggerLabel={unit === "km" ? t.triggerKm : t.trigger} triggerClassName="btn btn-tone btn-blue btn-icon-clock" title={t.title(target.code)}
       description={t.description} submitLabel={t.submit} action={recordReadingAction}>
       <input type="hidden" name="equipmentId" value={target.id} />
       <DateField id={`${key}-day`} name="day" label={t.dayLabel} initial={today} required />

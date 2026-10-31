@@ -232,7 +232,6 @@ test.describe("the registration form as a fleet analyst", () => {
       await gotoDetail(page, id, "RF-MULETO");
       await expect(pillOf(page)).toHaveText(state.spare);
       await expect(valueOf(locationCard(page), detail.location.site)).toHaveText(FX.siteB);
-      await expect(valueOf(locationCard(page), detail.location.kind)).toHaveText(detail.kinds.spare);
       await expect(locationCard(page).getByText(detail.location.operation, { exact: true })).toHaveCount(0);
       await expect(locationCard(page).getByText(detail.location.division, { exact: true })).toHaveCount(0);
     });

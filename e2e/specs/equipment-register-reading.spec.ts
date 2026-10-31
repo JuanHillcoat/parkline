@@ -2,8 +2,9 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { copy } from "../../app/_lib/copy";
 import { resetCatalogs } from "../support/data";
 import { expectDialogClosed, fillEquipment, gotoFleet, openDialog, REQUIRED_TEXT_DEFAULTS, skipBrowserValidation, submitDialog } from "../support/fleet-flows";
+import { maintenanceCard, rowValueOf } from "../support/detail-page";
 import { chooseImage, png } from "../support/image-flows";
-import { allActions, dayOffset, ddmmyyyy, gotoReadings, historyRows, hoursOf, messages, OTHER_OPERATION, panelOf, r, seedReadingsBase, storedMeters, storedReadings, today, TYPES } from "../support/readings-flows";
+import { allActions, dayOffset, ddmmyyyy, gotoReadings, historyRows, hoursOf, messages, OTHER_OPERATION, panelOf, r, ringValue, seedReadingsBase, storedMeters, storedReadings, today, TYPES } from "../support/readings-flows";
 import { storedAssignments } from "../support/assignment-flows";
 import { actionsFor, equipmentIds, expectNothingRegistered, fillAssignment, registeredId } from "../support/register-assigned-flows";
 import { boxOf, VIEWPORT_HEIGHT, VIEWPORT_WIDTH } from "../support/mobile-flows";
@@ -36,7 +37,7 @@ for (const role of ["admin", "fleet_analyst"] as const) {
     test.use({ storageState: storageStatePath(role) });
     test.beforeEach(fresh);
 
-    test("the reading alone opens the meter and shows in the Lecturas tab and the information card", async ({ page }) => {
+    test("the reading alone opens the meter and shows in the Lecturas tab and the maintenance card", async ({ page }) => {
       const dialog = await openRegistration(page, `REGRD-A-${role.toUpperCase()}`, "hours");
       await valueField(dialog).fill("1234,5");
       await submitDialog(dialog, n.submit);
@@ -50,7 +51,8 @@ for (const role of ["admin", "fleet_analyst"] as const) {
       await expect(historyRows(page).first()).toContainText("1.234,5 h");
       await expect(historyRows(page).first()).toContainText(ddmmyyyy(today()));
       await page.goto(`/fleet/equipment/${id}`);
-      await expect(page.getByText(`1.234,5 h (${ddmmyyyy(today())})`)).toBeVisible();
+      await expect(ringValue(page)).toHaveText("0 hs");
+      await expect(rowValueOf(maintenanceCard(page), copy.fleet.detail.maintenance.next)).toHaveText("1.484,5 hs");
     });
 
     test("the reading together with an assignment and an image is stored in one step", async ({ page }) => {
@@ -71,7 +73,8 @@ for (const role of ["admin", "fleet_analyst"] as const) {
       await expect(hoursOf(page)).toHaveText("0,0 km");
       await page.goto(`/fleet/equipment/${id}`);
       await expect(page.getByRole("img", { name: info.photoLabel })).toBeVisible();
-      await expect(page.getByText(`500,0 km (${ddmmyyyy(dayOffset(-1))})`)).toBeVisible();
+      await expect(ringValue(page)).toHaveText("0 km");
+      await expect(rowValueOf(maintenanceCard(page), copy.fleet.detail.maintenance.next)).toHaveText("1.500 km");
     });
 
     test("without a typed value no meter is created", async ({ page }) => {

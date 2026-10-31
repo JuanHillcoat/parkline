@@ -4,7 +4,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { CloseIcon } from "../_components/icons";
 import { copy } from "../_lib/copy";
-import { sectionTitle } from "../_lib/navigation";
+import { backLinkFor, sectionTitle } from "../_lib/navigation";
 import { Topbar } from "./topbar";
 
 /** Calls `onEscape` on the Escape key while `active`. */
@@ -68,7 +68,7 @@ export function ShellFrame({ sidebar, account, children }: ShellFrameProps) {
     <div className="shell" data-nav-open={drawer.open}>
       <Drawer close={drawer.close}>{sidebar}</Drawer>
       <div className="main">
-        <Topbar title={sectionTitle(pathname, tab)} drawerOpen={drawer.open} onMenu={drawer.toggle} menuRef={drawer.menuRef}>
+        <Topbar title={sectionTitle(pathname, tab)} back={backLinkFor(pathname)} drawerOpen={drawer.open} onMenu={drawer.toggle} menuRef={drawer.menuRef}>
           {account}
         </Topbar>
         <main id="content" className="content">{children}</main>

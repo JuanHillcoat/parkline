@@ -1,6 +1,6 @@
 import { copy } from "../../../../_lib/copy";
 import type { ReadingActions, ReadingViewRow, ReadingsView } from "../../../../_lib/readings-view";
-import { CorrectReadingDialog, RecordReadingDialog, ReplaceMeterDialog } from "./reading-dialogs";
+import { CorrectReadingDialog, ReplaceMeterDialog } from "./reading-dialogs";
 
 const t = copy.fleet.detail.readings;
 
@@ -9,11 +9,10 @@ type Common = { readonly target: Target; readonly today: string; readonly action
 type Meter = Extract<ReadingsView, { kind: "meter" }>;
 
 function Toolbar({ target, today, actions }: Common) {
-  if (!actions.load && !actions.replace) return null;
+  if (!actions.replace) return null;
   return (
     <span className="head-actions" role="group" aria-label={t.toolbar}>
-      {actions.load && <RecordReadingDialog target={target} today={today} />}
-      {actions.replace && <ReplaceMeterDialog target={target} today={today} />}
+      <ReplaceMeterDialog target={target} today={today} />
     </span>
   );
 }
@@ -96,7 +95,8 @@ function Notice({ text }: { text: string }) {
 
 /**
  * The Lecturas tab: the open meter, the hours of the last 30 days and the history, newest first. An
- * equipment without a meter shows only its notice. Buttons follow the permissions given in `actions`.
+ * equipment without a meter shows only its notice. Replacing the meter follows the permissions given in `actions`;
+ * loading a reading lives in the page header.
  */
 export function ReadingsPanel(props: Common & { view: ReadingsView }) {
   const { view, target, actions } = props;
