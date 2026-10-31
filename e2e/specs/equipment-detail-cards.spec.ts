@@ -313,9 +313,9 @@ test.describe("equipment detail layout on a desktop", () => {
   test("general information spreads its rows over the fixed card height whatever the number of rows or lines", async ({ page }) => {
     const seeder = await openSeeder();
     const units = {
-      "FIX-SHORT": { brand: "TOYOTA", model: "BT", batteryKind: "combustion" as const },
-      "FIX-LONG": { brand: "TOYOTA BT REACH", model: "SIMPLE RRE250", batteryKind: "lead_acid" as const, batteryQuantity: 2 },
-      "FIX-LEAD": { brand: "TOYOTA", model: "BT", batteryKind: "lead_acid" as const, batteryQuantity: 2 },
+      "FIX-SHORT": { brand: "BRANDX", model: "Q1", batteryKind: "combustion" as const },
+      "FIX-LONG": { brand: "BRANDX QX LIFTS", model: "SINGLE SR2500", batteryKind: "lead_acid" as const, batteryQuantity: 2 },
+      "FIX-LEAD": { brand: "BRANDX", model: "Q1", batteryKind: "lead_acid" as const, batteryQuantity: 2 },
     };
     const ids: Record<string, string> = {};
     try {
