@@ -401,6 +401,23 @@ test.describe("equipment detail layout on a desktop", () => {
     expect(Math.abs(pageRight - (third.x + third.width) - 20), "the space between the third card and the page edge").toBeLessThanOrEqual(1);
   });
 
+  test("the cards are 8px apart and general information is 460px wide, Ubicación actual the narrowest", async ({ page }) => {
+    await page.setViewportSize({ width: WIDE, height: 900 });
+    const ids = await seedCycle();
+    await gotoDetail(page, ids.ok, "CYC-OK");
+    const [info, location, maintenance, usage] = await Promise.all([
+      boxOf(infoCard(page)),
+      boxOf(locationCard(page)),
+      boxOf(maintenanceCard(page)),
+      boxOf(usageCard(page)),
+    ]);
+    expect(Math.abs(location.x - (info.x + info.width) - 8), "the space between cards 1 and 2").toBeLessThanOrEqual(1);
+    expect(Math.abs(maintenance.x - (location.x + location.width) - 8), "the space between cards 2 and 3").toBeLessThanOrEqual(1);
+    expect(Math.abs(usage.y - (info.y + info.height) - 8), "the space between the first row and the chart").toBeLessThanOrEqual(1);
+    expect(Math.abs(info.width - 460), "the width of general information").toBeLessThanOrEqual(1);
+    expect(location.width).toBeLessThan(maintenance.width);
+  });
+
   test("the top bar carries the way back at the left and the account menu at the right", async ({ page }) => {
     const ids = await seedCycle();
     await gotoDetail(page, ids.ok, "CYC-OK");

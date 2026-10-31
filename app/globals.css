@@ -1311,7 +1311,7 @@ dialog.dialog::backdrop {
 .detail-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 8px;
   margin-bottom: 24px;
 }
 
@@ -1330,10 +1330,17 @@ dialog.dialog::backdrop {
     grid-column: auto;
   }
 
-  /* General information keeps one width (its values are 14 characters wide) and one height whatever its texts */
+  /*
+   * General information keeps one width (460px, its values are 14 characters wide) and one height whatever its texts;
+   * the photo takes the room its column gains. Ubicación actual is the narrowest card of the row.
+   */
   .detail-grid {
-    grid-template-columns: max-content minmax(0, 0.95fr) minmax(0, 1.05fr);
+    grid-template-columns: minmax(max-content, 460px) minmax(0, 0.93fr) minmax(0, 1.07fr);
     grid-template-rows: 292px;
+  }
+
+  .detail-grid .info-body {
+    grid-template-columns: max-content minmax(80px, 1fr);
   }
 
   /*
